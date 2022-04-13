@@ -28,21 +28,20 @@ def read_requirements(filename: str):
 # version.py defines the VERSION and VERSION_SHORT variables.
 # We use exec here, so we don't import cached_path whilst setting up.
 VERSION = {}  # type: ignore
-version_path = os.path.join(os.getcwd(), "src/aazdev/version.py")
-with open(version_path, "r") as version_file:
+aazdev_path = os.path.dirname(os.path.realpath(__file__))
+with open(os.path.join(aazdev_path, "aazdev", "version.py"), "r") as version_file:
     exec(version_file.read(), VERSION)
 
-with open("README.md", "r", encoding="utf-8") as f:
-    README = f.read()
-with open("HISTORY.rst", "r", encoding="utf-8") as f:
-    HISTORY = f.read()
+with open("README.md", "r", encoding="utf-8") as fp:
+    README = fp.read()
+with open("HISTORY.rst", "r", encoding="utf-8") as fp:
+    HISTORY = fp.read()
 
 setup(
     name="aazdev",
     version=VERSION["VERSION"],
     description="Microsoft Azure CLI Atomic Commands Developer Tools",
-    long_description=f"{README}\n\n{HISTORY}",
-    long_description_content_type="text/markdown",
+    long_description=README + "\n\n" + HISTORY,
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
@@ -64,8 +63,10 @@ setup(
     packages=find_packages(
         exclude=["*.tests", "*.tests.*", "tests.*", "tests"],
     ),
-    package_data={
-        "static": ["*"],
-    },
+    include_package_data=True,
     install_requires=read_requirements("requirements.txt"),
+    python_requires=">=3.6",
+    entry_points={
+        'console_scripts': ['aazdev=aazdev.backend.main:main']
+    },
 )

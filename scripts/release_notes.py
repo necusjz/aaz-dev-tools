@@ -15,12 +15,12 @@ def get_change_log_notes() -> str:
             if in_current_section:
                 if line.startswith("* "):
                     current_section_notes.append(line)
-                elif line.startswith("++"):
+                elif line.startswith("++") or line.startswith("\n"):
                     continue
                 else:
                     break
     assert current_section_notes
-    return "## What's new\n\n" + "".join(current_section_notes).strip() + "\n"
+    return "".join(current_section_notes).strip() + "\n"
 
 
 def main():

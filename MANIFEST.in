@@ -1,0 +1,2 @@
+recursive-include aazdev/ui *
+recursive-include aazdev/cli/templates *
