@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.7', '3.8', '3.9', '3.10']
+        python: ['3.6', '3.10']
 #        task:
 #          - name: Test
 #            run: |
@@ -38,7 +38,7 @@ jobs:
 #            task:
 #              name: Lint
 #              run: flake8 .
-#
+
 #          - python: '3.10'
 #            task:
 #              name: Type check
@@ -55,7 +55,7 @@ jobs:
 #            task:
 #              name: Style
 #              run: black --check .
-#
+
 #          - python: '3.10'
 #            task:
 #              name: Docs
@@ -88,7 +88,7 @@ jobs:
           path: .venv
           key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-
+            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}
 
       - name: Setup virtual environment (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
