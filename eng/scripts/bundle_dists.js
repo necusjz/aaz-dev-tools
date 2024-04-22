@@ -2,12 +2,33 @@ import {repoRoot} from "../../src/typespec/eng/scripts/helpers.js";
 import { findWorkspacePackagesNoCheck } from "@pnpm/find-workspace-packages";
 import { createTypeSpecBundle } from "../../src/typespec/core/packages/bundler/dist/src/index.js";
 import { resolve } from "path";
-import { existsSync, readdirSync, lstatSync, unlinkSync, rmdirSync, mkdirSync} from 'fs';
+import { existsSync, readdirSync, lstatSync, unlinkSync, rmdirSync, mkdirSync, copyFileSync} from 'fs';
 import { join } from "path/posix";
 import { writeFile } from "fs/promises";
 
-const outputDir = resolve(repoRoot, "../aaz_dev/ui/typespec/pkgs");
-const pkgsUrl = "/typespec/pkgs"
+const staticDir = resolve(repoRoot, "../aaz_dev/ui");
+removeDirRecursive(staticDir);
+mkdirSync(staticDir);
+function copyFiles(source, destination) {
+  readdirSync(source).forEach(file => {
+      const sourcePath = resolve(source, file);
+      const destPath = resolve(destination, file);
+
+      if (lstatSync(sourcePath).isDirectory()) {
+          // If it's a directory, create it in the destination and copy its contents
+          mkdirSync(destPath);
+          copyFiles(sourcePath, destPath);
+      } else {
+          // If it's a file, copy it to the destination
+          copyFileSync(sourcePath, destPath);
+      }
+  });
+}
+
+copyFiles(resolve(repoRoot, "../web/dist"), staticDir);
+
+const outputDir = resolve(repoRoot, "../aaz_dev/ui/assets/typespec/pkgs");
+const pkgsUrl = "/assets/typespec/pkgs"
 
 const packages = [
   "@typespec/compiler",

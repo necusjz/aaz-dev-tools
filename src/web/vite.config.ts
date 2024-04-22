@@ -13,7 +13,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: '../aaz_dev/ui',
+    outDir: 'dist',
   },
   plugins: [react()],
 })

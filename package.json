@@ -5,10 +5,11 @@
     "packageManager": "pnpm@9.0.5",
     "scripts": {
       "run-all": "pnpm -r ",
-      "build": "pnpm run-all --workspace-concurrency=Infinity --aggregate-output --reporter=append-only build ",
-      "bundle": "node ./eng/scripts/bundle_typespec_packages.js",
+      "build:typespec": "pnpm -r --filter=\"!./src/web/\" --workspace-concurrency=Infinity --aggregate-output --reporter=append-only build ",
+      "build:web": "pnpm -r --filter=\"./src/web/\" --workspace-concurrency=Infinity --aggregate-output --reporter=append-only build ",
+      "bundle": "node ./eng/scripts/bundle_dists.js",
       "clean": "pnpm run-all run clean",
-      "lint": "pnpm run-all  --parallel --aggregate-output --reporter=append-only run lint",
+      "lint": "pnpm run-all --parallel --aggregate-output --reporter=append-only run lint",
       "preinstall": "npx only-allow pnpm",
       "purge": "rimraf --glob \"src/**/node_modules/\"",
       "watch": "tsc --build ./tsconfig.ws.json --watch"
