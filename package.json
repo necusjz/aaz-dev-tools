@@ -2,10 +2,11 @@
     "name": "aaz-dev-tools",
     "version": "0.1.0",
     "private": true,
-    "packageManager": "pnpm@8.13.1",
+    "packageManager": "pnpm@9.0.5",
     "scripts": {
       "run-all": "pnpm -r ",
       "build": "pnpm run-all --workspace-concurrency=Infinity --aggregate-output --reporter=append-only build ",
+      "bundle": "node ./eng/scripts/bundle_typespec_packages.js",
       "clean": "pnpm run-all run clean",
       "lint": "pnpm run-all  --parallel --aggregate-output --reporter=append-only run lint",
       "preinstall": "npx only-allow pnpm",
