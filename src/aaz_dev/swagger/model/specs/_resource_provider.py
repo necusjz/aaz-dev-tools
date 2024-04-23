@@ -252,9 +252,9 @@ class OpenAPIResourceProviderTag:
 
 class TypeSpecResourceProvider:
 
-    def __init__(self, name, entry_folders, swagger_module):
+    def __init__(self, name, entry_files, swagger_module):
         self.name = name
-        self.entry_folders = entry_folders
+        self.entry_files = entry_files
         self.swagger_module = swagger_module
 
     def __str__(self):

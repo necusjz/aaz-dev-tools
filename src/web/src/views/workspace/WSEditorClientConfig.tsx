@@ -159,7 +159,7 @@ class WSEditorClientConfigDialog extends React.Component<WSEditorClientConfigDia
             })
             await this.onPlaneSelectorUpdate(planeOptions[0]);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -216,7 +216,7 @@ class WSEditorClientConfigDialog extends React.Component<WSEditorClientConfigDia
                     })
                     await this.onModuleSelectionUpdate(null);
                 } catch (err: any) {
-                    console.error(err.response);
+                    console.error(err);
                     if (err.response?.data?.message) {
                         const data = err.response!.data!;
                         this.setState({
@@ -265,7 +265,7 @@ class WSEditorClientConfigDialog extends React.Component<WSEditorClientConfigDia
                 });
                 this.onResourceProviderUpdate(selectedResourceProvider)
             } catch (err: any) {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     this.setState({
@@ -340,7 +340,7 @@ class WSEditorClientConfigDialog extends React.Component<WSEditorClientConfigDia
                 })
                 this.onVersionUpdate(selectVersion);
             } catch (err: any) {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     this.setState({
@@ -451,7 +451,7 @@ class WSEditorClientConfigDialog extends React.Component<WSEditorClientConfigDia
                     isAdd: true,
                 });
             } else {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     this.setState({ invalidText: `ResponseError: ${data.message!}: ${JSON.stringify(data.details)}` });
@@ -642,7 +642,7 @@ class WSEditorClientConfigDialog extends React.Component<WSEditorClientConfigDia
             this.setState({ updating: false });
             this.props.onClose(true);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({ invalidText: `ResponseError: ${data.message!}: ${JSON.stringify(data.details)}` });

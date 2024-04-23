@@ -552,7 +552,7 @@ class WSEditorExportDialog extends React.Component<WSEditorExportDialogProps, WS
                 });
                 return;
             } else {
-                console.error(err.response)
+                console.error(err)
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     this.setState({
@@ -572,7 +572,7 @@ class WSEditorExportDialog extends React.Component<WSEditorExportDialogProps, WS
             this.setState({ clientConfigOOD: false, updating: false });
             this.props.onClose(false, true);
         } catch (err: any) {
-            console.error(err.response)
+            console.error(err)
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -592,7 +592,7 @@ class WSEditorExportDialog extends React.Component<WSEditorExportDialogProps, WS
             this.setState({ updating: false });
             this.props.onClose(false, false);
         } catch (err: any) {
-            console.error(err.response)
+            console.error(err)
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -745,7 +745,7 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
                 selectedResources: new Set(resources.map(resource => resource.id)),
             })
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -786,7 +786,7 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
             })
             this.props.onClose(true);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({

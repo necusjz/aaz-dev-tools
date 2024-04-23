@@ -251,7 +251,7 @@ function GenerateDialog(props: {
                 props.onClose(true);
             })
             .catch((err) => {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     setInvalidText(
@@ -283,7 +283,7 @@ function GenerateDialog(props: {
                 props.onClose(true);
             })
             .catch((err) => {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     setInvalidText(

@@ -1,6 +1,7 @@
 import os
 
 from utils.plane import PlaneEnum
+from utils.config import Config
 from ._resource_provider import OpenAPIResourceProvider, TypeSpecResourceProvider
 from ._typespec_helper import TypeSpecHelper
 
@@ -35,6 +36,17 @@ class SwaggerModule:
             return [self.name]
         else:
             return [*self._parent.names, self.name]
+    
+    @staticmethod
+    def resolve_path_to_uri(path):
+        relative_path = os.path.relpath(path, start=Config.get_swagger_root()).replace(os.sep, '/')
+        if relative_path.startswith('../'):
+            raise ValueError(f"Invalid path: {path}")
+        if relative_path.startswith('./'):
+            relative_path = relative_path[2:]
+        if relative_path.startswith('/'):
+            relative_path = relative_path[1:]
+        return relative_path
 
 
 class MgmtPlaneModule(SwaggerModule):
@@ -79,12 +91,12 @@ class MgmtPlaneModule(SwaggerModule):
             return rp
 
         for namespace, ts_path, cfg_path in TypeSpecHelper.find_mgmt_plane_entry_files(self.folder_path):
-            entry_folder = os.path.dirname(ts_path)
+            entry_file = self.resolve_path_to_uri(ts_path)
             if namespace in rp:
-                rp[namespace].entry_folders.append(entry_folder)
+                rp[namespace].entry_files.append(entry_file)
             else:
                 rp[namespace] = TypeSpecResourceProvider(
-                    name=namespace, entry_folders=[entry_folder], swagger_module=self)
+                    name=namespace, entry_files=[entry_file], swagger_module=self)
         return [*rp.values()]
 
 
@@ -134,12 +146,12 @@ class DataPlaneModule(SwaggerModule):
             return rp
 
         for namespace, ts_path, cfg_path in TypeSpecHelper.find_data_plane_entry_files(self.folder_path):
-            entry_folder = os.path.dirname(ts_path)
+            entry_file = self.resolve_path_to_uri(ts_path)
             if namespace in rp:
-                rp[namespace].entry_folders.append(entry_folder)
+                rp[namespace].entry_files.append(entry_file)
             else:
                 rp[namespace] = TypeSpecResourceProvider(
-                    name=namespace, entry_folders=[entry_folder], swagger_module=self)
+                    name=namespace, entry_files=[entry_file], swagger_module=self)
         return [*rp.values()]
 
 

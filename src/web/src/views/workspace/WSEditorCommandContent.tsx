@@ -660,7 +660,7 @@ function CommandDeleteDialog(props: {
                 setRelatedCommands(cmdNames);
             })
             .catch(err => {
-                console.error(err.response)
+                console.error(err)
             })
 
     }, [props.command]);
@@ -681,7 +681,7 @@ function CommandDeleteDialog(props: {
             })
             .catch(err => {
                 setUpdating(false);
-                console.error(err.response)
+                console.error(err)
             })
     }
     return (
@@ -823,7 +823,7 @@ class CommandDialog extends React.Component<CommandDialogProps, CommandDialogSta
                 })
             }
         }).catch(err => {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -1022,7 +1022,7 @@ class ExampleDialog extends React.Component<ExampleDialogProps, ExampleDialogSta
             })
             this.props.onClose(cmd);
         }).catch(err => {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -1440,7 +1440,7 @@ function AddSubcommandDialog(props: {
             })
             props.onClose(true);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 setInvalidText(`ResponseError: ${data.message!}: ${JSON.stringify(data.details)}`);

@@ -809,7 +809,7 @@ function ArgumentDialog(props: {
             setUpdating(false);
             await props.onClose(true);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 setInvalidText(
@@ -835,7 +835,7 @@ function ArgumentDialog(props: {
             setArgSimilarTreeExpandedIds(expandedIds);
             setArgSimilarTreeArgIdsUpdated([]);
         }).catch(err => {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 setInvalidText(
@@ -878,7 +878,7 @@ function ArgumentDialog(props: {
                     updatedIds.push(argId);
                     setArgSimilarTreeArgIdsUpdated([...updatedIds]);
                 } catch (err: any) {
-                    console.error(err.response);
+                    console.error(err);
                     if (err.response?.data?.message) {
                         const data = err.response!.data!;
                         invalidText += `ResponseError: ${data.message!}: ${JSON.stringify(data.details)}`
@@ -1287,7 +1287,7 @@ function FlattenDialog(props: {
             setUpdating(false);
             await props.onClose(true);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 setInvalidText(
@@ -1313,7 +1313,7 @@ function FlattenDialog(props: {
             setArgSimilarTreeExpandedIds(expandedIds);
             setArgSimilarTreeArgIdsUpdated([]);
         }).catch(err => {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 setInvalidText(
@@ -1356,7 +1356,7 @@ function FlattenDialog(props: {
                     updatedIds.push(argId);
                     setArgSimilarTreeArgIdsUpdated([...updatedIds]);
                 } catch (err: any) {
-                    console.error(err.response);
+                    console.error(err);
                     if (err.response?.data?.message) {
                         const data = err.response!.data!;
                         invalidText += `ResponseError: ${data.message!}: ${JSON.stringify(data.details)}`
@@ -1479,7 +1479,7 @@ function UnwrapClsDialog(props: {
             setUpdating(false);
             await props.onClose(true);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 setInvalidText(

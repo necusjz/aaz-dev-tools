@@ -68,7 +68,7 @@ class WorkspaceSelector extends React.Component<WorkspaceSelectorProps, Workspac
                 options: options
             })
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
         }
     }
 
@@ -245,7 +245,7 @@ class WorkspaceCreateDialog extends React.Component<WorkspaceCreateDialogProps, 
             })
             await this.onPlaneSelectorUpdate(planeOptions[0]);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -302,7 +302,7 @@ class WorkspaceCreateDialog extends React.Component<WorkspaceCreateDialogProps, 
                     })
                     await this.onModuleSelectionUpdate(null);
                 } catch (err: any) {
-                    console.error(err.response);
+                    console.error(err);
                     if (err.response?.data?.message) {
                         const data = err.response!.data!;
                         this.setState({
@@ -351,7 +351,7 @@ class WorkspaceCreateDialog extends React.Component<WorkspaceCreateDialogProps, 
                 });
                 this.onResourceProviderUpdate(selectedResourceProvider)
             } catch (err: any) {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     this.setState({
@@ -444,7 +444,7 @@ class WorkspaceCreateDialog extends React.Component<WorkspaceCreateDialogProps, 
             this.setState({ loading: false });
             this.props.onClose(value);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({

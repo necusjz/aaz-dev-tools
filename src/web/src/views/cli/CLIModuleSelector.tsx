@@ -64,7 +64,7 @@ class CLIModuleSelector extends React.Component<CLIModuleSelectorProps, CLIModul
                     options: options
                 })
             })
-            .catch((err) => console.error(err.response));
+            .catch((err) => console.error(err));
     }
 
     handleDialogSubmit = (event: any) => {

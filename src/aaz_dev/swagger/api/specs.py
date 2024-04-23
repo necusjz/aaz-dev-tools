@@ -1,10 +1,35 @@
 from flask import Blueprint, jsonify, url_for, request
+from flask.helpers import send_from_directory
+import os
 
 from swagger.controller.specs_manager import SwaggerSpecsManager
 from swagger.model.specs import OpenAPIResourceProvider, TypeSpecResourceProvider
 from swagger.utils.source import SourceTypeEnum
 
 bp = Blueprint('swagger', __name__, url_prefix='/Swagger/Specs')
+
+
+@bp.route("/Files/<path:file_path>", methods=("GET",))
+def get_file(file_path):
+    from utils.config import Config
+    if not Config.get_swagger_root():
+        return jsonify({"error": "Swagger root not found"}), 404
+    return send_from_directory(Config.get_swagger_root(), file_path)
+
+
+@bp.route("/Stat/<path:path>", methods=("GET",))
+def get_path_stat(path):
+    from utils.config import Config
+    root_dir = Config.get_swagger_root()
+    if not root_dir:
+        return jsonify({"error": "Swagger root not found"}), 404
+    path = os.path.join(root_dir, path)
+    if not os.path.exists(path):
+        return jsonify({"error": "Path not exist"}), 404
+    return jsonify({
+        "isDir": os.path.isdir(path),
+        "isFile": os.path.isfile(path),
+    })
 
 
 # modules
@@ -66,7 +91,7 @@ def get_resource_providers_by(plane, mod_names):
             result.append({
                 "url": url_for('swagger.get_typespec_resource_provider', plane=plane, mod_names=mod_names, rp_name=rp.name),
                 "name": rp.name,
-                "entryFolders": rp.entry_folders,
+                "entryFiles": rp.entry_files,
                 "type": SourceTypeEnum.TypeSpec,
             })
     return jsonify(result)
@@ -115,7 +140,7 @@ def get_typespec_resource_provider(plane, mod_names, rp_name):
     result = {
         "url": url_for('swagger.get_typespec_resource_provider', plane=plane, mod_names=mod_names, rp_name=rp.name),
         "name": rp.name,
-        "entryFolders": rp.entry_folders,
+        "entryFiles": rp.entry_files,
         "type": "TypeSpec",
     }
     return jsonify(result)

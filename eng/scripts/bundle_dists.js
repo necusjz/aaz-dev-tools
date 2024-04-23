@@ -141,7 +141,9 @@ async function syncTypespecPackages() {
     }
   }
   console.log(`Import map:`, importMap);
-  syncIndex(importMap);
+  syncIndex({
+    "imports": importMap,
+  });
   console.log(`Updated index.json.`);
 }
 

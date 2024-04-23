@@ -4,6 +4,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
 import EditorPageLayout from '../../components/EditorPageLayout';
 import { styled } from '@mui/material/styles';
+import { get_typespec_rp_resources } from '../../typespec';
 
 
 interface WSEditorSwaggerPickerProps {
@@ -157,7 +158,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 });
                 await this.loadResourceProviders(moduleValueUrl, rpUrl);
             } catch (err: any) {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     this.setState({
@@ -189,7 +190,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 }
             });
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -223,7 +224,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 });
                 await this.onResourceProviderUpdate(selectedResourceProvider);
             } catch (err: any) {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     this.setState({
@@ -252,7 +253,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 existingResources: existingResources,
             })
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -274,6 +275,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                     loading: false,
                     versionOptions: [],
                 })
+                await get_typespec_rp_resources(resourceProviderUrl);
                 throw new Error("Not implemented yet");
             } else {
                 try {
@@ -315,7 +317,6 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                         if (aazResource.versions) {
                             resourceMap[aazResource.id].aazVersions = aazResource.versions;
                         }
-
                     })
                     this.setState({
                         loading: false,
@@ -325,7 +326,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                     })
                     this.onVersionUpdate(selectVersion);
                 } catch (err: any) {
-                    console.error(err.response);
+                    console.error(err);
                     if (err.response?.data?.message) {
                         const data = err.response!.data!;
                         this.setState({
@@ -390,7 +391,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 this.props.onClose(true);
             })
             .catch((err) => {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     this.setState({
@@ -411,7 +412,6 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 selectedModule: moduleValueUrl
             });
         }
-
     }
 
     onResourceProviderUpdate = async (resourceProviderUrl: string | null) => {
