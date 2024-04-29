@@ -1,5 +1,6 @@
 packages:
   - src/web/
+  - src/typespec-aaz/
   - src/typespec/packages/*
   - src/typespec/core/packages/*
   - "!src/typespec/core/packages/website"
