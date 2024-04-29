@@ -278,7 +278,7 @@ importers:
         version: link:../tmlanguage-generator
       ts-node:
         specifier: ~10.9.2
-        version: 10.9.2(@types/node@18.11.19)(typescript@5.4.5)
+        version: 10.9.2(@swc/core@1.4.17(@swc/helpers@0.5.10))(@types/node@18.11.19)(typescript@5.4.5)
       typescript:
         specifier: ~5.4.3
         version: 5.4.5
@@ -876,7 +876,7 @@ importers:
         version: 4.13.2
       rollup-plugin-postcss:
         specifier: ~4.0.2
-        version: 4.0.2(postcss@8.4.38)(ts-node@10.9.2(@types/node@18.11.19)(typescript@5.4.5))
+        version: 4.0.2(postcss@8.4.38)(ts-node@10.9.2(@swc/core@1.4.17(@swc/helpers@0.5.10))(@types/node@18.11.19)(typescript@5.4.5))
       rollup-plugin-visualizer:
         specifier: ~5.12.0
         version: 5.12.0(rollup@4.13.2)
@@ -2084,6 +2084,9 @@ importers:
       vite:
         specifier: ^5.2.0
         version: 5.2.9(@types/node@20.12.7)
+      vite-plugin-top-level-await:
+        specifier: ^1.4.1
+        version: 1.4.1(@swc/helpers@0.5.10)(rollup@4.13.2)(vite@5.2.9(@types/node@20.12.7))
 
 packages:
 
@@ -3713,8 +3716,83 @@ packages:
   '@sinonjs/text-encoding@0.7.2':
     resolution: {integrity: sha512-sXXKG+uL9IrKqViTtao2Ws6dy0znu9sOaP1di/jKGW1M6VssO8vlpXCQcpZ+jisQ1tTFAC5Jo/EOzFbggBagFQ==}
 
+  '@swc/core-darwin-arm64@1.4.17':
+    resolution: {integrity: sha512-HVl+W4LezoqHBAYg2JCqR+s9ife9yPfgWSj37iIawLWzOmuuJ7jVdIB7Ee2B75bEisSEKyxRlTl6Y1Oq3owBgw==}
+    engines: {node: '>=10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@swc/core-darwin-x64@1.4.17':
+    resolution: {integrity: sha512-WYRO9Fdzq4S/he8zjW5I95G1zcvyd9yyD3Tgi4/ic84P5XDlSMpBDpBLbr/dCPjmSg7aUXxNQqKqGkl6dQxYlA==}
+    engines: {node: '>=10'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@swc/core-linux-arm-gnueabihf@1.4.17':
+    resolution: {integrity: sha512-cgbvpWOvtMH0XFjvwppUCR+Y+nf6QPaGu6AQ5hqCP+5Lv2zO5PG0RfasC4zBIjF53xgwEaaWmGP5/361P30X8Q==}
+    engines: {node: '>=10'}
+    cpu: [arm]
+    os: [linux]
+
+  '@swc/core-linux-arm64-gnu@1.4.17':
+    resolution: {integrity: sha512-l7zHgaIY24cF9dyQ/FOWbmZDsEj2a9gRFbmgx2u19e3FzOPuOnaopFj0fRYXXKCmtdx+anD750iBIYnTR+pq/Q==}
+    engines: {node: '>=10'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@swc/core-linux-arm64-musl@1.4.17':
+    resolution: {integrity: sha512-qhH4gr9gAlVk8MBtzXbzTP3BJyqbAfUOATGkyUtohh85fPXQYuzVlbExix3FZXTwFHNidGHY8C+ocscI7uDaYw==}
+    engines: {node: '>=10'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@swc/core-linux-x64-gnu@1.4.17':
+    resolution: {integrity: sha512-vRDFATL1oN5oZMImkwbgSHEkp8xG1ofEASBypze01W1Tqto8t+yo6gsp69wzCZBlxldsvPpvFZW55Jq0Rn+UnA==}
+    engines: {node: '>=10'}
+    cpu: [x64]
+    os: [linux]
+
+  '@swc/core-linux-x64-musl@1.4.17':
+    resolution: {integrity: sha512-zQNPXAXn3nmPqv54JVEN8k2JMEcMTQ6veVuU0p5O+A7KscJq+AGle/7ZQXzpXSfUCXlLMX4wvd+rwfGhh3J4cw==}
+    engines: {node: '>=10'}
+    cpu: [x64]
+    os: [linux]
+
+  '@swc/core-win32-arm64-msvc@1.4.17':
+    resolution: {integrity: sha512-z86n7EhOwyzxwm+DLE5NoLkxCTme2lq7QZlDjbQyfCxOt6isWz8rkW5QowTX8w9Rdmk34ncrjSLvnHOeLY17+w==}
+    engines: {node: '>=10'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@swc/core-win32-ia32-msvc@1.4.17':
+    resolution: {integrity: sha512-JBwuSTJIgiJJX6wtr4wmXbfvOswHFj223AumUrK544QV69k60FJ9q2adPW9Csk+a8wm1hLxq4HKa2K334UHJ/g==}
+    engines: {node: '>=10'}
+    cpu: [ia32]
+    os: [win32]
+
+  '@swc/core-win32-x64-msvc@1.4.17':
+    resolution: {integrity: sha512-jFkOnGQamtVDBm3MF5Kq1lgW8vx4Rm1UvJWRUfg+0gx7Uc3Jp3QMFeMNw/rDNQYRDYPG3yunCC+2463ycd5+dg==}
+    engines: {node: '>=10'}
+    cpu: [x64]
+    os: [win32]
+
+  '@swc/core@1.4.17':
+    resolution: {integrity: sha512-tq+mdWvodMBNBBZbwFIMTVGYHe9N7zvEaycVVjfvAx20k1XozHbHhRv+9pEVFJjwRxLdXmtvFZd3QZHRAOpoNQ==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      '@swc/helpers': ^0.5.0
+    peerDependenciesMeta:
+      '@swc/helpers':
+        optional: true
+
+  '@swc/counter@0.1.3':
+    resolution: {integrity: sha512-e2BR4lsJkkRlKZ/qCHPw9ZaSxc0MVUd7gtbtaB7aMvHeJVYe8sOB8DBZkP2DtISHGSku9sCK6T6cnY0CtXrOCQ==}
+
   '@swc/helpers@0.5.10':
     resolution: {integrity: sha512-CU+RF9FySljn7HVSkkjiB84hWkvTaI3rtLvF433+jRSBL2hMu3zX5bGhHS8C80SM++h4xy8hBSnUHFQHmRXSBw==}
+
+  '@swc/types@0.1.6':
+    resolution: {integrity: sha512-/JLo/l2JsT/LRd80C3HfbmVpxOAJ11FO2RCEslFrgzLltoP9j8XIbsyDcfCt2WWyX+CM96rBoNM+IToAkFOugg==}
 
   '@tootallnate/once@2.0.0':
     resolution: {integrity: sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==}
@@ -6921,6 +6999,10 @@ packages:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
 
+  uuid@9.0.1:
+    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+    hasBin: true
+
   v8-compile-cache-lib@3.0.1:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
 
@@ -6935,6 +7017,11 @@ packages:
     resolution: {integrity: sha512-tV8h6gMj6vPzVCa7l+VGq9lwoJjW8Y79vst8QZZGiuRAfijU+EEWuc0kFpmndQrWhMMhet1jdSF+40KSZUqIIw==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
+
+  vite-plugin-top-level-await@1.4.1:
+    resolution: {integrity: sha512-hogbZ6yT7+AqBaV6lK9JRNvJDn4/IJvHLu6ET06arNfo0t2IsyCaon7el9Xa8OumH+ESuq//SDf8xscZFE0rWw==}
+    peerDependencies:
+      vite: '>=2.8'
 
   vite@5.2.9:
     resolution: {integrity: sha512-uOQWfuZBlc6Y3W/DTuQ1Sr+oIXWvqljLvS881SVmAj00d5RdgShLcuXWxseWPd4HXwiYBFW/vXHfKFeqj9uQnw==}
@@ -9444,9 +9531,62 @@ snapshots:
 
   '@sinonjs/text-encoding@0.7.2': {}
 
+  '@swc/core-darwin-arm64@1.4.17':
+    optional: true
+
+  '@swc/core-darwin-x64@1.4.17':
+    optional: true
+
+  '@swc/core-linux-arm-gnueabihf@1.4.17':
+    optional: true
+
+  '@swc/core-linux-arm64-gnu@1.4.17':
+    optional: true
+
+  '@swc/core-linux-arm64-musl@1.4.17':
+    optional: true
+
+  '@swc/core-linux-x64-gnu@1.4.17':
+    optional: true
+
+  '@swc/core-linux-x64-musl@1.4.17':
+    optional: true
+
+  '@swc/core-win32-arm64-msvc@1.4.17':
+    optional: true
+
+  '@swc/core-win32-ia32-msvc@1.4.17':
+    optional: true
+
+  '@swc/core-win32-x64-msvc@1.4.17':
+    optional: true
+
+  '@swc/core@1.4.17(@swc/helpers@0.5.10)':
+    dependencies:
+      '@swc/counter': 0.1.3
+      '@swc/types': 0.1.6
+    optionalDependencies:
+      '@swc/core-darwin-arm64': 1.4.17
+      '@swc/core-darwin-x64': 1.4.17
+      '@swc/core-linux-arm-gnueabihf': 1.4.17
+      '@swc/core-linux-arm64-gnu': 1.4.17
+      '@swc/core-linux-arm64-musl': 1.4.17
+      '@swc/core-linux-x64-gnu': 1.4.17
+      '@swc/core-linux-x64-musl': 1.4.17
+      '@swc/core-win32-arm64-msvc': 1.4.17
+      '@swc/core-win32-ia32-msvc': 1.4.17
+      '@swc/core-win32-x64-msvc': 1.4.17
+      '@swc/helpers': 0.5.10
+
+  '@swc/counter@0.1.3': {}
+
   '@swc/helpers@0.5.10':
     dependencies:
       tslib: 2.6.2
+
+  '@swc/types@0.1.6':
+    dependencies:
+      '@swc/counter': 0.1.3
 
   '@tootallnate/once@2.0.0': {}
 
@@ -11972,13 +12112,13 @@ snapshots:
     dependencies:
       postcss: 8.4.38
 
-  postcss-load-config@3.1.4(postcss@8.4.38)(ts-node@10.9.2(@types/node@18.11.19)(typescript@5.4.5)):
+  postcss-load-config@3.1.4(postcss@8.4.38)(ts-node@10.9.2(@swc/core@1.4.17(@swc/helpers@0.5.10))(@types/node@18.11.19)(typescript@5.4.5)):
     dependencies:
       lilconfig: 2.1.0
       yaml: 1.10.2
     optionalDependencies:
       postcss: 8.4.38
-      ts-node: 10.9.2(@types/node@18.11.19)(typescript@5.4.5)
+      ts-node: 10.9.2(@swc/core@1.4.17(@swc/helpers@0.5.10))(@types/node@18.11.19)(typescript@5.4.5)
 
   postcss-merge-longhand@5.1.7(postcss@8.4.38):
     dependencies:
@@ -12379,7 +12519,7 @@ snapshots:
     dependencies:
       glob: 10.3.12
 
-  rollup-plugin-postcss@4.0.2(postcss@8.4.38)(ts-node@10.9.2(@types/node@18.11.19)(typescript@5.4.5)):
+  rollup-plugin-postcss@4.0.2(postcss@8.4.38)(ts-node@10.9.2(@swc/core@1.4.17(@swc/helpers@0.5.10))(@types/node@18.11.19)(typescript@5.4.5)):
     dependencies:
       chalk: 4.1.2
       concat-with-sourcemaps: 1.1.0
@@ -12388,7 +12528,7 @@ snapshots:
       p-queue: 6.6.2
       pify: 5.0.0
       postcss: 8.4.38
-      postcss-load-config: 3.1.4(postcss@8.4.38)(ts-node@10.9.2(@types/node@18.11.19)(typescript@5.4.5))
+      postcss-load-config: 3.1.4(postcss@8.4.38)(ts-node@10.9.2(@swc/core@1.4.17(@swc/helpers@0.5.10))(@types/node@18.11.19)(typescript@5.4.5))
       postcss-modules: 4.3.1(postcss@8.4.38)
       promise.series: 0.2.0
       resolve: 1.22.8
@@ -12774,7 +12914,7 @@ snapshots:
     dependencies:
       typescript: 5.4.5
 
-  ts-node@10.9.2(@types/node@18.11.19)(typescript@5.4.5):
+  ts-node@10.9.2(@swc/core@1.4.17(@swc/helpers@0.5.10))(@types/node@18.11.19)(typescript@5.4.5):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       '@tsconfig/node10': 1.0.11
@@ -12791,6 +12931,8 @@ snapshots:
       typescript: 5.4.5
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
+    optionalDependencies:
+      '@swc/core': 1.4.17(@swc/helpers@0.5.10)
 
   tslib@1.14.1: {}
 
@@ -12900,6 +13042,8 @@ snapshots:
 
   uuid@8.3.2: {}
 
+  uuid@9.0.1: {}
+
   v8-compile-cache-lib@3.0.1: {}
 
   v8-to-istanbul@9.2.0:
@@ -12946,6 +13090,16 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+
+  vite-plugin-top-level-await@1.4.1(@swc/helpers@0.5.10)(rollup@4.13.2)(vite@5.2.9(@types/node@20.12.7)):
+    dependencies:
+      '@rollup/plugin-virtual': 3.0.2(rollup@4.13.2)
+      '@swc/core': 1.4.17(@swc/helpers@0.5.10)
+      uuid: 9.0.1
+      vite: 5.2.9(@types/node@20.12.7)
+    transitivePeerDependencies:
+      - '@swc/helpers'
+      - rollup
 
   vite@5.2.9(@types/node@18.11.19):
     dependencies:
