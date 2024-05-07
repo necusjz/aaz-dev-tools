@@ -31,6 +31,7 @@ const outputDir = resolve(repoRoot, "../aaz_dev/ui/assets/typespec/pkgs");
 const pkgsUrl = "/assets/typespec/pkgs"
 
 const packages = [
+  "typespec-aaz",
   "@typespec/compiler",
   "@typespec/http",
   "@typespec/rest",
@@ -127,8 +128,11 @@ async function syncPackage({ manifest, files }) {
 }
 
 async function syncTypespecPackages() {
+  console.log(`Repo root: ${repoRoot}`);
   const allProjects = await findWorkspacePackagesNoCheck(repoRoot);
   const projects = allProjects.filter((x) => packages.includes(x.manifest.name));
+  const typespec_aaz = await findWorkspacePackagesNoCheck(resolve(repoRoot, "../typespec-aaz"));
+  projects.push(...typespec_aaz);
 
   const importMap = {};
   for (const project of projects) {

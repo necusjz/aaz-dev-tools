@@ -15,6 +15,7 @@ const libs = [
     "@azure-tools/typespec-azure-core",
     "@azure-tools/typespec-client-generator-core",
     "@azure-tools/typespec-azure-resource-manager",
+    "@azure-tools/typespec-aaz",
   ]
 
   const outputDir = "tsp-output";
@@ -29,9 +30,17 @@ export async function get_typespec_rp_resources(resourceProviderUrl: string) {
         // host.writeFile(entryFile, content.data)
         await host.compiler.compile(host, entryFile, {
             outputDir: outputDir,
-            emit: ["@azure-tools/typespec-autorest"]
+            emit: ["@azure-tools/typespec-aaz"],
+            options: {
+              "@azure-tools/typespec-aaz": {
+                "operation": "list-resources",
+              },
+            },
+            trace: ['@azure-tools/typespec-aaz',],
         });
-        await findOutputFiles(host);
+
+        const files = await findOutputFiles(host);
+        console.log(files);
         // let sourceFile = host.compiler.createSourceFile(entryFile, content.data, host.compiler.getSourceFileKindFromExt(entryFile));
         // let resources = host.compiler.getTypes(sourceFile);
         // for (let resource of resources) {

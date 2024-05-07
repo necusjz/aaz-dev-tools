@@ -76,7 +76,7 @@ export async function createBrowserHost(
         },
 
         async writeFile(path: string, content: string) {
-            console.log("writeFile", path);
+            // console.log("writeFile", path);
             path = resolveVirtualPath(path);
             virtualFs.set(path, content);
         },
@@ -149,28 +149,23 @@ export async function createBrowserHost(
 
             const spec_path = path.replace(rootPath, "");
             if (!spec_path.includes("node_modules")) {
-                try {
-                    const res = await axios.get(`/Swagger/Specs/Stat${spec_path}`);
-                    if (res.data.isFile) {
-                        // cache the file in virtualFs
-                        const content = await axios.get(`/Swagger/Specs/Files${spec_path}`);
-                        virtualFs.set(path, content.data);
-                    }
-                    return {
-                        isDirectory() {
-                            return res.data.isDir;
-                        },
-                        isFile() {
-                            return res.data.isFile;
-                        }
-                    }
-                } catch (error) {
-                    if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
-                        const e = new Error(`File ${path} not found.`);
-                        (e as any).code = "ENOENT";
-                        throw e;
-                    } else {
-                        throw error;
+                const res = await axios.get(`/Swagger/Specs/Stat${spec_path}`);
+                if (res.data.error) {
+                    const e = new Error(`File ${path} not found.`);
+                    (e as any).code = "ENOENT";
+                    throw e;
+                }
+                if (res.data.isFile) {
+                    // cache the file in virtualFs
+                    const content = await axios.get(`/Swagger/Specs/Files${spec_path}`);
+                    virtualFs.set(path, content.data);
+                }
+                return {
+                    isDirectory() {
+                        return res.data.isDir;
+                    },
+                    isFile() {
+                        return res.data.isFile;
                     }
                 }
             }
@@ -180,7 +175,7 @@ export async function createBrowserHost(
         },
 
         async realpath(path) {
-            console.log("realpath", path);
+            // console.log("realpath", path);
             // symlinks not supported
             return path;
         },
@@ -189,7 +184,7 @@ export async function createBrowserHost(
 
         logSink: console,
         async mkdirp (path: string) {
-            console.log("mkdirp", path);
+            // console.log("mkdirp", path);
             return path;
         },
         fileURLToPath(path) {

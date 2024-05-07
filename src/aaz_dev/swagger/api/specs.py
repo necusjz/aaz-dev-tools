@@ -22,10 +22,12 @@ def get_path_stat(path):
     from utils.config import Config
     root_dir = Config.get_swagger_root()
     if not root_dir:
-        return jsonify({"error": "Swagger root not found"}), 404
+        # return 200 status code to avoid print error logs in the client side
+        return jsonify({"error": "Swagger root not found"})
     path = os.path.join(root_dir, path)
     if not os.path.exists(path):
-        return jsonify({"error": "Path not exist"}), 404
+        # return 200 status code to avoid print error logs in the client side
+        return jsonify({"error": "Path not exist"})
     return jsonify({
         "isDir": os.path.isdir(path),
         "isFile": os.path.isfile(path),

@@ -3,6 +3,6 @@ import { createTestLibrary, TypeSpecTestLibrary } from "@typespec/compiler/testi
 import { fileURLToPath } from "url";
 
 export const TypespecAazTestLibrary: TypeSpecTestLibrary = createTestLibrary({
-  name: "typespec-aaz",
+  name: "@azure-tools/typespec-aaz",
   packageRoot: resolvePath(fileURLToPath(import.meta.url), "../../../../"),
 });

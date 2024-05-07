@@ -24,9 +24,24 @@ importers:
 
   src/typespec-aaz:
     dependencies:
+      '@azure-tools/typespec-azure-core':
+        specifier: workspace:~
+        version: link:../typespec/packages/typespec-azure-core
+      '@azure-tools/typespec-client-generator-core':
+        specifier: workspace:~
+        version: link:../typespec/packages/typespec-client-generator-core
       '@typespec/compiler':
         specifier: workspace:~
         version: link:../typespec/core/packages/compiler
+      '@typespec/http':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/http
+      '@typespec/rest':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/rest
+      '@typespec/versioning':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/versioning
     devDependencies:
       '@types/node':
         specifier: latest
@@ -37,6 +52,9 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^6.0.0
         version: 6.21.0(eslint@8.57.0)(typescript@5.4.5)
+      '@typespec/library-linter':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/library-linter
       eslint:
         specifier: ^8.57.0
         version: 8.57.0

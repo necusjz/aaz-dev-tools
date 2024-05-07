@@ -1,8 +1,41 @@
-import { createTypeSpecLibrary } from "@typespec/compiler";
+import { JSONSchemaType, createTypeSpecLibrary } from "@typespec/compiler";
 
-export const $lib = createTypeSpecLibrary({
-  name: "typespec-aaz",
+export interface AAZEmitterOptions {
+  "operation": "list-resources" | "retrieve-operation";
+  "api-version"?: string;
+  "resources"?: string[];
+}
+
+const EmitterOptionsSchema: JSONSchemaType<AAZEmitterOptions> = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    operation: {
+      type: "string",
+      enum: ["list-resources", "retrieve-operation"],
+    },
+    "api-version": {
+      type: "string",
+      nullable: true,
+    },
+    resources: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+      nullable: true,
+    },
+  },
+  required: ["operation"],
+}
+
+const libDef = {
+  name: "@azure-tools/typespec-aaz",
   diagnostics: {},
-});
+  emitter: {
+    options: EmitterOptionsSchema as JSONSchemaType<AAZEmitterOptions>,
+  }
+} as const;
 
-export const { reportDiagnostic, createDiagnostic } = $lib;
+export const $lib = createTypeSpecLibrary(libDef);
+export const { reportDiagnostic, createStateSymbol, getTracer } = $lib;
