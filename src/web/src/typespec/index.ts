@@ -25,9 +25,8 @@ export async function get_typespec_rp_resources(resourceProviderUrl: string) {
     const res = await axios.get(resourceProviderUrl);
     const entryFiles = res.data.entryFiles;
     for (const entryFile of entryFiles) {
+        // cache entry files
         await host.stat(entryFile);
-        // const content = await axios.get(`/Swagger/Specs/Files/${entryFile}`);
-        // host.writeFile(entryFile, content.data)
         await host.compiler.compile(host, entryFile, {
             outputDir: outputDir,
             emit: ["@azure-tools/typespec-aaz"],
@@ -38,18 +37,9 @@ export async function get_typespec_rp_resources(resourceProviderUrl: string) {
             },
             trace: ['@azure-tools/typespec-aaz',],
         });
-
         const files = await findOutputFiles(host);
         console.log(files);
-        // let sourceFile = host.compiler.createSourceFile(entryFile, content.data, host.compiler.getSourceFileKindFromExt(entryFile));
-        // let resources = host.compiler.getTypes(sourceFile);
-        // for (let resource of resources) {
-        //     console.log(resource);
-        // }
     }
-    // entryFiles.forEach(async (entryFile: string) => {
-    //     content = await.axios
-    // })
 }
 
 async function findOutputFiles(host: BrowserHost): Promise<string[]> {

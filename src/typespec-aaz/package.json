@@ -14,9 +14,6 @@
       "default": "./dist/src/testing/index.js"
     }
   },
-  "dependencies": {
-    "@typespec/compiler": "workspace:~"
-  },
   "devDependencies": {
     "@types/node": "latest",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
