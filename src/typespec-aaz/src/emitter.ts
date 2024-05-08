@@ -3,7 +3,7 @@ import { AAZEmitterOptions} from "./lib.js";
 import { buildVersionProjections } from "@typespec/versioning";
 import { HttpService, getAllHttpServices, reportIfNoRoutes } from "@typespec/http";
 // import { SdkContext, createSdkContext } from "@azure-tools/typespec-client-generator-core";
-import { getResourceID } from "./utils.js";
+import {getResourcePath, swaggerResourcePathToResourceId } from "./utils.js";
 
 export async function $onEmit(context: EmitContext<AAZEmitterOptions>) {
   if (context.options.operation === "list-resources") {
@@ -24,7 +24,7 @@ export async function $onEmit(context: EmitContext<AAZEmitterOptions>) {
 }
 
 function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
-  const resourceVersions: Record<string, Set<string>> = {};
+  const resourceVersions: Record<string, Record<string, string>> = {};
   async function listResources() {
     const services = listServices(context.program);
     if (services.length === 0) {
@@ -42,8 +42,8 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
       }
     }
 
-    const resources = Object.entries(resourceVersions).map(([id, versions]) => ({ id, versions: [...versions] }));
-    return { resources };
+    const result = Object.entries(resourceVersions).map(([id, versions]) => ({ id, versions: Object.entries(versions).map(([version, path]) => ({version, path, id}))}));
+    return result;
   }
 
   return { listResources };
@@ -52,9 +52,10 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
     const routes = service.operations;
     reportIfNoRoutes(program, routes);
     routes.forEach((op) => {
-      const resourceId = getResourceID(program, op);
-      const versions = resourceVersions[resourceId] || new Set<string>();
-      versions.add(version);
+      const resourcePath = getResourcePath(program, op);
+      const resourceId = swaggerResourcePathToResourceId(resourcePath);
+      const versions = resourceVersions[resourceId] || {};
+      versions[version] = resourcePath;
       resourceVersions[resourceId] = versions;
     })
   }

@@ -20,7 +20,7 @@ const libs = [
 
   const outputDir = "tsp-output";
 
-export async function get_typespec_rp_resources(resourceProviderUrl: string) {
+export async function getTypespecRPResources(resourceProviderUrl: string) {
     const host = await createBrowserHost(libs, {useShim: true})
     const res = await axios.get(resourceProviderUrl);
     const entryFiles = res.data.entryFiles;
@@ -37,8 +37,10 @@ export async function get_typespec_rp_resources(resourceProviderUrl: string) {
             },
             trace: ['@azure-tools/typespec-aaz',],
         });
+
         const files = await findOutputFiles(host);
-        console.log(files);
+        const file = await host.readFile(outputDir + files[0]);
+        return JSON.parse(file.text);
     }
 }
 

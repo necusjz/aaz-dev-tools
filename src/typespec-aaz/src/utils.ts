@@ -10,7 +10,7 @@ function getPathWithoutQuery(path: string): string {
 
 const URL_PARAMETER_PLACEHOLDER = "{}";
 
-// function swaggerResourcePathToResourceIdTemplate(path: string): string {
+// export function swaggerResourcePathToResourceIdTemplate(path: string): string {
 //     const pathParts = path.split("?", 2);
 //     const urlParts = pathParts[0].split("/");
 //     let idx = 1;
@@ -28,7 +28,7 @@ const URL_PARAMETER_PLACEHOLDER = "{}";
 //     return pathParts.join("?");
 // }
 
-function swaggerResourcePathToResourceId(path: string): string {
+export function swaggerResourcePathToResourceId(path: string): string {
     const pathParts = path.split("?", 2);
     const urlParts = pathParts[0].split("/");
     let idx = 1;
@@ -44,13 +44,22 @@ function swaggerResourcePathToResourceId(path: string): string {
     return pathParts.join("?");
 }
 
-
-export function getResourceID(program: Program, operation: HttpOperation): string {
+export function getResourcePath(program: Program, operation: HttpOperation) {
     const { operation: op } = operation;
     let { path: fullPath } = operation;
     if (!isSharedRoute(program, op)) {
         fullPath = getPathWithoutQuery(fullPath);
     }
-    return swaggerResourcePathToResourceId(fullPath);
+    return fullPath;
 }
+
+
+// export function getResourceID(program: Program, operation: HttpOperation): string {
+//     const { operation: op } = operation;
+//     let { path: fullPath } = operation;
+//     if (!isSharedRoute(program, op)) {
+//         fullPath = getPathWithoutQuery(fullPath);
+//     }
+//     return swaggerResourcePathToResourceId(fullPath);
+// }
 

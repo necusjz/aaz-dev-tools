@@ -4,7 +4,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
 import EditorPageLayout from '../../components/EditorPageLayout';
 import { styled } from '@mui/material/styles';
-import { get_typespec_rp_resources } from '../../typespec';
+import { getTypespecRPResources } from '../../typespec';
 
 
 interface WSEditorSwaggerPickerProps {
@@ -269,62 +269,18 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 invalidText: undefined,
                 loading: true,
             })
+            let data;
             if (resourceProviderUrl.endsWith("/TypeSpec")) {
-                // TODO: load resources from type spec
                 this.setState({
                     loading: false,
                     versionOptions: [],
                 })
-                await get_typespec_rp_resources(resourceProviderUrl);
-                throw new Error("Not implemented yet");
+                data = await getTypespecRPResources(resourceProviderUrl);
+                // console.log(data);
             } else {
                 try {
-                    let res = await axios.get(`${resourceProviderUrl}/Resources`);
-                    // const resourceIdVersionMap: ResourceIdVersionMap = {}
-                    const versionResourceIdMap: VersionResourceIdMap = {}
-                    const versionOptions: string[] = []
-                    // const aazVersionOptions: string[] = []
-                    const resourceMap: ResourceMap = {}
-                    const resourceIdList: string[] = []
-                    res.data.forEach((resource: Resource) => {
-                        // resource.versions.sort((a, b) =>  a.version.localeCompare(b.version));
-                        resourceIdList.push(resource.id);
-                        resourceMap[resource.id] = resource;
-                        resourceMap[resource.id].aazVersions = null;
-
-                        const resourceVersions = resource.versions.map((v) => v.version)
-                        // resourceIdVersionMap[resource.id] = versions;
-                        resourceVersions.forEach((v) => {
-                            if (!(v in versionResourceIdMap)) {
-                                versionResourceIdMap[v] = [];
-                                versionOptions.push(v);
-                            }
-                            versionResourceIdMap[v].push(resource);
-                        })
-                    })
-                    versionOptions.sort((a, b) => a.localeCompare(b)).reverse()
-                    let selectVersion = null;
-                    if (versionOptions.length > 0) {
-                        selectVersion = versionOptions[0];
-                    }
-
-                    const filterBody = {
-                        resources: resourceIdList
-                    };
-
-                    res = await axios.post(`/AAZ/Specs/Resources/${this.props.plane}/Filter`, filterBody);
-                    res.data.resources.forEach((aazResource: AAZResource) => {
-                        if (aazResource.versions) {
-                            resourceMap[aazResource.id].aazVersions = aazResource.versions;
-                        }
-                    })
-                    this.setState({
-                        loading: false,
-                        versionResourceIdMap: versionResourceIdMap,
-                        resourceMap: resourceMap,
-                        versionOptions: versionOptions,
-                    })
-                    this.onVersionUpdate(selectVersion);
+                    const res = await axios.get(`${resourceProviderUrl}/Resources`);
+                    data = res.data;
                 } catch (err: any) {
                     console.error(err);
                     if (err.response?.data?.message) {
@@ -334,6 +290,61 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                         })
                     }
                 }
+            }
+            try {
+                 // const resourceIdVersionMap: ResourceIdVersionMap = {}
+                 const versionResourceIdMap: VersionResourceIdMap = {}
+                 const versionOptions: string[] = []
+                 // const aazVersionOptions: string[] = []
+                 const resourceMap: ResourceMap = {}
+                 const resourceIdList: string[] = []
+                 data.forEach((resource: Resource) => {
+                     // resource.versions.sort((a, b) =>  a.version.localeCompare(b.version));
+                     resourceIdList.push(resource.id);
+                     resourceMap[resource.id] = resource;
+                     resourceMap[resource.id].aazVersions = null;
+
+                     const resourceVersions = resource.versions.map((v) => v.version)
+                     // resourceIdVersionMap[resource.id] = versions;
+                     resourceVersions.forEach((v) => {
+                         if (!(v in versionResourceIdMap)) {
+                             versionResourceIdMap[v] = [];
+                             versionOptions.push(v);
+                         }
+                         versionResourceIdMap[v].push(resource);
+                     })
+                 })
+                 versionOptions.sort((a, b) => a.localeCompare(b)).reverse()
+                 let selectVersion = null;
+                 if (versionOptions.length > 0) {
+                     selectVersion = versionOptions[0];
+                 }
+
+                 const filterBody = {
+                     resources: resourceIdList
+                 };
+
+                 const res = await axios.post(`/AAZ/Specs/Resources/${this.props.plane}/Filter`, filterBody);
+                 res.data.resources.forEach((aazResource: AAZResource) => {
+                     if (aazResource.versions) {
+                         resourceMap[aazResource.id].aazVersions = aazResource.versions;
+                     }
+                 })
+                 this.setState({
+                     loading: false,
+                     versionResourceIdMap: versionResourceIdMap,
+                     resourceMap: resourceMap,
+                     versionOptions: versionOptions,
+                 })
+                 this.onVersionUpdate(selectVersion);
+            } catch (err: any) {
+                console.error(err);
+                    if (err.response?.data?.message) {
+                        const data = err.response!.data!;
+                        this.setState({
+                            invalidText: `ResponseError: ${data.message!}`,
+                        })
+                    }
             }
         } else {
             this.setState({
