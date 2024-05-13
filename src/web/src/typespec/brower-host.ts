@@ -183,7 +183,7 @@ export async function createBrowserHost(
         getSourceFileKind: getSourceFileKindFromExt,
 
         logSink: console,
-        async mkdirp (path: string) {
+        async mkdirp(path: string) {
             // console.log("mkdirp", path);
             return path;
         },
