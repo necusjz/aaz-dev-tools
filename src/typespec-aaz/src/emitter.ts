@@ -1,5 +1,5 @@
 import { EmitContext, Program, emitFile, ignoreDiagnostics, listServices, projectProgram, resolvePath } from "@typespec/compiler";
-import { AAZEmitterOptions} from "./lib.js";
+import { AAZEmitterOptions, getTracer} from "./lib.js";
 import { buildVersionProjections } from "@typespec/versioning";
 import { HttpService, getAllHttpServices, reportIfNoRoutes } from "@typespec/http";
 // import { SdkContext, createSdkContext } from "@azure-tools/typespec-client-generator-core";
@@ -24,6 +24,7 @@ export async function $onEmit(context: EmitContext<AAZEmitterOptions>) {
 }
 
 function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
+  const _resources: Record<string, string[]> = {};
   const resourceVersions: Record<string, Record<string, string>> = {};
   async function listResources() {
     const services = listServices(context.program);
@@ -42,6 +43,9 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
       }
     }
 
+    const tracer = getTracer(context.program);
+    tracer.trace("Resources", JSON.stringify(_resources, null, 2));
+    
     const result = Object.entries(resourceVersions).map(([id, versions]) => ({ id, versions: Object.entries(versions).map(([version, path]) => ({version, path, id}))}));
     return result;
   }
@@ -57,6 +61,10 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
       const versions = resourceVersions[resourceId] || {};
       versions[version] = resourcePath;
       resourceVersions[resourceId] = versions;
+      if (!_resources[resourcePath]) {
+        _resources[resourcePath] = [];
+      }
+      _resources[resourcePath].push(version);
     })
   }
 }
@@ -66,8 +74,7 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
 // }
 
 // function createRetrieveOperationsEmitter(context: SdkContext) {
-//   // const tracer = getTracer(program);
-//   // tracer.trace("options", JSON.stringify(options, null, 2));
+
 
 //   async function retrieveOperations() {
 
