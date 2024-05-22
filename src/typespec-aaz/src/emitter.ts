@@ -45,7 +45,7 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
 
     const tracer = getTracer(context.program);
     tracer.trace("Resources", JSON.stringify(_resources, null, 2));
-    
+
     const result = Object.entries(resourceVersions).map(([id, versions]) => ({ id, versions: Object.entries(versions).map(([version, path]) => ({version, path, id}))}));
     return result;
   }
@@ -64,7 +64,7 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
       if (!_resources[resourcePath]) {
         _resources[resourcePath] = [];
       }
-      _resources[resourcePath].push(version);
+      _resources[resourcePath].push(`${op.verb}:${version}`);
     })
   }
 }
