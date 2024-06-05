@@ -36,10 +36,10 @@ class PortalCliGenerator:
         resource = cmd_cfg.resources[-1]
         if resource.rp_name is None:
             raise exceptions.ResourceNotFind("Resource rp_name not exist")
-        if resource.swagger_path is None:
+        if resource.path is None:
             raise exceptions.ResourceNotFind("Resource swagger_path not exist")
         rp_name = resource.rp_name
-        swagger_path = resource.swagger_path
+        swagger_path = resource.path
         cmd_portal_info['rp_name'] = rp_name
         swagger_provider_ind = swagger_path.lower().rfind(rp_name.lower())
         if swagger_provider_ind == -1:
@@ -91,7 +91,7 @@ class PortalCliGenerator:
         if cmd_cfg.resources is None:
             raise exceptions.ResourceNotFind("Resource not exist")
         resource = cmd_cfg.resources[-1]
-        cmd_info['path'] = resource.swagger_path
+        cmd_info['path'] = resource.path
 
     def fill_cmd_confirmation(self, cmd_info, cmd_cfg):
         if cmd_cfg.confirmation:

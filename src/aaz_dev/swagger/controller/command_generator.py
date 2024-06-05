@@ -7,7 +7,7 @@ from abc import abstractmethod, ABC
 from command.model.configuration import CMDCommandGroup, CMDCommand, CMDHttpOperation, CMDHttpRequest, \
     CMDSchemaDefault, CMDHttpResponseJsonBody, CMDArrayOutput, CMDJsonInstanceUpdateAction, \
     CMDInstanceUpdateOperation, CMDRequestJson, DEFAULT_CONFIRMATION_PROMPT, CMDClsSchemaBase, CMDHttpResponse, \
-    CMDResponseJson
+    CMDResponseJson, CMDResource
 from swagger.model.schema.cmd_builder import CMDBuilder
 from swagger.model.schema.fields import MutabilityEnum
 from swagger.model.schema.path_item import PathItem
@@ -35,7 +35,7 @@ class _CommandGenerator(ABC):
         command = CMDCommand()
         command.version = cls.generate_command_version(resource)
         command.resources = [
-            resource.to_cmd()
+            resource.to_cmd() if not isinstance(resource, CMDResource) else resource
         ]
 
         cmd_builder.apply_cls_definitions(op)
@@ -61,7 +61,7 @@ class _CommandGenerator(ABC):
         command = CMDCommand()
         command.version = cls.generate_command_version(resource)
         command.resources = [
-            resource.to_cmd()
+            resource.to_cmd() if not isinstance(resource, CMDResource) else resource
         ]
         assert path_item.get is not None
         assert path_item.put is not None
@@ -98,7 +98,7 @@ class _CommandGenerator(ABC):
         assert command.outputs
 
         group_name = cls.generate_command_group_name_by_resource(
-            resource_path=resource.path, rp_name=resource.resource_provider.name)
+            resource_path=resource.path, rp_name=resource.rp_name)
         command.name = f"{group_name} update"
         return command
 
@@ -167,7 +167,7 @@ class _CommandGenerator(ABC):
     @classmethod
     def _generate_command_name(cls, path_item, resource, method, output):
         group_name = cls.generate_command_group_name_by_resource(
-            resource_path=resource.path, rp_name=resource.resource_provider.name)
+            resource_path=resource.path, rp_name=resource.rp_name)
         url_path = resource.id.split("?")[0]
         if method == "get":
             if url_path.endswith("/{}"):
@@ -572,7 +572,8 @@ class TypespecCommandGenerator(_CommandGenerator):
 
     def generate_operation(self, cmd_builder, path_item, instance_var, **kwargs):
         assert isinstance(path_item, TypeSpecPathItem)
-        op = getattr(path_item, cmd_builder.method, None)
+        method = kwargs.get('method', cmd_builder.method)
+        op = getattr(path_item, method, None)
         if op is None:
             return None
         mutability = kwargs.get('mutability', cmd_builder.mutability)

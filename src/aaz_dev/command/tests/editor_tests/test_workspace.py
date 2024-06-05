@@ -51,8 +51,6 @@ class WorkspaceEditorTest(CommandTestCase):
         resource_provider = 'Microsoft.EdgeOrder'
         manager = WorkspaceManager.new(ws_name, plane=PlaneEnum.Mgmt, mod_names=mod_names, resource_provider=resource_provider, source=SourceTypeEnum.OpenAPI)
         manager.save()
-
-
         manager.add_new_resources_by_swagger(
             mod_names=mod_names,
             version='2021-12-01',

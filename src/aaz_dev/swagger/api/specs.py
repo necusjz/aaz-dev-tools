@@ -245,7 +245,7 @@ def get_resource_version_in_rp(plane, mod_names, rp_name, resource_id, version):
     resource = specs_module_manager.get_resource_in_version(rp_name, resource_id, version)
     result = {
         "url": url_for('swagger.get_resource_version_in_rp',
-                       plane=plane, mod_names=mod_names, rp_name=resource.resource_provider.name,
+                       plane=plane, mod_names=mod_names, rp_name=resource.rp_name,
                        resource_id=resource.id, version=resource.version),
         "id": resource_id,
         "version": version,
@@ -262,7 +262,7 @@ def get_resource_version_in_module(plane, mod_names, resource_id, version):
     resource = specs_module_manager.get_resource_in_version(resource_id, version)
     result = {
         "url": url_for('swagger.get_resource_version_in_rp',
-                       plane=plane, mod_names=mod_names, rp_name=resource.resource_provider.name,
+                       plane=plane, mod_names=mod_names, rp_name=resource.rp_name,
                        resource_id=resource.id, version=resource.version),
         "id": resource_id,
         "version": version,

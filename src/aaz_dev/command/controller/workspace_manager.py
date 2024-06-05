@@ -646,7 +646,7 @@ class WorkspaceManager:
             cmd_resources.append(CMDResource({
                 "id": r['id'],
                 "version": version,
-                "swagger": f"{self.ws.resource_provider}/Paths/{b64encode_str(r['path'])}/V/{b64encode_str(version)}" 
+                "swagger": f"{self.ws.plane}/{self.ws.mod_names}/ResourceProviders/{self.ws.resource_provider}/Paths/{b64encode_str(r['path'])}/V/{b64encode_str(version)}" 
             }))
             resource_options.append(r.get("options", {}))
         
@@ -868,7 +868,7 @@ class WorkspaceManager:
                 for leaf_resource in leaf.resources:
                     # cannot find match resource of resource_id with current mod_names and version
                     cg_names = self.swagger_command_generator.generate_command_group_name_by_resource(
-                        resource_path=leaf_resource.swagger_path, rp_name=leaf_resource.rp_name)
+                        resource_path=leaf_resource.path, rp_name=leaf_resource.rp_name)
                     cg_names = cg_names.split(" ")
                     groups_names.append(cg_names)
 

@@ -13,6 +13,70 @@ from utils.stage import AAZStageEnum
 from command.model.configuration import DEFAULT_CONFIRMATION_PROMPT
 
 
+def build_typespec_resource(ws_manager, path, version):
+    from swagger.model.schema.cmd_builder import CMDBuilder
+    from swagger.model.schema.fields import MutabilityEnum
+
+    resource_id = swagger_resource_path_to_resource_id(path)
+    swagger_resource = ws_manager.swagger_specs.get_swagger_resource(
+        plane=ws_manager.ws.plane, mod_names=ws_manager.ws.mod_names, resource_id=resource_id, version=version)
+    ws_manager.swagger_command_generator.load_resources([swagger_resource])
+    path_item = ws_manager.swagger_command_generator.get_path_item(swagger_resource)
+    item = {}
+    if path_item.get:
+            cmd_builder = CMDBuilder(path=path, method='get')
+            op = cmd_builder(path_item, mutability=MutabilityEnum.Read)
+            cmd_builder.apply_cls_definitions(op)
+            item['get'] = {
+                MutabilityEnum.Read: op.to_primitive(),
+            }
+    if path_item.delete:
+            cmd_builder = CMDBuilder(path=path, method='delete')
+            op = cmd_builder(path_item, mutability=MutabilityEnum.Create)
+            cmd_builder.apply_cls_definitions(op)
+            item['delete'] = {
+                MutabilityEnum.Create: op.to_primitive(),
+            }
+    if path_item.put:
+        cmd_builder = CMDBuilder(path=path, method='put')
+        op = cmd_builder(path_item, mutability=MutabilityEnum.Create)
+        cmd_builder.apply_cls_definitions(op)
+        item['put'] = {
+            MutabilityEnum.Create: op.to_primitive(),
+        }
+        cmd_builder = CMDBuilder(path=path, method='put')
+        op = cmd_builder(path_item, mutability=MutabilityEnum.Update)
+        cmd_builder.apply_cls_definitions(op)
+        item['put'][MutabilityEnum.Update] = op.to_primitive()
+    if path_item.post:
+        cmd_builder = CMDBuilder(path=path, method='post')
+        op = cmd_builder(path_item, mutability=MutabilityEnum.Create)
+        cmd_builder.apply_cls_definitions(op)
+        item['post'] = {
+            MutabilityEnum.Create: op.to_primitive(),
+        }
+    if path_item.patch:
+        cmd_builder = CMDBuilder(path=path, method='patch')
+        op = cmd_builder(path_item, mutability=MutabilityEnum.Update)
+        cmd_builder.apply_cls_definitions(op)
+        item['patch'] = {
+            MutabilityEnum.Update: op.to_primitive(),
+        }
+    if path_item.head:
+        cmd_builder = CMDBuilder(path=path, method='head')
+        op = cmd_builder(path_item, mutability=MutabilityEnum.Read)
+        cmd_builder.apply_cls_definitions(op)
+        item['head'] = {
+            MutabilityEnum.Read: op.to_primitive(),
+        }
+
+    return {
+        'id': resource_id,
+        "version": version,
+        "path": path,
+        "pathItem": item,
+    }
+
 class APIEditorTest(CommandTestCase):
 
     @workspace_name("test_workspaces_1", arg_name="name1")
@@ -211,6 +275,131 @@ class APIEditorTest(CommandTestCase):
             assert len(command['outputs']) == 1
             assert len(command['resources']) == 1
             assert command['version'] == '2021-12-01'
+
+    @workspace_name("test_workspace_add_typespec")
+    def test_workspace_add_typespec(self, ws_name):
+        with self.app.test_client() as c:
+            rv = c.post(f"/AAZ/Editor/Workspaces", json={
+                "name": ws_name,
+                "plane": PlaneEnum.Mgmt,
+                "modNames": "apicenter",
+                "resourceProvider": "Microsoft.ApiCenter",
+                "source": SourceTypeEnum.TypeSpec,
+            })
+            assert rv.status_code == 200
+            ws = rv.get_json()
+            ws_url = ws['url']
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            assert rv.status_code == 200
+            node = rv.get_json()
+            assert node['names'] == ['aaz']
+
+            
+            ws_manager = WorkspaceManager(ws_name)
+            ws_manager.load()
+
+            version = '2024-03-01'
+            rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/AddTypespec", json={
+                'module': 'apicenter',
+                'version': version,
+                'resources': [
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/providers/Microsoft.ApiCenter/services', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services/{serviceName}', version),
+                ]
+            })
+            assert rv.status_code == 200
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            assert rv.status_code == 200
+            node = rv.get_json()
+            cg = node['commandGroups']
+            assert len(cg) == 1 and 'api-center' in cg
+            assert cg['api-center']['names'] == ['api-center']
+            cg = cg['api-center']['commandGroups']
+            assert len(cg) == 1 and 'service' in cg
+            assert cg['service']['names'] == ['api-center', 'service']
+            commands = cg['service']['commands']
+            assert len(commands) == 5 and set(commands.keys()) == {'create', 'delete', 'list', 'show', 'update'}
+            for cmd_name in ('create', 'delete', 'show', 'update'):
+                assert len(commands[cmd_name]['resources']) == 1
+                assert commands[cmd_name]['resources'][0]['version'] == version
+                assert commands[cmd_name]['resources'][0]['id'] == swagger_resource_path_to_resource_id(
+                    '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services/{serviceName}')
+            assert len(commands['list']['resources']) == 2
+            assert commands['list']['resources'][0]['id'] == swagger_resource_path_to_resource_id(
+                '/subscriptions/{subscriptionId}/providers/Microsoft.ApiCenter/services')
+            assert commands['list']['resources'][0]['version'] == version
+            assert commands['list']['resources'][1]['id'] == swagger_resource_path_to_resource_id(
+                '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services')
+            assert commands['list']['resources'][1]['version'] == version
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz/api-center/service/Leaves/list")
+            assert rv.status_code == 200
+            command = rv.get_json()
+            assert command['names'] == ['api-center', 'service', 'list']
+            assert len(command['conditions']) == 2
+            assert len(command['argGroups']) == 1
+            assert len(command['argGroups'][0]['args']) == 2
+            assert len(command['operations']) == 2
+            assert len(command['outputs']) == 1
+            assert len(command['resources']) == 2
+            assert command['version'] == version
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz/api-center/service/Leaves/show")
+            assert rv.status_code == 200
+            command = rv.get_json()
+            assert command['names'] == ['api-center', 'service', 'show']
+            assert len(command['argGroups']) == 1
+            assert 'conditions' not in command
+            assert len(command['operations']) == 1
+            assert len(command['outputs']) == 1
+            assert len(command['resources']) == 1
+            assert command['version'] == version
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz/api-center/service/Leaves/delete")
+            assert rv.status_code == 200
+            command = rv.get_json()
+            assert command['names'] == ['api-center', 'service', 'delete']
+            assert len(command['argGroups']) == 1
+            assert 'conditions' not in command
+            assert len(command['operations']) == 1
+            assert 'outputs' not in command
+            assert len(command['resources']) == 1
+            assert command['version'] == version
+            assert command['confirmation'] == DEFAULT_CONFIRMATION_PROMPT
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz/api-center/service/Leaves/create")
+            assert rv.status_code == 200
+            command = rv.get_json()
+            assert command['names'] == ['api-center', 'service', 'create']
+            assert len(command['argGroups']) == 2
+            assert 'conditions' not in command
+            assert len(command['operations']) == 1
+            assert len(command['outputs']) == 1
+            assert len(command['resources']) == 1
+            assert command['version'] == version
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz/api-center/service/Leaves/update")
+            assert rv.status_code == 200
+            command = rv.get_json()
+            assert command['names'] == ['api-center', 'service', 'update']
+            assert len(command['argGroups']) == 2
+            assert 'conditions' not in command
+            assert len(command['operations']) == 3  # Get, InstanceUpdate, Put
+            assert len(command['outputs']) == 1
+            assert len(command['resources']) == 1
+            assert command['version'] == version
+
+            rv = c.post(f"{ws_url}/Resources/ReloadTypespec", json={
+                'resources': [
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/providers/Microsoft.ApiCenter/services', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services/{serviceName}', version),
+                ]
+            })
+            assert rv.status_code == 200
 
     @workspace_name("test_workspace_command_tree_update")
     def test_workspace_command_tree_update(self, ws_name):
