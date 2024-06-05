@@ -627,7 +627,7 @@ class WorkspaceManager:
         # load swagger resources
         self.swagger_command_generator.load_resources(swagger_resources)
 
-        self._add_new_resources(self.typespec_command_generator, swagger_resources, resource_options)
+        self._add_new_resources(self.swagger_command_generator, swagger_resources, resource_options)
 
     def add_new_resources_by_typespec(self, version, resources):
         root_node = self.find_command_tree_node()
@@ -732,7 +732,7 @@ class WorkspaceManager:
             if not merged:
                 self.add_cfg(cfg_editor, aaz_ref=aaz_ref)
 
-    def reload_swagger_resources(self, resources):
+    def reload_resources_by_swagger(self, resources):
         reload_resource_map = {
             r['id']: {"version": r['version']} for r in resources}
         for leaf in self.iter_command_tree_leaves():
@@ -774,7 +774,7 @@ class WorkspaceManager:
         
         self._reload_resources(self.swagger_command_generator, reload_resource_map)
 
-    def reload_typespec_resources(self, resources):
+    def reload_resources_by_typespec(self, resources):
         reload_resource_map = {
             r['id']: {"version": r['version']} for r in resources}
         for leaf in self.iter_command_tree_leaves():

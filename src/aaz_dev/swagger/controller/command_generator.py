@@ -22,8 +22,7 @@ from utils.error_format import AAZErrorFormatEnum
 logger = logging.getLogger('backend')
 
 
-@ABC
-class _CommandGenerator:
+class _CommandGenerator(ABC):
 
     _inflect_engine = inflect.engine()
 

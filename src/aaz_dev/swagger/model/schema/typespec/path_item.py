@@ -1,5 +1,5 @@
 from schematics.models import Model
-from schematics.types import ModelType, ListType
+from schematics.types import ModelType, ListType, StringType
 
 from .operation import TypeSpecOperation
 
@@ -14,4 +14,4 @@ class TypeSpecPathItem(Model):
     delete = ModelType(TypeSpecOperation)  # A definition of a DELETE operation on this path.
     head = ModelType(TypeSpecOperation)  # A definition of a HEAD operation on this path.
 
-    traces = ListType(str)  # traces of the path item
+    traces = ListType(StringType())  # traces of the path item
