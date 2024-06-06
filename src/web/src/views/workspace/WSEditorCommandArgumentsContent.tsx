@@ -1029,7 +1029,7 @@ function ArgumentDialog(props: {
                             <InputLabel shrink sx={{ font: "inherit" }}>Support Enum Extension</InputLabel>
                             <Switch sx={{ ml: 4 }}
                                 checked={supportEnumExtension}
-                                onChange={(event: any) => {
+                                onChange={() => {
                                     setSupportEnumExtension(!supportEnumExtension);
                                 }}
                             />

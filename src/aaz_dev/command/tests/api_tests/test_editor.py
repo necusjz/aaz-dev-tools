@@ -2816,7 +2816,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": module,
-                "resourceProvider": "Microsoft.EventHub"
+                "resourceProvider": "Microsoft.EventHub",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
 
@@ -2868,7 +2869,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": module,
-                "resourceProvider": "Microsoft.EventHub"
+                "resourceProvider": "Microsoft.EventHub",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
 
@@ -2912,7 +2914,8 @@ class APIEditorTest(CommandTestCase):
                     "name": ws_name,
                     "plane": PlaneEnum.Mgmt,
                     "modNames": module,
-                    "resourceProvider": "Microsoft.Insights"
+                    "resourceProvider": "Microsoft.Insights",
+                    "source": SourceTypeEnum.OpenAPI,
                 }
             )
             self.assertTrue(rv.status_code == 200)
