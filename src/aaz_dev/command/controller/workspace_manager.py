@@ -760,7 +760,6 @@ class WorkspaceManager:
                 # not support multiple resource version for the same command
                 raise exceptions.InvalidAPIUsage(
                     f"Please select the same resource version for command: '{' '.join(leaf.names)}'")
-        
         swagger_resources = []
         for resource_id, reload_resource in reload_resource_map.items():
             resource = reload_resource.get('resource', None)
