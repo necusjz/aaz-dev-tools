@@ -689,7 +689,6 @@ class WorkspaceManager:
                 for cmd_names, _ in cfg_editor.iter_commands():
                     aaz_ref[' '.join(cmd_names)] = aaz_version
             cfg_editors.append(cfg_editor)
-        
         # add cfg_editors
         self._add_cfg_editors(cfg_editors, aaz_ref=aaz_ref)
 
