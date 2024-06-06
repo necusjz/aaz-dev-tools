@@ -103,11 +103,18 @@ export async function createBrowserHost(
         },
 
         getLibDirs() {
-            return [resolveVirtualPath("node_modules/@typespec/compiler/lib")];
+            if (
+              virtualFs.has(resolveVirtualPath("node_modules/@typespec/compiler/lib/std/main.tsp"))
+            ) {
+              return [resolveVirtualPath("node_modules/@typespec/compiler/lib/std")];
+            } else {
+              // To load older version of the compiler < 0.55.0
+              return [resolveVirtualPath("node_modules/@typespec/compiler/lib")];
+            }
         },
 
         getExecutionRoot() {
-            return rootPath;
+          return resolveVirtualPath("node_modules/@typespec/compiler");
         },
 
         async getJsImport(path) {
