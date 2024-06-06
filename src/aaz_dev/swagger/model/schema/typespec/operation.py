@@ -12,7 +12,10 @@ class TypeSpecOperation(Model):
         deserialize_from="operationId",
     )  # Unique string used to identify the operation. The id MUST be unique among all operations described in the API. Tools and libraries MAY use the operationId to uniquely identify an operation, therefore, it is recommended to follow common programming naming conventions.
 
-    x_ms_pageable = BooleanType()
+    x_ms_pageable = BooleanType(
+        serialized_name="isPageable",
+        deserialize_from="isPageable"
+    )
     # x_ms_examples = XmsExamplesField()  # TODO:
 
     # MutabilityEnum.Read
