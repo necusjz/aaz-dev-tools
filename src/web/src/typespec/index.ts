@@ -23,12 +23,13 @@ const outputDir = "tsp-output";
 export async function getTypespecRPResources(resourceProviderUrl: string) {
   const host = await createBrowserHost(libs, { useShim: true })
   const res = await axios.get(resourceProviderUrl);
+  console.log("res in getTypespecRPResources: ", res)
   const entryFiles = res.data.entryFiles;
   let results: any[] = [];
   for (const entryFile of entryFiles) {
     // cache entry files
     await host.stat(entryFile);
-    await host.compiler.compile(host, entryFile, {
+    const rt = await host.compiler.compile(host, entryFile, {
       outputDir: outputDir,
       emit: ["@azure-tools/typespec-aaz"],
       options: {
@@ -38,6 +39,7 @@ export async function getTypespecRPResources(resourceProviderUrl: string) {
       },
       trace: ['@azure-tools/typespec-aaz',],
     });
+    console.log("rt diagnostics from getTypespecRPResources", rt.diagnostics)
 
     const files = await findOutputFiles(host);
     const file = await host.readFile(outputDir + files[0]);
@@ -62,4 +64,32 @@ async function findOutputFiles(host: BrowserHost): Promise<string[]> {
   }
   await addFiles("");
   return files;
+}
+
+export async function getTypespecRPResourceOperations(obj: any) {
+  const host = await createBrowserHost(libs, {useShim: true})
+  const res = await axios.get(obj.resourceProviderUrl);
+  const entryFiles = res.data.entryFiles;
+  for (const entryFile of entryFiles) {
+      // cache entry files
+      await host.stat(entryFile);
+      const rt = await host.compiler.compile(host, entryFile, {
+          outputDir: outputDir,
+          emit: ["@azure-tools/typespec-aaz"],
+          options: {
+            "@azure-tools/typespec-aaz": {
+              "operation": "get-resources-operations",
+              "apiVersion": obj.version,
+              "resources": obj.resources.map((it: any)=>{return it.id})
+            },
+          },
+          trace: ['@azure-tools/typespec-aaz',],
+      });
+
+      console.log("rt diagnostics from getTypespecRPResourceOperations", rt.diagnostics)
+
+      const files = await findOutputFiles(host);
+      const file = await host.readFile(outputDir + files[0]);
+      return JSON.parse(file.text);
+  }
 }

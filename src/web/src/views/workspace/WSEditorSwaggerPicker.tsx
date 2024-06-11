@@ -4,7 +4,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
 import EditorPageLayout from '../../components/EditorPageLayout';
 import { styled } from '@mui/material/styles';
-import { getTypespecRPResources } from '../../typespec';
+import { getTypespecRPResources, getTypespecRPResourceOperations } from '../../typespec';
 
 
 interface WSEditorSwaggerPickerProps {
@@ -270,6 +270,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 loading: true,
             })
             let data;
+            console.log("url in getTypespecRPResources: ", resourceProviderUrl)
             if (resourceProviderUrl.endsWith("/TypeSpec")) {
                 this.setState({
                     loading: false,
@@ -355,8 +356,9 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
     }
 
     addSwagger = () => {
-        const { selectedResources, selectedVersion, selectedModule, moduleOptionsCommonPrefix, updateOption, resourceMap, selectedResourceInheritanceAAZVersionMap } = this.state;
+        const { selectedResources, selectedVersion, selectedModule, moduleOptionsCommonPrefix, updateOption, resourceMap, selectedResourceInheritanceAAZVersionMap, defaultResourceProvider } = this.state;
         const resources: { id: string, options: { update_by?: string, aaz_version: string | null } }[] = [];
+        console.log("this state in add swagger: ", this.state)
         selectedResources.forEach((resourceId) => {
             const res: any = {
                 id: resourceId,
@@ -394,7 +396,31 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
             loading: true
         });
 
-        axios.post(`/AAZ/Editor/Workspaces/${this.props.workspaceName}/CommandTree/Nodes/aaz/AddSwagger`, requestBody)
+        if (defaultResourceProvider?.endsWith("TypeSpec")){
+          let requestEmitterObj = JSON.parse(JSON.stringify(requestBody))
+          requestEmitterObj.resourceProviderUrl = defaultResourceProvider
+          console.log("request obj for emitter: ", requestEmitterObj)
+          getTypespecRPResourceOperations(requestEmitterObj).then((res)=>{
+              console.log("res from getTypespecRPResourceOperations", res)
+              this.setState({
+                loading: false
+              });
+              this.props.onClose(true);
+          }).catch((err)=>{
+              console.log("err from getTypespecRPResourceOperations", err)
+              this.setState({
+                loading: false
+              });
+              this.props.onClose(true);
+              if (err.response?.data?.message) {
+                const data = err.response!.data!;
+                this.setState({
+                  invalidText: `ResponseError: ${data.message!}`,
+                })
+              }
+          })
+        }else{
+          axios.post(`/AAZ/Editor/Workspaces/${this.props.workspaceName}/CommandTree/Nodes/aaz/AddSwagger`, requestBody)
             .then(() => {
                 this.setState({
                     loading: false
@@ -410,6 +436,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                     })
                 }
             });
+        }
     }
 
     onModuleSelectorUpdate = async (moduleValueUrl: string | null) => {

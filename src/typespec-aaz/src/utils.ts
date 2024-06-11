@@ -1,6 +1,7 @@
 import { Program } from "@typespec/compiler";
-import { HttpOperation, isSharedRoute } from "@typespec/http";
+import { HttpOperation, isSharedRoute, HttpOperationResponse, HttpOperationParameters, HttpOperationParameter, } from "@typespec/http";
 
+import { RequestPathParamSchema, ResponseSchema, CMDBuildInVariants, RequestQueryParamConstSchema, } from "./types.js";
 
 function getPathWithoutQuery(path: string): string {
     // strip everything from the key including and after the ?
@@ -63,3 +64,64 @@ export function getResourcePath(program: Program, operation: HttpOperation) {
 //     return swaggerResourcePathToResourceId(fullPath);
 // }
 
+export function getQueryParamters(parameters: HttpOperationParameters) {
+  const rt: RequestQueryParamConstSchema[] = [];
+  parameters.parameters.forEach((param: HttpOperationParameter) => {
+      if (param.type === "query") {
+          const obj: RequestQueryParamConstSchema = {
+              readOnly: false,
+              const: false,
+              default: {
+                  value: param.param.default,
+              },
+              type: "string",
+              name: param.name,
+              required: param.param.optional,
+          };
+          rt.push(obj);
+      }
+  });
+  return rt;
+}
+
+// TODO
+export function getPathParamters(parameters: HttpOperationParameters) {
+  const rt: RequestPathParamSchema[] = [];
+  parameters.parameters.forEach((param: HttpOperationParameter) => {
+      if (param.type === "path") {
+          const obj: RequestPathParamSchema = {
+              type: "string",
+              name: param.name,
+              arg: `$Path.${param.name}`,
+              required: false,
+              format: {
+                  pattern: "",
+                  maxLength: 0,
+                  minLength: 1,
+              },
+          };
+          rt.push(obj);
+      }
+  });
+  return rt;
+}
+
+export function getResponse(response: HttpOperationResponse[]) {
+  const rt: ResponseSchema[] = [];
+  response.forEach((el) => {
+      rt.push({
+          statusCode: el.statusCodes,
+          isError: false, // TODO
+          body: {
+              json: {
+                  var: CMDBuildInVariants.Instance,
+                  schema: {
+                      type: "object",
+                      name: "",
+                  },
+              },
+          },
+      });
+  });
+  return rt;
+}

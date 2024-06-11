@@ -1,8 +1,8 @@
 import { JSONSchemaType, createTypeSpecLibrary } from "@typespec/compiler";
 
 export interface AAZEmitterOptions {
-  "operation": "list-resources" | "retrieve-operation";
-  "api-version"?: string;
+  "operation": "list-resources" | "retrieve-operation" | "get-resources-operations";
+  "apiVersion"?: string;
   "resources"?: string[];
 }
 
@@ -12,9 +12,9 @@ const EmitterOptionsSchema: JSONSchemaType<AAZEmitterOptions> = {
   properties: {
     operation: {
       type: "string",
-      enum: ["list-resources", "retrieve-operation"],
+      enum: ["list-resources", "retrieve-operation", "get-resources-operations"],
     },
-    "api-version": {
+    "apiVersion": {
       type: "string",
       nullable: true,
     },
