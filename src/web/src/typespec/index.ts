@@ -64,7 +64,7 @@ async function findOutputFiles(host: BrowserHost): Promise<string[]> {
   return files;
 }
 
-export async function getTypespecRPResourceOperations(obj: any) {
+export async function getTypespecRPResourcesOperations(obj: any) {
   const host = await createBrowserHost(libs, {useShim: true})
   const res = await axios.get(obj.resourceProviderUrl);
   const entryFiles = res.data.entryFiles;

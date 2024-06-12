@@ -4,7 +4,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
 import EditorPageLayout from '../../components/EditorPageLayout';
 import { styled } from '@mui/material/styles';
-import { getTypespecRPResources, getTypespecRPResourceOperations } from '../../typespec';
+import { getTypespecRPResources, getTypespecRPResourcesOperations } from '../../typespec';
 
 
 interface WSEditorSwaggerPickerProps {
@@ -270,7 +270,6 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 loading: true,
             })
             let data;
-            console.log("url in getTypespecRPResources: ", resourceProviderUrl)
             if (resourceProviderUrl.endsWith("/TypeSpec")) {
                 this.setState({
                     loading: false,
@@ -396,27 +395,27 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
         });
 
         if (defaultResourceProvider?.endsWith("TypeSpec")){
-          let requestEmitterObj = JSON.parse(JSON.stringify(requestBody))
-          requestEmitterObj.resourceProviderUrl = defaultResourceProvider
-          getTypespecRPResourceOperations(requestEmitterObj).then((res)=>{
-              console.log("emitter getTypespecRPResourceOperations res: ", res);
-              // call addTypespec here
-              this.setState({
-                loading: false
-              });
-              this.props.onClose(true);
-          }).catch((err)=>{
-              this.setState({
-                loading: false
-              });
-              this.props.onClose(true);
-              if (err.response?.data?.message) {
-                const data = err.response!.data!;
+            let requestEmitterObj = JSON.parse(JSON.stringify(requestBody))
+            requestEmitterObj.resourceProviderUrl = defaultResourceProvider
+            getTypespecRPResourcesOperations(requestEmitterObj).then((res)=>{
+                console.log("emitter getTypespecRPResourceOperations res: ", res);
+                // todo: call addTypespec here
                 this.setState({
-                  invalidText: `ResponseError: ${data.message!}`,
-                })
-              }
-          })
+                    loading: false
+                });
+                this.props.onClose(true);
+            }).catch((err: any)=>{
+                this.setState({
+                    loading: false
+                });
+                this.props.onClose(true);
+                if (err.response?.data?.message) {
+                    const data = err.response!.data!;
+                    this.setState({
+                        invalidText: `ResponseError: ${data.message!}`,
+                    })
+                }
+            })
         }else{
           axios.post(`/AAZ/Editor/Workspaces/${this.props.workspaceName}/CommandTree/Nodes/aaz/AddSwagger`, requestBody)
             .then(() => {

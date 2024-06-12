@@ -23,7 +23,10 @@ import {
 import { HttpService, getAllHttpServices, reportIfNoRoutes, getHttpOperation, HttpOperation } from "@typespec/http";
 // import { SdkContext, createSdkContext } from "@azure-tools/typespec-client-generator-core";
 import {getResourcePath, swaggerResourcePathToResourceId, } from "./utils.js";
-import { AAZResourceEmitterSchema, AAZTspPathItem, MutabilityEnum, AAZTspHttpOperation } from "./types.js";
+import { AAZResourceEmitterSchema } from "./types.js";
+import { TypeSpecPathItem } from "./model/path_item.js"
+import { MutabilityEnum } from "./model/_fields.js"
+import { CMDHttpOperation } from "./model/operation.js"
 import { AAZEmitterOptions, getTracer } from "./lib.js";
 
 export async function $onEmit(context: EmitContext<AAZEmitterOptions>) {
@@ -34,14 +37,9 @@ export async function $onEmit(context: EmitContext<AAZEmitterOptions>) {
       path: resolvePath(context.emitterOutputDir, "resources.json"),
       content: JSON.stringify(resources, null, 2),
     });
-  } else if (context.options.operation === "retrieve-operation") {
-    // TODO:
-    // const sdkContext = createSdkContext(context, "@client-tools/typespec-aaz");
-    // const emitter = createRetrieveOperationsEmitter(sdkContext);
-    // await emitter.retrieveOperations();
   } else if (context.options.operation === "get-resources-operations") {
     const emitter = createGetResourceOperationEmitter(context);
-    const res = await emitter.getResourcesOperation();
+    const res = await emitter.getResourcesOperations();
     await emitFile(context.program, {
       path: resolvePath(context.emitterOutputDir, "resources_operations.json"),
       content: JSON.stringify(res, null, 2),
@@ -123,9 +121,9 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
       version: context.options.apiVersion,
     }
   }) || [];
-  let schema: AAZTspPathItem = {};
+  let schema: TypeSpecPathItem = {};
 
-  async function getResourcesOperation() {
+  async function getResourcesOperations() {
     tracer.trace("options for createGetResourceOperationEmitter", JSON.stringify(context.options, null, 2));
     const services = listServices(context.program);
     for (const service of services) {
@@ -149,7 +147,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
     return result;
   }
 
-  return { getResourcesOperation };
+  return { getResourcesOperations };
 
   function emitResourcesOperations(program: Program, operations: HttpOperation[]) {
     for (let rt of result) {
@@ -167,7 +165,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
     }
   }
 
-  function emitResourceOperation(program: Program, httpOperation: HttpOperation, resourceObj: AAZResourceEmitterSchema, schema:AAZTspPathItem){
+  function emitResourceOperation(program: Program, httpOperation: HttpOperation, resourceObj: AAZResourceEmitterSchema, schema:TypeSpecPathItem){
     let { path: fullPath, operation: op, verb, parameters } = httpOperation;
     let selected_path = getPathWithoutArg(fullPath).toLocaleLowerCase();
     if (selected_path != resourceObj.id) {
@@ -193,7 +191,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
     } else{
       console.log(" verb not expected: ", verb)
     }
-    let operationOnMutability: AAZTspHttpOperation;
+    let operationOnMutability: CMDHttpOperation;
     for (let mut of mutability){
       operationOnMutability = {
         operationId: opId,
@@ -244,7 +242,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
     return false;
   }
 
-  function populateOperationOnMutability(program: Program, httpOperation: HttpOperation, operationOnMutability:AAZTspHttpOperation) {
+  function populateOperationOnMutability(program: Program, httpOperation: HttpOperation, operationOnMutability: CMDHttpOperation) {
     operationOnMutability.description = getDoc(program, httpOperation.operation);
 
     const lroMetadata = getLroMetadata(program, httpOperation.operation);
@@ -260,8 +258,6 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
       request: {} as any,
       response: [],
     }
-
-
   }
 
 }

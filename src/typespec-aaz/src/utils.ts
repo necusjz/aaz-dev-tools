@@ -1,5 +1,5 @@
 import { Program } from "@typespec/compiler";
-import { HttpOperation, isSharedRoute, } from "@typespec/http";
+import { HttpOperation, isSharedRoute } from "@typespec/http";
 
 
 function getPathWithoutQuery(path: string): string {
