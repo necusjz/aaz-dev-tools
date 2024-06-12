@@ -48,10 +48,6 @@ export type AAZTspOperation = {
   update?: AAZTspHttpOperation;
 };
 
-export interface Ref<T> {
-  $ref: string;
-}
-
 export type AAZTspVariantField = {
   value: string;
   format: '[$@][a-zA-Z0-9_\[\]\{\}\.]+'
