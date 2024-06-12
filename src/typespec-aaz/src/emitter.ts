@@ -11,7 +11,6 @@ import {
   Program, 
   resolvePath, 
   Service, 
-  Type
  } from "@typespec/compiler";
 
 import { buildVersionProjections } from "@typespec/versioning";
@@ -23,12 +22,11 @@ import {
 } from "@azure-tools/typespec-azure-core";
 import { HttpService, getAllHttpServices, reportIfNoRoutes, getHttpOperation, HttpOperation } from "@typespec/http";
 // import { SdkContext, createSdkContext } from "@azure-tools/typespec-client-generator-core";
-import {getResourcePath, swaggerResourcePathToResourceId, getPathParamters, getQueryParamters, getResponse } from "./utils.js";
-import { HttpOperationSchema, AAZResourceEmitterSchema, AAZTspPathItem, MutabilityEnum, AAZTspHttpOperation, AAZTspHttpOperationLongRunning } from "./types.js";
+import {getResourcePath, swaggerResourcePathToResourceId, } from "./utils.js";
+import { AAZResourceEmitterSchema, AAZTspPathItem, MutabilityEnum, AAZTspHttpOperation } from "./types.js";
 import { AAZEmitterOptions, getTracer } from "./lib.js";
 
 export async function $onEmit(context: EmitContext<AAZEmitterOptions>) {
-  console.log("context in onemit: ", context)
   if (context.options.operation === "list-resources") {
     const emitter = createListResourceEmitter(context);
     const resources = await emitter.listResources();
@@ -44,7 +42,6 @@ export async function $onEmit(context: EmitContext<AAZEmitterOptions>) {
   } else if (context.options.operation === "get-resources-operations") {
     const emitter = createGetResourceOperationEmitter(context);
     const res = await emitter.getResourcesOperation();
-    console.log("res in emitter getResourceOperation", res)
     await emitFile(context.program, {
       path: resolvePath(context.emitterOutputDir, "resources_operations.json"),
       content: JSON.stringify(res, null, 2),
@@ -59,11 +56,9 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
   const resourceVersions: Record<string, Record<string, string>> = {};
   async function listResources() {
     const services = listServices(context.program);
-    console.log("services: ", services)
     if (services.length === 0) {
       services.push({ type: context.program.getGlobalNamespaceType() });
     }
-    console.log("services after push: ", services)
     for (const service of services) {
       const versions = buildVersionProjections(context.program, service.type);
       for (const record of versions) {
@@ -72,7 +67,6 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
           program = projectProgram(context.program, record.projections);
         }
         const httpService = ignoreDiagnostics(getAllHttpServices(program))[0]
-        console.log("http service: ", httpService)
         emitService(httpService, program, record.version!);
       }
     }
@@ -120,7 +114,6 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
 function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOptions>) {
   const tracer = getTracer(context.program);
   tracer.trace("options", JSON.stringify(context.options, null, 2));
-  console.log("options: ", context.options);
   const originalProgram = context.program;
   let currentService: Service;
   let projectedProgram: Program;
@@ -132,32 +125,23 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
   }) || [];
   let schema: AAZTspPathItem = {};
 
-  console.log("roots: ", result)
-
   async function getResourcesOperation() {
-    console.log("apiVersion: ", context.options.apiVersion)
     tracer.trace("options for createGetResourceOperationEmitter", JSON.stringify(context.options, null, 2));
     const services = listServices(context.program);
-    console.log("services after listServices: ", services)
     for (const service of services) {
       currentService = service;
       const versions = buildVersionProjections(context.program, service.type).filter(
         (v) => !context.options.apiVersion || context.options.apiVersion === v.version
       );
-      console.log("versions after filter: ", versions)
       for (const record of versions) {
         projectedProgram = context.program;
         if (record.projections.length > 0) {
           projectedProgram = projectProgram(context.program, record.projections);
         }
         const httpService = getService(projectedProgram, service.type);
-
         const services = ignoreDiagnostics(getAllHttpServices(projectedProgram));
-        console.log("services from projectedProgram: ", services)
-
         const operations = services[0].operations;
         reportIfNoRoutes(projectedProgram, operations);
-        console.log("routes (operations) from service: ", operations);
         emitResourcesOperations(projectedProgram, operations);
       }
       
@@ -171,7 +155,6 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
     for (let rt of result) {
       let path = rt.id
       let selected_operations = operations.filter((it)=>{return getPathWithoutArg(it.path).toLowerCase() === path});
-      console.log("operation for path", selected_operations, path);
       if (selected_operations.length == 0) {
         console.log(" no op found for path: ", path)
         continue;
@@ -180,7 +163,6 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
       for (const operation of selected_operations){
         emitResourceOperation(program, operation, rt, schema);
       } 
-      console.log('schema for path', schema, path)
       rt.pathItem = schema;
     }
   }
@@ -191,8 +173,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
     if (selected_path != resourceObj.id) {
       compilerAssert(false, `Operation path "${resourceObj.id}" not match fullPath "${fullPath}".`);
     }
-    const opId = op.namespace?.name + "_" + op.name;
-    console.log("op_id", opId);
+    const opId = httpOperation.container.name + "_" + upperFirstString(op.name);
     if (!schema[verb]) {
       schema[verb] = {}
     }
@@ -205,7 +186,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
     let mutability = [];
     if (["get", "head"].includes(verb)) {
       mutability.push(MutabilityEnum.Read);
-    }if (["put", "delete", "post"].includes(verb)) {
+    } else if (["put", "delete", "post"].includes(verb)) {
       mutability.push(MutabilityEnum.Create);
     } else if (["patch"].includes(verb)) {
       mutability.push(MutabilityEnum.Update);
@@ -219,7 +200,6 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
         http: {} as any
       }
       populateOperationOnMutability(program, httpOperation, operationOnMutability)
-      console.log("operationOnMutability: ", operationOnMutability)
       schema[verb]![mut] = operationOnMutability
     }
 
@@ -228,6 +208,10 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
   function getPathWithoutArg(path: string): string {
     // strip everything between {}
     return path.replace(/\{.*?\}/g, '{}')
+  }
+
+  function upperFirstString(name: string): string {
+    return name.charAt(0).toUpperCase() + name.slice(1)
   }
 
   function extractPagedMetadataNested(program: Program, type: Model): PagedResultMetadata | undefined {
@@ -264,7 +248,6 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
     operationOnMutability.description = getDoc(program, httpOperation.operation);
 
     const lroMetadata = getLroMetadata(program, httpOperation.operation);
-    console.log("lroMetadata: ", lroMetadata)
     // We ignore GET operations because they cannot be LROs per our guidelines and this
     // ensures we don't add the x-ms-long-running-operation extension to the polling operation,
     // which does have LRO metadata.

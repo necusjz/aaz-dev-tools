@@ -1,6 +1,5 @@
 import { Program, Type } from "@typespec/compiler";
 import { HttpStatusCodeRange } from "@typespec/http";
-import { trace } from "node:console";
 
 export interface AAZListResourcesContext {
     program: Program;
@@ -10,86 +9,6 @@ export interface AAZListResourcesContext {
 export interface AAZRetrieveOperationContext {
     program: Program;
     
-}
-
-export interface PropsSchema {
-  type: string;
-  name: string;
-  readOnly?: boolean;
-  required?: boolean;
-  cls?: boolean;
-  clientFlatten?: boolean;
-  additionalProps?: {
-      item: {
-          type: string;
-      };
-  };
-  enum?: {
-      items: {
-          value: string;
-      }[];
-  };
-  props?: PropsSchema[];
-  format?: {
-      template: string;
-  };
-}
-
-export interface RequestPathParamSchema {
-  type: string;
-  name: string;
-  arg: string;
-  required: boolean;
-  format: {
-      pattern: string;
-      maxLength: number;
-      minLength: number;
-  };
-}
-
-export interface RequestQueryParamConstSchema {
-  readOnly: boolean;
-  const: boolean;
-  default: {
-      value: Type | undefined;
-  };
-  type: string;
-  name: string;
-  required: boolean;
-}
-
-export interface RequestSchema {
-  method: string;
-  path: {
-      params: RequestPathParamSchema[];
-  };
-  query: {
-      consts: RequestQueryParamConstSchema[];
-  };
-}
-
-export interface ResponseSchema {
-  statusCode?: HttpStatusCodeRange | number | "*";
-  isError?: boolean;
-  body: {
-      json: {
-          var: string;
-          schema: PropsSchema;
-      };
-  };
-}
-
-export interface HttpOperationSchema {
-  when: string[];
-  operationId: string;
-  longRunning: {
-      finalStateVia: string;
-  };
-  http: {
-      path: string;
-      request: RequestSchema;
-      responses: ResponseSchema[];
-  };
 }
 
 export enum CMDBuildInVariants {

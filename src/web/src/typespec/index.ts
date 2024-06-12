@@ -23,7 +23,6 @@ const outputDir = "tsp-output";
 export async function getTypespecRPResources(resourceProviderUrl: string) {
   const host = await createBrowserHost(libs, { useShim: true })
   const res = await axios.get(resourceProviderUrl);
-  console.log("res in getTypespecRPResources: ", res)
   const entryFiles = res.data.entryFiles;
   let results: any[] = [];
   for (const entryFile of entryFiles) {
@@ -39,7 +38,6 @@ export async function getTypespecRPResources(resourceProviderUrl: string) {
       },
       trace: ['@azure-tools/typespec-aaz',],
     });
-    console.log("rt diagnostics from getTypespecRPResources", rt.diagnostics)
 
     const files = await findOutputFiles(host);
     const file = await host.readFile(outputDir + files[0]);
@@ -73,7 +71,7 @@ export async function getTypespecRPResourceOperations(obj: any) {
   for (const entryFile of entryFiles) {
       // cache entry files
       await host.stat(entryFile);
-      const rt = await host.compiler.compile(host, entryFile, {
+      await host.compiler.compile(host, entryFile, {
           outputDir: outputDir,
           emit: ["@azure-tools/typespec-aaz"],
           options: {
@@ -85,8 +83,6 @@ export async function getTypespecRPResourceOperations(obj: any) {
           },
           trace: ['@azure-tools/typespec-aaz',],
       });
-
-      console.log("rt diagnostics from getTypespecRPResourceOperations", rt.diagnostics)
 
       const files = await findOutputFiles(host);
       const file = await host.readFile(outputDir + files[0]);

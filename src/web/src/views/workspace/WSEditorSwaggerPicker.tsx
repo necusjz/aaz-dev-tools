@@ -358,7 +358,6 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
     addSwagger = () => {
         const { selectedResources, selectedVersion, selectedModule, moduleOptionsCommonPrefix, updateOption, resourceMap, selectedResourceInheritanceAAZVersionMap, defaultResourceProvider } = this.state;
         const resources: { id: string, options: { update_by?: string, aaz_version: string | null } }[] = [];
-        console.log("this state in add swagger: ", this.state)
         selectedResources.forEach((resourceId) => {
             const res: any = {
                 id: resourceId,
@@ -399,15 +398,14 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
         if (defaultResourceProvider?.endsWith("TypeSpec")){
           let requestEmitterObj = JSON.parse(JSON.stringify(requestBody))
           requestEmitterObj.resourceProviderUrl = defaultResourceProvider
-          console.log("request obj for emitter: ", requestEmitterObj)
           getTypespecRPResourceOperations(requestEmitterObj).then((res)=>{
-              console.log("res from getTypespecRPResourceOperations", res)
+              console.log("emitter getTypespecRPResourceOperations res: ", res);
+              // call addTypespec here
               this.setState({
                 loading: false
               });
               this.props.onClose(true);
           }).catch((err)=>{
-              console.log("err from getTypespecRPResourceOperations", err)
               this.setState({
                 loading: false
               });
