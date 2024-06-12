@@ -28,7 +28,7 @@ export async function getTypespecRPResources(resourceProviderUrl: string) {
   for (const entryFile of entryFiles) {
     // cache entry files
     await host.stat(entryFile);
-    const rt = await host.compiler.compile(host, entryFile, {
+    await host.compiler.compile(host, entryFile, {
       outputDir: outputDir,
       emit: ["@azure-tools/typespec-aaz"],
       options: {

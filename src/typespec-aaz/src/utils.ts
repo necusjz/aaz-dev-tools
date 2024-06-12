@@ -1,6 +1,7 @@
 import { Program } from "@typespec/compiler";
 import { HttpOperation, isSharedRoute, } from "@typespec/http";
 
+
 function getPathWithoutQuery(path: string): string {
     // strip everything from the key including and after the ?
     return path.replace(/\/?\?.*/, "");
