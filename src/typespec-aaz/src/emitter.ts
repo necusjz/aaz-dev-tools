@@ -2,13 +2,16 @@ import {
   compilerAssert,
   EmitContext, 
   emitFile, 
-  ignoreDiagnostics, 
+  ignoreDiagnostics,
+  getDoc, 
   getService,
-  listServices, 
+  listServices,
+  Model, 
   projectProgram, 
   Program, 
   resolvePath, 
   Service, 
+  Type
  } from "@typespec/compiler";
 
 import { buildVersionProjections } from "@typespec/versioning";
@@ -21,7 +24,7 @@ import {
 import { HttpService, getAllHttpServices, reportIfNoRoutes, getHttpOperation, HttpOperation } from "@typespec/http";
 // import { SdkContext, createSdkContext } from "@azure-tools/typespec-client-generator-core";
 import {getResourcePath, swaggerResourcePathToResourceId, getPathParamters, getQueryParamters, getResponse } from "./utils.js";
-import { HttpOperationSchema, AAZResourceEmitterSchema, AAZTspPathItem } from "./types.js";
+import { HttpOperationSchema, AAZResourceEmitterSchema, AAZTspPathItem, MutabilityEnum, AAZTspHttpOperation, AAZTspHttpOperationLongRunning } from "./types.js";
 import { AAZEmitterOptions, getTracer } from "./lib.js";
 
 export async function $onEmit(context: EmitContext<AAZEmitterOptions>) {
@@ -127,6 +130,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
       version: context.options.apiVersion,
     }
   }) || [];
+  let schema: AAZTspPathItem = {};
 
   console.log("roots: ", result)
 
@@ -172,7 +176,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
         console.log(" no op found for path: ", path)
         continue;
       }
-      let schema: AAZTspPathItem = {};
+      schema = {};
       for (const operation of selected_operations){
         emitResourceOperation(program, operation, rt, schema);
       } 
@@ -181,8 +185,8 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
     }
   }
 
-  function emitResourceOperation(program: Program, operation: HttpOperation, resourceObj: AAZResourceEmitterSchema, schema:AAZTspPathItem){
-    let { path: fullPath, operation: op, verb, parameters } = operation;
+  function emitResourceOperation(program: Program, httpOperation: HttpOperation, resourceObj: AAZResourceEmitterSchema, schema:AAZTspPathItem){
+    let { path: fullPath, operation: op, verb, parameters } = httpOperation;
     let selected_path = getPathWithoutArg(fullPath).toLocaleLowerCase();
     if (selected_path != resourceObj.id) {
       compilerAssert(false, `Operation path "${resourceObj.id}" not match fullPath "${fullPath}".`);
@@ -192,14 +196,89 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
     if (!schema[verb]) {
       schema[verb] = {}
     }
+
     schema[verb] = {
-      operationId: opId
+      operationId: opId,
+      isPageable: extractIsPaged(program, httpOperation),
     };
+
+    let mutability = [];
+    if (["get", "head"].includes(verb)) {
+      mutability.push(MutabilityEnum.Read);
+    }if (["put", "delete", "post"].includes(verb)) {
+      mutability.push(MutabilityEnum.Create);
+    } else if (["patch"].includes(verb)) {
+      mutability.push(MutabilityEnum.Update);
+    } else{
+      console.log(" verb not expected: ", verb)
+    }
+    let operationOnMutability: AAZTspHttpOperation;
+    for (let mut of mutability){
+      operationOnMutability = {
+        operationId: opId,
+        http: {} as any
+      }
+      populateOperationOnMutability(program, httpOperation, operationOnMutability)
+      console.log("operationOnMutability: ", operationOnMutability)
+      schema[verb]![mut] = operationOnMutability
+    }
+
   }
 
   function getPathWithoutArg(path: string): string {
     // strip everything between {}
     return path.replace(/\{.*?\}/g, '{}')
+  }
+
+  function extractPagedMetadataNested(program: Program, type: Model): PagedResultMetadata | undefined {
+    let paged = getPagedResult(program, type);
+    if (paged) {
+      return paged;
+    }
+    const templateArguments = type.templateMapper;
+    if (templateArguments) {
+      for (const argument of templateArguments.args) {
+        const modelArgument = argument as Model;
+        if (modelArgument) {
+          paged = extractPagedMetadataNested(program, modelArgument);
+          if (paged) {
+            return paged;
+          }
+        }
+      }
+    }
+    return paged;
+  }
+
+  function extractIsPaged(program: Program, httpOperation: HttpOperation) {
+    for (const response of httpOperation.responses) {
+      const paged = extractPagedMetadataNested(program, response.type as Model);
+      if (paged && paged.nextLinkSegments) {
+          return true;
+      }
+    }
+    return false;
+  }
+
+  function populateOperationOnMutability(program: Program, httpOperation: HttpOperation, operationOnMutability:AAZTspHttpOperation) {
+    operationOnMutability.description = getDoc(program, httpOperation.operation);
+
+    const lroMetadata = getLroMetadata(program, httpOperation.operation);
+    console.log("lroMetadata: ", lroMetadata)
+    // We ignore GET operations because they cannot be LROs per our guidelines and this
+    // ensures we don't add the x-ms-long-running-operation extension to the polling operation,
+    // which does have LRO metadata.
+    //  && operation.verb !== "get" ??
+    if (lroMetadata !== undefined) {
+      operationOnMutability.longRunning = {finalStateVia: lroMetadata.finalStateVia ? lroMetadata.finalStateVia : "azure-async-operation"};
+    }
+    operationOnMutability.http = {
+      path: httpOperation.path,
+      request: {} as any,
+      response: [],
+    }
+
+
   }
 
 }

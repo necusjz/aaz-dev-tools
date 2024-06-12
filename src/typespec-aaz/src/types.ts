@@ -102,6 +102,12 @@ export enum CMDBuildInVariants {
 
 export type HttpMethod = "get" | "put" | "post" | "delete" | "head" | "patch";
 
+export enum MutabilityEnum {
+  Create = "create",
+  Read = "read",
+  Update = "update",
+}
+
 export interface AAZResourceEmitterSchema {
 
   /** The available paths and operations for typespec resource */
@@ -115,7 +121,6 @@ export type AAZTspPathItem = {
 } & {  traces?: string[]  }
 
 export type AAZTspOperation = {
-  /** Unique string used to identify the operation. The id MUST be unique among all operations described in the API. Tools and libraries MAY use the operationId to uniquely identify an operation, therefore, it is recommended to follow common programming naming conventions. */
   operationId?: string;
 
   isPageable?: boolean;
@@ -144,8 +149,8 @@ export type AAZTspHttpOperation = {
 }
 
 export type AAZTspHttpOperationLongRunning = {
-  finalStateVia?: "azure-async-operation" | "location" | "original-uri";
-  defaultValue: "azure-async-operation";
+  // "azure-async-operation" | "location" | "original-uri"
+  finalStateVia?: string;
 }
 
 export type AAZTspHttpAction = {
