@@ -1,6 +1,6 @@
 import { styled, Alert, Box, Button, Card, CardActions, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Accordion, InputLabel, LinearProgress, Radio, RadioGroup, TextField, Typography, TypographyProps, AccordionDetails, IconButton, Input, InputAdornment, AccordionSummaryProps, FormLabel, Switch, ButtonBase, FormLabelProps } from '@mui/material';
 import axios from 'axios';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import MuiAccordionSummary from '@mui/material/AccordionSummary';
 import { NameTypography, ShortHelpTypography, ShortHelpPlaceHolderTypography, LongHelpTypography, StableTypography, PreviewTypography, ExperimentalTypography, SubtitleTypography, CardTitleTypography } from './WSEditorTheme';
 import DoDisturbOnRoundedIcon from '@mui/icons-material/DoDisturbOnRounded';
@@ -55,9 +55,9 @@ function isArrayOutput(output: Output): output is ArrayOutput {
     return output.type === "array";
 }
 
-function isStringOutput(output: Output): output is StringOutput {
-    return output.type === "string";
-}
+// function isStringOutput(output: Output): output is StringOutput {
+//     return output.type === "string";
+// }
 
 interface Resource {
     id: string,
@@ -179,21 +179,21 @@ const OutputRefTypography = styled(Typography)<TypographyProps>(({ theme }) => (
     fontWeight: 700,
 }))
 
-const OutputFlagTypography = styled(Typography)<TypographyProps>(({ theme }) => ({
+const OutputFlagTypography = styled(Typography)<TypographyProps>(() => ({
     color: '#8888C3',
     fontFamily: "'Work Sans', sans-serif",
     fontSize: 10,
     fontWeight: 400,
 }))
 
-const OutputEditTypography = styled(Typography)<TypographyProps>(({ theme }) => ({
+const OutputEditTypography = styled(Typography)<TypographyProps>(() => ({
     color: "#5d64cf",
     fontFamily: "'Work Sans', sans-serif",
     fontSize: 14,
     fontWeight: 400,
 }));
 
-const OutputDialogLabel = styled(FormLabel)<FormLabelProps>(({ theme }) => ({
+const OutputDialogLabel = styled(FormLabel)<FormLabelProps>(() => ({
     fontSize: 12,
 }));
 
