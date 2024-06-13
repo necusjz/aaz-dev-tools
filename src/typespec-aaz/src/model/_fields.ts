@@ -1,8 +1,5 @@
 
-export type CMDVariantField = {
-  value: string;
-  format: '[$@][a-zA-Z0-9_\[\]\{\}\.]+'
-}
+export type CMDVariantField = string;
 
 export enum MutabilityEnum {
   Create = "create",

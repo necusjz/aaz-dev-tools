@@ -11,6 +11,7 @@ export type TypeSpecOperation = {
 
 export interface CMDHttpOperation {
   when?: CMDVariantField[];
+
   longRunning?:CMDHttpOperationLongRunning;
   // required
   operationId: string;

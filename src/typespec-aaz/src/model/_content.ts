@@ -1,12 +1,12 @@
-import { CMDSchema } from "./_schema.js"
+import { CMDSchema, CMDSchemaBase } from "./_schema.js"
 import { CMDVariantField } from "./_fields.js";
 
 export type CMDRequestJson = {
-  ref?: string;
+  ref?: CMDVariantField;
   schema?: CMDSchema;
 }
 
 export type CMDResponseJson = {
   var?: CMDVariantField;
-  schema: CMDSchema;
+  schema: CMDSchemaBase;
 }

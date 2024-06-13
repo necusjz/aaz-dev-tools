@@ -1,5 +1,7 @@
 import { CMDRequestJson } from "./_content.js"
 
-export type CMDHttpRequestBody = {
+export interface CMDHttpRequestBody {}
+
+export interface CMDHttpRequestJsonBody extends CMDHttpRequestBody{
   json?: CMDRequestJson;
 }

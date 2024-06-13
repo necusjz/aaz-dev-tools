@@ -982,7 +982,7 @@ class CMDArraySchemaBase(CMDSchemaBase):
     )
     item = CMDSchemaBaseField()
 
-    # used to indentify item in array
+    # used to identify item in array
     identifiers = ListType(StringType())
 
     # properties as tags

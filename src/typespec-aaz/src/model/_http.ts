@@ -11,8 +11,8 @@ export type CMDHttpAction = {
 
 export type CMDHttpRequest = {
   method: "get" | "put" | "post" | "delete" | "options" | "head" | "patch";
-  path: CMDHttpRequestArgs;
-  query: CMDHttpRequestArgs;
+  path: CMDHttpRequestPath;
+  query: CMDHttpRequestQuery;
   header: CMDHttpRequestHeader;
   body: CMDHttpRequestBody;
 }
@@ -25,14 +25,18 @@ export type CMDHttpResponse = {
   body?: CMDHttpResponseBody;
 }
 
-export interface CMDHttpRequestArgs {
+type CMDHttpRequestArgs = {
   params: CMDSchema[];
   consts: CMDSchema[];
-}
+};
 
-export interface CMDHttpRequestHeader extends CMDHttpRequestArgs {
+export type CMDHttpRequestPath = CMDHttpRequestArgs;
+
+export type CMDHttpRequestQuery = CMDHttpRequestArgs;
+
+export type CMDHttpRequestHeader = CMDHttpRequestArgs & {
   clientRequestId?: string;
-}
+};
 
 export type CMDHttpResponseHeader = {
   items: CMDHttpResponseHeaderItem[]
