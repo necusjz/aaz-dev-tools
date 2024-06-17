@@ -10,9 +10,9 @@ export interface AAZRetrieveOperationContext {
     program: Program;
 }
 
-export type HttpMethod = "get" | "put" | "post" | "delete" | "head" | "patch";
+export type HttpMethod = "get" | "put" | "post" | "delete" | "head" | "patch" | "options";
 
-export interface AAZResourceEmitterSchema {
+export interface AAZResourceSchema {
   /** The available paths and operations for typespec resource */
   pathItem?: TypeSpecPathItem;
   id: string;

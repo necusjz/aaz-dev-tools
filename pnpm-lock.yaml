@@ -36,6 +36,9 @@ importers:
       '@typespec/http':
         specifier: workspace:~
         version: link:../typespec/core/packages/http
+      '@typespec/openapi':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/openapi
       '@typespec/rest':
         specifier: workspace:~
         version: link:../typespec/core/packages/rest
@@ -55,6 +58,9 @@ importers:
       '@typespec/library-linter':
         specifier: workspace:~
         version: link:../typespec/core/packages/library-linter
+      change-case:
+        specifier: ~5.4.4
+        version: 5.4.4
       eslint:
         specifier: ^8.57.0
         version: 8.57.0

@@ -1,4 +1,4 @@
-import { CMDResponseJson } from "./_content.js"
+import { CMDResponseJson } from "./content.js"
 
 export interface CMDHttpResponseBody {}
 export interface CMDHttpResponseJsonBody extends CMDHttpResponseBody {

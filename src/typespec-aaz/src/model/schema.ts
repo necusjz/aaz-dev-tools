@@ -1,5 +1,5 @@
-import { CMDVariantField } from "./_fields.js"
-import { CMDArrayFormat, CMDFloatFormat, CMDIntegerFormat, CMDObjectFormat, CMDResourceIdFormat, CMDStringFormat } from "./_format.js";
+import { CMDVariantField } from "./fields.js"
+import { CMDArrayFormat, CMDFloatFormat, CMDIntegerFormat, CMDObjectFormat, CMDResourceIdFormat, CMDStringFormat } from "./format.js";
 
 
 export type CMDSchemaDefault<T> = {

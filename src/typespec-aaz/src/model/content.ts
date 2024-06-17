@@ -1,5 +1,5 @@
-import { CMDSchema, CMDSchemaBase } from "./_schema.js"
-import { CMDVariantField } from "./_fields.js";
+import { CMDSchema, CMDSchemaBase } from "./schema.js"
+import { CMDVariantField } from "./fields.js";
 
 export type CMDRequestJson = {
   ref?: CMDVariantField;

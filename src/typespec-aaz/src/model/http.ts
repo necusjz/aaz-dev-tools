@@ -1,16 +1,17 @@
-import { CMDSchema } from "./_schema.js";
-import { CMDHttpRequestBody } from "./_http_request_body.js";
-import { CMDHttpResponseBody } from "./_http_response_body.js";
-import { CMDVariantField } from "./_fields.js";
+import { CMDSchema } from "./schema.js";
+import { CMDHttpRequestBody } from "./http_request_body.js";
+import { CMDHttpResponseBody } from "./http_response_body.js";
+import { CMDVariantField } from "./fields.js";
+import { HttpMethod } from "../types.js";
 
 export type CMDHttpAction = {
   path: string;
   request?: CMDHttpRequest;
-  response?: CMDHttpResponse[];
+  responses?: CMDHttpResponse[];
 }
 
 export type CMDHttpRequest = {
-  method: "get" | "put" | "post" | "delete" | "options" | "head" | "patch";
+  method: HttpMethod;
   path: CMDHttpRequestPath;
   query: CMDHttpRequestQuery;
   header: CMDHttpRequestHeader;

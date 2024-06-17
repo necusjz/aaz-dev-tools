@@ -77,7 +77,7 @@ export async function getTypespecRPResourcesOperations(obj: any) {
           options: {
             "@azure-tools/typespec-aaz": {
               "operation": "get-resources-operations",
-              "apiVersion": obj.version,
+              "api-version": obj.version,
               "resources": obj.resources.map((it: any)=>{return it.id})
             },
           },

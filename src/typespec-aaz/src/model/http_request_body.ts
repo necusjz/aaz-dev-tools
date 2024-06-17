@@ -1,4 +1,4 @@
-import { CMDRequestJson } from "./_content.js"
+import { CMDRequestJson } from "./content.js"
 
 export interface CMDHttpRequestBody {}
 
