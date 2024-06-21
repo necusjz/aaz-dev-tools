@@ -12,10 +12,10 @@ export type CMDHttpAction = {
 
 export type CMDHttpRequest = {
   method: HttpMethod;
-  path: CMDHttpRequestPath;
-  query: CMDHttpRequestQuery;
-  header: CMDHttpRequestHeader;
-  body: CMDHttpRequestBody;
+  path?: CMDHttpRequestPath;
+  query?: CMDHttpRequestQuery;
+  header?: CMDHttpRequestHeader;
+  body?: CMDHttpRequestBody;
 }
 
 export type CMDHttpResponse = {
@@ -27,8 +27,8 @@ export type CMDHttpResponse = {
 }
 
 type CMDHttpRequestArgs = {
-  params: CMDSchema[];
-  consts: CMDSchema[];
+  params?: CMDSchema[];
+  consts?: CMDSchema[];
 };
 
 export type CMDHttpRequestPath = CMDHttpRequestArgs;

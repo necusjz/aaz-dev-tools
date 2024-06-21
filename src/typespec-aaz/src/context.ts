@@ -17,3 +17,8 @@ export interface AAZOperationEmitterContext extends AAZEmitterContext {
     // operation: HttpOperation;
     // pathItem: TypeSpecPathItem;
 }
+
+export interface AAZSchemaEmitterContext extends AAZOperationEmitterContext {
+    readonly collectionFormat?: string;
+    
+}
