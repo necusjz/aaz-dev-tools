@@ -1,9 +1,11 @@
-import { CMDVariantField } from "./_fields.js"
-import { CMDHttpAction } from "./_http.js"
+import { FinalStateValue } from "@azure-tools/typespec-azure-core";
+import { CMDVariantField } from "./fields.js"
+import { CMDHttpAction } from "./http.js"
+import { XmsPageable } from "./x_ms_pageable.js";
 
 export type TypeSpecOperation = {
   operationId?: string;
-  isPageable?: boolean;
+  pageable?: XmsPageable;
   read?: CMDHttpOperation;
   create?: CMDHttpOperation;
   update?: CMDHttpOperation;
@@ -11,6 +13,7 @@ export type TypeSpecOperation = {
 
 export interface CMDHttpOperation {
   when?: CMDVariantField[];
+
   longRunning?:CMDHttpOperationLongRunning;
   // required
   operationId: string;
@@ -22,5 +25,5 @@ export interface CMDHttpOperation {
 
 export type CMDHttpOperationLongRunning = {
   // "azure-async-operation" | "location" | "original-uri"
-  finalStateVia?: string;
+  finalStateVia?: FinalStateValue;
 }

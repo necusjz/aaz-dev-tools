@@ -1,2 +1,2 @@
-export { $onEmit } from "./emitter.js";
+export { $onEmit } from "./emit.js";
 export { $lib, AAZEmitterOptions } from "./lib.js";

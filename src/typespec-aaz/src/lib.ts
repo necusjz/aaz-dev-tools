@@ -2,7 +2,7 @@ import { JSONSchemaType, createTypeSpecLibrary } from "@typespec/compiler";
 
 export interface AAZEmitterOptions {
   "operation": "list-resources" | "get-resources-operations";
-  "apiVersion"?: string;
+  "api-version"?: string;
   "resources"?: string[];
 }
 
@@ -14,7 +14,7 @@ const EmitterOptionsSchema: JSONSchemaType<AAZEmitterOptions> = {
       type: "string",
       enum: ["list-resources", "get-resources-operations"],
     },
-    "apiVersion": {
+    "api-version": {
       type: "string",
       nullable: true,
     },
@@ -31,7 +31,68 @@ const EmitterOptionsSchema: JSONSchemaType<AAZEmitterOptions> = {
 
 const libDef = {
   name: "@azure-tools/typespec-aaz",
-  diagnostics: {},
+  diagnostics: {
+    "Duplicated-success-2xx": {
+      severity: "error",
+      messages: {
+        default: "Duplicated 2xx responses",
+      }
+    },
+    "Duplicated-success-202": {
+      severity: "error",
+      messages: {
+        default: "Duplicated 202 responses",
+      }
+    },
+    "Duplicated-success-204": {
+      severity: "error",
+      messages: {
+        default: "Duplicated 202 responses",
+      }
+    },
+    "Duplicated-redirect": {
+      severity: "error",
+      messages: {
+        default: "Duplicated redirect responses",
+      }
+    },
+    "missing-status-codes": {
+      severity: "error",
+      messages: {
+        default: "Missing status codes",
+      }
+    },
+    "duplicate-body-types": {
+      severity: "error",
+      messages: {
+        default: "Duplicate body types",
+      }
+    },
+    "Unsupported-Type": {
+      severity: "error",
+      messages: {
+        default: "Unsupported type",
+      }
+    },
+    "union-null": {
+      severity: "error",
+      messages: {
+        default: "Union with null",
+      }
+    },
+    "union-unsupported": {
+      severity: "error",
+      messages: {
+        default: "Union with unsupported type",
+      }
+    },
+    "unsupported-status-code-range": {
+      severity: "error",
+      messages: {
+        default: "Unsupported status code range",
+      }
+    },
+  },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<AAZEmitterOptions>,
   }
