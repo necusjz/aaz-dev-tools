@@ -65,27 +65,29 @@ async function findOutputFiles(host: BrowserHost): Promise<string[]> {
 }
 
 export async function getTypespecRPResourcesOperations(obj: any) {
-  const host = await createBrowserHost(libs, {useShim: true})
+  const host = await createBrowserHost(libs, { useShim: true })
   const res = await axios.get(obj.resourceProviderUrl);
   const entryFiles = res.data.entryFiles;
   for (const entryFile of entryFiles) {
-      // cache entry files
-      await host.stat(entryFile);
-      await host.compiler.compile(host, entryFile, {
-          outputDir: outputDir,
-          emit: ["@azure-tools/typespec-aaz"],
-          options: {
-            "@azure-tools/typespec-aaz": {
-              "operation": "get-resources-operations",
-              "api-version": obj.version,
-              "resources": obj.resources.map((it: any)=>{return it.id})
-            },
-          },
-          trace: ['@azure-tools/typespec-aaz',],
-      });
+    // cache entry files
+    await host.stat(entryFile);
+    const cfg = {
+      outputDir: outputDir,
+      emit: ["@azure-tools/typespec-aaz"],
+      options: {
+        "@azure-tools/typespec-aaz": {
+          "operation": "get-resources-operations",
+          "api-version": obj.version,
+          "resources": obj.resources.map((it: any) => { return it.id })
+        },
+      },
+      trace: ['@azure-tools/typespec-aaz',],
+    };
+    console.log(cfg);
+    await host.compiler.compile(host, entryFile, cfg);
 
-      const files = await findOutputFiles(host);
-      const file = await host.readFile(outputDir + files[0]);
-      return JSON.parse(file.text);
+    const files = await findOutputFiles(host);
+    const file = await host.readFile(outputDir + files[0]);
+    return JSON.parse(file.text);
   }
 }

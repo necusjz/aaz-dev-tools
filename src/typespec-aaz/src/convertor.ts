@@ -1,4 +1,4 @@
-import { HttpOperation, HttpOperationResponse, HttpOperationResponseBody, HttpStatusCodeRange, HttpStatusCodesEntry, getHeaderFieldOptions, getQueryParamOptions, getStatusCodeDescription, isContentTypeHeader } from "@typespec/http";
+import { HttpOperation, HttpOperationBody, HttpOperationMultipartBody, HttpOperationResponse, HttpOperationResponseBody, HttpStatusCodeRange, HttpStatusCodesEntry, getHeaderFieldOptions, getQueryParamOptions, getStatusCodeDescription, isContentTypeHeader } from "@typespec/http";
 import { AAZEmitterContext, AAZOperationEmitterContext, AAZSchemaEmitterContext } from "./context.js";
 import { resolveOperationId } from "./utils.js";
 import { TypeSpecPathItem } from "./model/path_item.js";
@@ -10,7 +10,10 @@ import { MutabilityEnum } from "./model/fields.js";
 import { CMDHttpRequest, CMDHttpResponse } from "./model/http.js";
 import { CMDArraySchemaBase, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase } from "./model/schema.js";
 import { reportDiagnostic } from "./lib.js";
-import { getExtensions, isReadonlyProperty } from "@typespec/openapi";
+import {
+  getExtensions,
+  isReadonlyProperty,
+} from "@typespec/openapi";
 
 export function retrieveAAZOperation(context: AAZEmitterContext, operation: HttpOperation, pathItem: TypeSpecPathItem | undefined): TypeSpecPathItem {
   if (!pathItem) {
@@ -182,19 +185,22 @@ function extractHttpRequest(context: AAZOperationEmitterContext, operation: Http
         consumes.push("application/json");
       }
     }
-    const isBinary = isBinaryPayload(body.type, consumes);
-    if (isBinary) {
+    if (body.bodyKind === "multipart") {
+      throw new Error("NotImplementedError: Multipart form data payloads are not supported.");
+    }
+    if (isBinaryPayload(body.type, consumes)) {
       throw new Error("NotImplementedError: Binary payloads are not supported.");
     }
     if (consumes.includes("multipart/form-data")) {
       throw new Error("NotImplementedError: Multipart form data payloads are not supported.");
     }
+
     let schema: CMDSchema | undefined;
-    if (body.parameter) {
+    if (body.property) {
       schema = convert2CMDSchema(
-        buildSchemaEmitterContext(context, body.parameter, "body"),
-        body.parameter,
-        getJsonName(context, body.parameter)
+        buildSchemaEmitterContext(context, body.property, "body"),
+        body.property,
+        getJsonName(context, body.property)
       );
     } else {
       schema = {
@@ -318,7 +324,7 @@ function convert2CMDHttpResponse(context: AAZOperationEmitterContext, response: 
   };
 
   const contentTypes: string[] = [];
-  let body: HttpOperationResponseBody | undefined;
+  let body: HttpOperationBody | HttpOperationMultipartBody | undefined;
   for (const data of response.responses) {
     if (data.headers && Object.keys(data.headers).length > 0) {
       res.header ??= {
@@ -344,7 +350,7 @@ function convert2CMDHttpResponse(context: AAZOperationEmitterContext, response: 
     if (isBinary) {
       throw new Error("NotImplementedError: Binary response are not supported.");
     }
-    if (contentTypes.includes("multipart/form-data")) {
+    if (body.bodyKind === "multipart") {
       throw new Error("NotImplementedError: Multipart form data responses are not supported.");
     }
     let schema = convert2CMDSchemaBase(
