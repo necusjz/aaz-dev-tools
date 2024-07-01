@@ -9,7 +9,7 @@ import { XmsPageable } from "./model/x_ms_pageable.js";
 import { MutabilityEnum } from "./model/fields.js";
 import { CMDHttpRequest, CMDHttpResponse } from "./model/http.js";
 import { CMDArraySchemaBase, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase } from "./model/schema.js";
-import { reportDiagnostic } from "./lib.js";
+import { getTracer, reportDiagnostic } from "./lib.js";
 import {
   getExtensions,
   isReadonlyProperty,
@@ -398,6 +398,7 @@ function buildSchemaEmitterContext(context: AAZOperationEmitterContext, param: T
   return {
     ...context,
     collectionFormat,
+    deep: 0,
   }
 }
 
@@ -452,32 +453,55 @@ function convert2CMDSchemaBase(context: AAZSchemaEmitterContext, type: Type): CM
   if (isNeverType(type)) {
     return undefined;
   }
+  // const tracer = getTracer(context.program);
+  // tracer.trace("Deeps", context.deep.toString());
   let schema;
   switch (type.kind) {
     case "Intrinsic":
       schema = undefined;
       break;
     case "Scalar":
-      schema = convertScalar2CMDSchemaBase(context, type as Scalar);
+      schema = convertScalar2CMDSchemaBase({
+        ...context,
+        deep: context.deep + 1,
+      }, type as Scalar);
       break;
     case "Model":
       if (isArrayModelType(context.program, type)) {
-        schema = convertModel2CMDArraySchemaBase(context, type as Model);
+        schema = convertModel2CMDArraySchemaBase({
+          ...context,
+          deep: context.deep + 1,
+        }, type as Model);
       } else {
-        schema = convertModel2CMDObjectSchemaBase(context, type as Model);
+        schema = convertModel2CMDObjectSchemaBase({
+          ...context,
+          deep: context.deep + 1,
+        }, type as Model);
       }
       break;
     case "ModelProperty":
-      schema = convert2CMDSchema(context, type.type as ModelProperty);
+      schema = convert2CMDSchema({
+        ...context,
+        deep: context.deep + 1,
+      }, type.type as ModelProperty);
       break;
     case "UnionVariant":
-      schema = convert2CMDSchemaBase(context, type.type);
+      schema = convert2CMDSchemaBase({
+        ...context,
+        deep: context.deep + 1,
+      }, type.type);
       break;
     case "Union":
-      schema = convertUnion2CMDSchemaBase(context, type as Union);
+      schema = convertUnion2CMDSchemaBase({
+        ...context,
+        deep: context.deep + 1,
+      }, type as Union);
       break;
     case "Enum":
-      schema = convertEnum2CMDSchemaBase(context, type as Enum);
+      schema = convertEnum2CMDSchemaBase({
+        ...context,
+        deep: context.deep + 1,
+      }, type as Enum);
       break;
     // TODO: handle Literals
     // case "Number":
@@ -573,7 +597,7 @@ function convertModel2CMDArraySchemaBase(context: AAZSchemaEmitterContext, model
   if (isArrayModelType(context.program, model)) {
     const array: CMDArraySchemaBase = {
       type: "array",
-      item: convert2CMDSchemaBase(context, model.indexer.value!),
+      // item: convert2CMDSchemaBase(context, model.indexer.value!),
       identifiers: getExtensions(context.program, model).get("x-ms-identifiers"),
     };
     if (!array.identifiers && getProperty(model.indexer.value as Model, "id")) {
