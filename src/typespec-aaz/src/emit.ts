@@ -95,12 +95,12 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
   context.options?.resources?.forEach((id) => {
     resOps[id] = {
       id: id,
+      path: "",
       version: apiVersion
     };
   });
 
   async function getResourcesOperations() {
-    tracer.trace("options for createGetResourceOperationEmitter", JSON.stringify(context.options, null, 2));
     const services = listServices(context.program);
     for (const service of services) {
       // currentService = service;
@@ -122,7 +122,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
       }
     }
     const results = [];
-    tracer.trace("resOps", JSON.stringify(resOps, null, 2));
+    // tracer.trace("resOps", JSON.stringify(resOps, null, 2));
     for (const id in resOps) {
       if (resOps[id].pathItem) {
         results.push(resOps[id]);
@@ -143,6 +143,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
       const resourceId = swaggerResourcePathToResourceId(resourcePath);
       tracer.trace("ResourceId", resourcePath);
       if (resourceId in resOps) {
+        resOps[resourceId]!.path = resourcePath;
         resOps[resourceId]!.pathItem = retrieveAAZOperation(context, op, resOps[resourceId].pathItem);
       }
     });
