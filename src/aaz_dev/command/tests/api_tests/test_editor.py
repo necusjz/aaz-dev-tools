@@ -10,6 +10,7 @@ from utils.base64 import b64encode_str
 from utils.plane import PlaneEnum
 from utils.client import CloudEnum
 from utils.stage import AAZStageEnum
+from utils.config import Config
 from command.model.configuration import DEFAULT_CONFIRMATION_PROMPT
 
 
@@ -275,6 +276,43 @@ class APIEditorTest(CommandTestCase):
             assert len(command['outputs']) == 1
             assert len(command['resources']) == 1
             assert command['version'] == '2021-12-01'
+
+    @workspace_name("test_workspace_add_sphere")
+    def test_workspace_add_sphere(self, ws_name):
+        with self.app.test_client() as c:
+            rv = c.post(f"/AAZ/Editor/Workspaces", json={
+                "name": ws_name,
+                "plane": PlaneEnum.Mgmt,
+                "modNames": "sphere",
+                "resourceProvider": "Microsoft.AzureSphere",
+                "source": SourceTypeEnum.TypeSpec,
+            })
+            assert rv.status_code == 200
+            ws = rv.get_json()
+            ws_url = ws['url']
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            assert rv.status_code == 200
+            node = rv.get_json()
+            assert node['names'] == ['aaz']
+
+            ws_manager = WorkspaceManager(ws_name)
+            ws_manager.load()
+            
+            version = '2024-04-01'
+            resources = [
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.AzureSphere/catalogs/{catalogName}/products/{productName}/deviceGroups/{deviceGroupName}/devices', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.AzureSphere/catalogs/{catalogName}/products/{productName}/deviceGroups/{deviceGroupName}/devices/{deviceName}', version),
+            ]
+            # with open(os.path.join(Config.get_swagger_root(), 'specification', 'sphere', 'tsp-output', '@azure-tools', 'typespec-aaz','resources_operations.json'), 'w') as f:
+            #     json.dump(resources, f, indent=2, ensure_ascii=False)
+            
+            rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/AddTypespec", json={
+                'module': 'sphere',
+                'version': version,
+                'resources': resources,
+            })
+            assert rv.status_code == 200
 
     @workspace_name("test_workspace_add_typespec")
     def test_workspace_add_typespec(self, ws_name):
