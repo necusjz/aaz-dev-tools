@@ -92,6 +92,12 @@ const libDef = {
         default: "Unsupported status code range",
       }
     },
+    "invalid-default": {
+      severity: "error",
+      messages: {
+        default: "Invalid default value",
+      }
+    },
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<AAZEmitterOptions>,

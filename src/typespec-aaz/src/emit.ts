@@ -122,7 +122,7 @@ function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOption
       }
     }
     const results = [];
-    // tracer.trace("resOps", JSON.stringify(resOps, null, 2));
+    tracer.trace("resOps", JSON.stringify(resOps, null, 2));
     for (const id in resOps) {
       if (resOps[id].pathItem) {
         results.push(resOps[id]);
