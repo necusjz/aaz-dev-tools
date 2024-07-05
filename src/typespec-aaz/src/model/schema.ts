@@ -44,6 +44,18 @@ export class ClsType {
   }
 }
 
+export class ArrayType {
+  itemType: string | ClsType | ArrayType;
+  
+  constructor(itemType: string | ClsType | ArrayType) {
+    this.itemType = itemType;
+  }
+  
+  toJSON() {
+    return `array<${JSON.parse(JSON.stringify(this.itemType))}>`;
+  }
+}
+
 export type CMDSchemaDefault<T> = {
   value: T | null;
 }
@@ -58,7 +70,7 @@ export type CMDSchemaEnum<T> = {
 }
 
 export interface CMDSchemaBase {
-  type: string | ClsType;
+  type: string | ClsType | ArrayType;
 
   readOnly?: boolean;
   frozen?: boolean;   // python set?
@@ -323,7 +335,7 @@ export interface CMDIdentityObjectSchema extends CMDIdentityObjectSchemaBase, CM
 
 // type: array
 export interface CMDArraySchemaBase extends CMDSchemaBase {
-  type: "array";
+  type: ArrayType;
   format?: CMDArrayFormat;
   item?: CMDSchemaBase;
 
@@ -333,5 +345,5 @@ export interface CMDArraySchemaBase extends CMDSchemaBase {
 }
 
 export interface CMDArraySchema extends CMDArraySchemaBase, CMDSchema {
-  type: "array";
+  type: ArrayType;
 }

@@ -23,5 +23,5 @@ export interface AAZOperationEmitterContext extends AAZEmitterContext {
 
 export interface AAZSchemaEmitterContext extends AAZOperationEmitterContext {
     readonly collectionFormat?: string;
-    deep: number;
+    readonly supportClsSchema: boolean;
 }
