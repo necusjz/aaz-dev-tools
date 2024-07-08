@@ -218,6 +218,7 @@ function extractHttpRequest(context: AAZOperationEmitterContext, operation: Http
 
     let schema: CMDSchema | undefined;
     if (body.property) {
+      context.tracer.trace("RetrieveBody", context.visibility.toString());
       schemaContext = buildSchemaEmitterContext(context, body.property, "body");
       schema = convert2CMDSchema(
         schemaContext,
@@ -293,16 +294,18 @@ function extractHttpResponses(context: AAZOperationEmitterContext, operation: Ht
         }
         success204Response = convert2CMDHttpResponse(context, response, ["204"], false);
       }
-      statusCodes = statusCodes.splice(statusCodes.indexOf("202"), 1);
-      statusCodes = statusCodes.splice(statusCodes.indexOf("204"), 1);
+      // remove 202 and 204 from statusCodes
+      statusCodes = statusCodes.filter((code) => code !== "202" && code !== "204");
       if (statusCodes.length > 0) {
         if (success2xxResponse !== undefined) {
-          reportDiagnostic(context.program, {
-            code: "Duplicated-success-2xx",
-            target: response.type,
-          });
+          success2xxResponse.statusCode = [
+            ...success2xxResponse.statusCode!,
+            ...statusCodes.map((code) => Number(code)),
+          ]
+          context.tracer.trace("AppendSuccess2xxStatusCodes", JSON.stringify(success2xxResponse.statusCode));
+        } else {
+          success2xxResponse = convert2CMDHttpResponse(context, response, statusCodes, false);
         }
-        success2xxResponse = convert2CMDHttpResponse(context, response, statusCodes, false);
       }
     } else if (isRedirect) {
       if (redirectResponse !== undefined) {
