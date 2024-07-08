@@ -304,8 +304,8 @@ class APIEditorTest(CommandTestCase):
                     build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.AzureSphere/catalogs/{catalogName}/products/{productName}/deviceGroups/{deviceGroupName}/devices', version),
                     build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.AzureSphere/catalogs/{catalogName}/products/{productName}/deviceGroups/{deviceGroupName}/devices/{deviceName}', version),
             ]
-            # with open(os.path.join(Config.get_swagger_root(), 'specification', 'sphere', 'tsp-output', '@azure-tools', 'typespec-aaz','resources_operations.json'), 'w') as f:
-            #     json.dump(resources, f, indent=2, ensure_ascii=False)
+            with open(os.path.join(Config.get_swagger_root(), 'specification', 'sphere', 'tsp-output', '@azure-tools', 'typespec-aaz','resources_operations.json'), 'w') as f:
+                json.dump(resources, f, indent=2, ensure_ascii=False, sort_keys=True)
             
             rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/AddTypespec", json={
                 'module': 'sphere',

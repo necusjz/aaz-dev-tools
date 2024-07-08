@@ -1,9 +1,9 @@
-import { HttpOperation, HttpOperationBody, HttpOperationMultipartBody, HttpOperationResponse, HttpStatusCodeRange, HttpStatusCodesEntry, Visibility, createMetadataInfo, getHeaderFieldOptions, getQueryParamOptions, getStatusCodeDescription, getVisibilitySuffix, isContentTypeHeader, resolveRequestVisibility } from "@typespec/http";
+import { HttpOperation, HttpOperationBody, HttpOperationMultipartBody, HttpOperationResponse, HttpStatusCodeRange, HttpStatusCodesEntry, Visibility, createMetadataInfo, getHeaderFieldOptions, getQueryParamOptions, getStatusCodeDescription, getVisibilitySuffix, isContentTypeHeader, isVisible, resolveRequestVisibility } from "@typespec/http";
 import { AAZEmitterContext, AAZOperationEmitterContext, AAZSchemaEmitterContext } from "./context.js";
 import { resolveOperationId } from "./utils.js";
 import { TypeSpecPathItem } from "./model/path_item.js";
 import { CMDHttpOperation } from "./model/operation.js";
-import { DiagnosticTarget, Enum, EnumMember, Model, ModelProperty, Namespace, Program, Scalar, TwoLevelMap, Type, Union, Value, getDiscriminator, getDoc, getEncode, getProjectedName, getProperty, isArrayModelType, isNeverType, isNullType, isRecordModelType, isService, isTemplateDeclaration, isTemplateDeclarationOrInstance, isVoidType, resolveEncodedName } from "@typespec/compiler";
+import { DiagnosticTarget, Enum, EnumMember, Model, ModelProperty, Namespace, Program, Scalar, TwoLevelMap, Type, Union, Value, getDiscriminator, getDoc, getEncode, getProjectedName, getProperty, isArrayModelType, isNeverType, isNullType, isRecordModelType, isService, isTemplateDeclaration, isVoidType, resolveEncodedName } from "@typespec/compiler";
 import { LroMetadata, PagedResultMetadata, UnionEnum, getLroMetadata, getPagedResult, getUnionAsEnum } from "@azure-tools/typespec-azure-core";
 import { XmsPageable } from "./model/x_ms_pageable.js";
 import { CMDHttpRequest, CMDHttpResponse } from "./model/http.js";
@@ -24,6 +24,7 @@ interface DiscriminatorInfo {
 
 
 export function retrieveAAZOperation(context: AAZEmitterContext, operation: HttpOperation, pathItem: TypeSpecPathItem | undefined): TypeSpecPathItem {
+  context.tracer.trace("RetrieveOperation", `${operation.verb} ${operation.path}`);
   if (!pathItem) {
     pathItem = {};
   }
@@ -345,7 +346,7 @@ function extractHttpResponses(context: AAZOperationEmitterContext, operation: Ht
 function convert2CMDHttpResponse(context: AAZOperationEmitterContext, response: HttpOperationResponse, statusCodes: string[] | undefined, isError: boolean): CMDHttpResponse {
   const res: CMDHttpResponse = {
     statusCode: statusCodes?.map((code) => Number(code)),
-    isError: isError,
+    isError: isError ? true: undefined,
     description: response.description ?? getResponseDescriptionForStatusCodes(statusCodes),
   };
 
@@ -525,16 +526,17 @@ function convert2CMDSchemaBase(context: AAZSchemaEmitterContext, type: Type): CM
 }
 
 function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, model: Model): CMDObjectSchemaBase | CMDClsSchemaBase | undefined {
-  if (isArrayModelType(context.program, model)) {
+  const payloadModel = context.metadateInfo.getEffectivePayloadType(model, context.visibility) as Model;
+  if (isArrayModelType(context.program, payloadModel)) {
     return undefined;
   }
 
   let pending;
   if (context.supportClsSchema) {
-    pending = context.pendingSchemas.getOrAdd(model, context.visibility, () => ({
-      type: model,
+    pending = context.pendingSchemas.getOrAdd(payloadModel, context.visibility, () => ({
+      type: payloadModel,
       visibility: context.visibility,
-      ref: context.refs.getOrAdd(model, context.visibility, () => new Ref()),
+      ref: context.refs.getOrAdd(payloadModel, context.visibility, () => new Ref()),
       count: 0,
     }));
     pending.count++;
@@ -544,8 +546,6 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
       } as CMDClsSchemaBase;
     }
   }
-
-  const payloadModel = context.metadateInfo.getEffectivePayloadType(model, context.visibility) as Model;
 
   // const name = getOpenAPITypeName(context.program, type, context.typeNameOptions);
 
@@ -565,7 +565,7 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
     if (baseSchema) {
       Object.assign(object, baseSchema, {cls: pending?.ref});
     }
-    const discriminatorInfo = getDiscriminatorInfo(context, model);
+    const discriminatorInfo = getDiscriminatorInfo(context, payloadModel);
     if (discriminatorInfo) {
       // directly use child definition instead of polymorphism.
       // So the value for discriminator property is const.
@@ -591,6 +591,9 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
   for (const prop of payloadModel.properties.values()) {
     if (isNeverType(prop.type)) {
       // If the property has a type of 'never', don't include it in the schema
+      continue;
+    }
+    if (!context.metadateInfo.isPayloadProperty(prop, context.visibility)) {
       continue;
     }
 
@@ -666,16 +669,17 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
 }
 
 function convertModel2CMDArraySchemaBase(context: AAZSchemaEmitterContext, model: Model): CMDArraySchemaBase | CMDClsSchemaBase | undefined {
-  if (!isArrayModelType(context.program, model)) {
+  const payloadModel = context.metadateInfo.getEffectivePayloadType(model, context.visibility) as Model;
+  if (!isArrayModelType(context.program, payloadModel)) {
     return undefined;
   }
 
   let pending;
   if (context.supportClsSchema) {
-    pending = context.pendingSchemas.getOrAdd(model, context.visibility, () => ({
-      type: model,
+    pending = context.pendingSchemas.getOrAdd(payloadModel, context.visibility, () => ({
+      type: payloadModel,
       visibility: context.visibility,
-      ref: context.refs.getOrAdd(model, context.visibility, () => new Ref()),
+      ref: context.refs.getOrAdd(payloadModel, context.visibility, () => new Ref()),
       count: 0,
     }));
     pending.count++;
@@ -685,11 +689,6 @@ function convertModel2CMDArraySchemaBase(context: AAZSchemaEmitterContext, model
         type: new ClsType(pending),
       } as CMDClsSchemaBase;
     }
-  }
-
-  const payloadModel = context.metadateInfo.getEffectivePayloadType(model, context.visibility) as Model;
-  if (!isArrayModelType(context.program, payloadModel)) {
-    return undefined;
   }
 
   const item = convert2CMDSchemaBase({
@@ -721,12 +720,16 @@ function convertModel2CMDObjectDiscriminator(context: AAZSchemaEmitterContext, m
   };
 
   const payloadModel = context.metadateInfo.getEffectivePayloadType(model, context.visibility) as Model;
+
   const properties: Record<string, CMDSchema> = {};
   const discriminator = getDiscriminator(context.program, payloadModel);
 
   for (const prop of payloadModel.properties.values()) {
     if (isNeverType(prop.type)) {
       // If the property has a type of 'never', don't include it in the schema
+      continue;
+    }
+    if (!context.metadateInfo.isPayloadProperty(prop, context.visibility)) {
       continue;
     }
 
@@ -947,7 +950,7 @@ function convertUnion2CMDSchemaBase(context: AAZSchemaEmitterContext, union: Uni
     const type = nonNullOptions[0];
     schema = {
       ...convert2CMDSchemaBase(context, type)!,
-      nullable,
+      nullable: nullable ? true : undefined,
     }
   } else {
     const [asEnum] = getUnionAsEnum(union);
@@ -968,7 +971,7 @@ function convertUnionEnum2CMDSchemaBase(context: AAZSchemaEmitterContext, union:
   if (e.kind === 'number') {
     schema = {
       type: "integer",
-      nullable: e.nullable,
+      nullable: e.nullable ? true : undefined,
       enum: {
         items: Array.from(e.flattenedMembers.values()).map((member) => {
           return {
@@ -980,7 +983,7 @@ function convertUnionEnum2CMDSchemaBase(context: AAZSchemaEmitterContext, union:
   } else if (e.kind === 'string') {
     schema = {
       type: "string",
-      nullable: e.nullable,
+      nullable: e.nullable ? true : undefined,
       enum: {
         items: Array.from(e.flattenedMembers.values()).map((member) => {
           return {
