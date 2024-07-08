@@ -7,7 +7,7 @@ import { DiagnosticTarget, Enum, EnumMember, Model, ModelProperty, Namespace, Pr
 import { LroMetadata, PagedResultMetadata, UnionEnum, getLroMetadata, getPagedResult, getUnionAsEnum } from "@azure-tools/typespec-azure-core";
 import { XmsPageable } from "./model/x_ms_pageable.js";
 import { CMDHttpRequest, CMDHttpResponse } from "./model/http.js";
-import { CMDArraySchemaBase, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, Ref, ClsType, ArrayType, CMDObjectSchemaDiscriminator} from "./model/schema.js";
+import { CMDArraySchemaBase, CMDClsSchema, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, Ref, ClsType, ArrayType, CMDObjectSchemaDiscriminator} from "./model/schema.js";
 import { reportDiagnostic } from "./lib.js";
 import {
   getExtensions,
@@ -15,6 +15,7 @@ import {
   isReadonlyProperty,
 } from "@typespec/openapi";
 import { assert } from "console";
+import { shouldFlattenProperty } from "@azure-tools/typespec-client-generator-core";
 
 
 interface DiscriminatorInfo {
@@ -225,7 +226,8 @@ function extractHttpRequest(context: AAZOperationEmitterContext, operation: Http
         schemaContext,
         body.property,
         getJsonName(context, body.property)
-      );
+      )!;
+      schema.required = !body.property.optional;
     } else {
       schemaContext = buildSchemaEmitterContext(context, body.type, "body");
       schema = {
@@ -238,6 +240,7 @@ function extractHttpRequest(context: AAZOperationEmitterContext, operation: Http
       };
     }
     if (schema !== undefined) {
+      // schema.required = !methodParams.body.type.optional;
       if (schema.type === "object") {
         schema = {
           ...schema,
@@ -598,7 +601,7 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
     }
 
     const jsonName = getJsonName(context, prop);
-    const schema = convert2CMDSchema({
+    let schema = convert2CMDSchema({
       ...context,
       supportClsSchema: true,
     }, prop, jsonName);
@@ -608,6 +611,19 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
       }
       if (!context.metadateInfo.isOptional(prop, context.visibility) || prop.name === discriminator?.propertyName) {
         schema.required = true;
+      }
+      if (shouldFlattenProperty(context.sdkContext, prop)) {
+        if (schema.type === "object") {
+          schema = {
+            ...schema,
+            clientFlatten: true,
+          } as CMDObjectSchema;
+        } else if (schema.type instanceof ClsType) {
+          schema = {
+            ...schema,
+            clientFlatten: true,
+          } as CMDClsSchema;
+        }
       }
       properties[schema.name] = schema;
     }
@@ -658,7 +674,10 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
   }
 
   if (Object.keys(properties).length > 0) {
-    object.props = Object.values(properties);
+    object.props = Object.values(properties).filter((prop) => !isEmptiedSchema(prop));
+    if (object.props.length === 0) {
+      object.props = undefined;
+    }
   }
 
   if (pending) {
@@ -734,7 +753,7 @@ function convertModel2CMDObjectDiscriminator(context: AAZSchemaEmitterContext, m
     }
 
     const jsonName = getJsonName(context, prop);
-    const schema = convert2CMDSchema({
+    let schema = convert2CMDSchema({
       ...context,
       supportClsSchema: true,
     }, prop, jsonName);
@@ -744,6 +763,19 @@ function convertModel2CMDObjectDiscriminator(context: AAZSchemaEmitterContext, m
       }
       if (!context.metadateInfo.isOptional(prop, context.visibility) || prop.name === discriminator?.propertyName) {
         schema.required = true;
+      }
+      if (shouldFlattenProperty(context.sdkContext, prop)) {
+        if (schema.type === "object") {
+          schema = {
+            ...schema,
+            clientFlatten: true,
+          } as CMDObjectSchema;
+        } else if (schema.type instanceof ClsType) {
+          schema = {
+            ...schema,
+            clientFlatten: true,
+          } as CMDClsSchema;
+        }
       }
       properties[schema.name] = schema;
     }
@@ -786,7 +818,10 @@ function convertModel2CMDObjectDiscriminator(context: AAZSchemaEmitterContext, m
   }
 
   if (Object.keys(properties).length > 0) {
-    object.props = Object.values(properties);
+    object.props = Object.values(properties).filter((prop) => !isEmptiedSchema(prop));
+    if (object.props.length === 0) {
+      object.props = undefined;
+    }
   }
 
   return object;
@@ -1116,6 +1151,23 @@ function processPendingSchemas(context: AAZOperationEmitterContext, verbVisibili
       }
     }
   }
+}
+
+function isEmptiedSchema(schema: CMDSchema): boolean {
+  if (!schema.required) {
+    if (schema.type === "object") {
+      const objectSchema = schema as CMDObjectSchema
+      if (!objectSchema.additionalProps && !objectSchema.props && !objectSchema.discriminators && !objectSchema.nullable) {
+        return true;
+      }
+    } else if (schema.type instanceof ArrayType) {
+      const arraySchema = schema as CMDArraySchemaBase;
+      if (!arraySchema.item && !arraySchema.nullable) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 // Utils functions
