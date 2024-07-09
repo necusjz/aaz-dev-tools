@@ -43,3 +43,6 @@ This issue is caused by the miss match between Swagger(OpenAPI Spec) definition 
 
 ## Does AAZDev support pagination?
 Yes, codegen naturally supports pagination when there is `x-ms-pageable` defined in swagger, e.g., https://learn.microsoft.com/en-us/cli/azure/network?view=azure-cli-latest#az-network-list-usages-optional-parameters.
+
+## How to fix CI failures when raising a pull request in AAZ repo?
+Please refer to [Verify Metadata](https://azure.github.io/aaz-dev-tools/#verify-meatadata) section.
