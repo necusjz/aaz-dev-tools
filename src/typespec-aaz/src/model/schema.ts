@@ -1,6 +1,60 @@
+import { Type } from "@typespec/compiler";
 import { CMDVariantField } from "./fields.js"
 import { CMDArrayFormat, CMDFloatFormat, CMDIntegerFormat, CMDObjectFormat, CMDResourceIdFormat, CMDStringFormat } from "./format.js";
+import { Visibility } from "@typespec/http";
 
+
+export interface PendingSchema {
+  /** The TYPESPEC type for the schema */
+  type: Type;
+  /** The visibility to apply when computing the schema */
+  visibility: Visibility;
+
+  /**
+   * The JSON reference to use to point to this schema.
+   *
+   * Note that its value will not be computed until all schemas have been
+   * computed as we will add a suffix to the name if more than one schema
+   * must be emitted for the type for different visibilities.
+   */
+  ref: Ref;
+
+  schema?: CMDObjectSchemaBase | CMDArraySchemaBase;
+
+  /** The reference count for this schema */
+  count: number;
+}
+
+export class Ref {
+  value?: string;
+  toJSON() {
+    return this.value;
+  }
+}
+
+export class ClsType {
+  pendingSchema: PendingSchema;
+  
+  constructor(pendingSchema: PendingSchema) {
+    this.pendingSchema = pendingSchema;
+  }
+  
+  toJSON() {
+    return "@" + this.pendingSchema.ref.toJSON()!;
+  }
+}
+
+export class ArrayType {
+  itemType: string | ClsType | ArrayType;
+  
+  constructor(itemType: string | ClsType | ArrayType) {
+    this.itemType = itemType;
+  }
+  
+  toJSON() {
+    return `array<${JSON.parse(JSON.stringify(this.itemType))}>`;
+  }
+}
 
 export type CMDSchemaDefault<T> = {
   value: T | null;
@@ -16,7 +70,7 @@ export type CMDSchemaEnum<T> = {
 }
 
 export interface CMDSchemaBase {
-  type: string;
+  type: string | ClsType | ArrayType;
 
   readOnly?: boolean;
   frozen?: boolean;   // python set?
@@ -44,10 +98,11 @@ export interface CMDSchemaT<T> extends CMDSchema {
 }
 
 export interface CMDClsSchemaBase extends CMDSchemaBase {
-
+  type: ClsType;
 }
 
 export interface CMDClsSchema extends CMDClsSchemaBase, CMDSchema {
+  type: ClsType;
   clientFlatten?: boolean;
 }
 
@@ -260,7 +315,7 @@ export interface CMDObjectSchemaBase extends CMDSchemaBase {
   props?: CMDSchema[];
   discriminators?: CMDObjectSchemaDiscriminator[];
   additionalProps?: CMDObjectSchemaAdditionalProperties;
-  cls?: string;
+  cls?: Ref;
 }
 
 export interface CMDObjectSchema extends CMDObjectSchemaBase, CMDSchema {
@@ -280,15 +335,15 @@ export interface CMDIdentityObjectSchema extends CMDIdentityObjectSchemaBase, CM
 
 // type: array
 export interface CMDArraySchemaBase extends CMDSchemaBase {
-  type: "array";
+  type: ArrayType;
   format?: CMDArrayFormat;
   item?: CMDSchemaBase;
 
   identifiers?: string[];
 
-  cls?: string;
+  cls?: Ref;
 }
 
 export interface CMDArraySchema extends CMDArraySchemaBase, CMDSchema {
-  type: "array";
+  type: ArrayType;
 }

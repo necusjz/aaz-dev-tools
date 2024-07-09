@@ -32,12 +32,6 @@ const EmitterOptionsSchema: JSONSchemaType<AAZEmitterOptions> = {
 const libDef = {
   name: "@azure-tools/typespec-aaz",
   diagnostics: {
-    "Duplicated-success-2xx": {
-      severity: "error",
-      messages: {
-        default: "Duplicated 2xx responses",
-      }
-    },
     "Duplicated-success-202": {
       severity: "error",
       messages: {
@@ -90,6 +84,12 @@ const libDef = {
       severity: "error",
       messages: {
         default: "Unsupported status code range",
+      }
+    },
+    "invalid-default": {
+      severity: "error",
+      messages: {
+        default: "Invalid default value",
       }
     },
   },

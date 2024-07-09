@@ -16,5 +16,6 @@ export interface AAZResourceSchema {
   /** The available paths and operations for typespec resource */
   pathItem?: TypeSpecPathItem;
   id: string;
+  path: string;
   version?: string;
 }

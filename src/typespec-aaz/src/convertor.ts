@@ -1,21 +1,31 @@
-import { HttpOperation, HttpOperationBody, HttpOperationMultipartBody, HttpOperationResponse, HttpOperationResponseBody, HttpStatusCodeRange, HttpStatusCodesEntry, getHeaderFieldOptions, getQueryParamOptions, getStatusCodeDescription, isContentTypeHeader } from "@typespec/http";
+import { HttpOperation, HttpOperationBody, HttpOperationMultipartBody, HttpOperationResponse, HttpStatusCodeRange, HttpStatusCodesEntry, Visibility, createMetadataInfo, getHeaderFieldOptions, getQueryParamOptions, getStatusCodeDescription, getVisibilitySuffix, isContentTypeHeader, isVisible, resolveRequestVisibility } from "@typespec/http";
 import { AAZEmitterContext, AAZOperationEmitterContext, AAZSchemaEmitterContext } from "./context.js";
 import { resolveOperationId } from "./utils.js";
 import { TypeSpecPathItem } from "./model/path_item.js";
 import { CMDHttpOperation } from "./model/operation.js";
-import { DiagnosticTarget, Enum, EnumMember, Model, ModelProperty, Program, Scalar, Type, Union, getDiscriminator, getDoc, getEncode, getProjectedName, getProperty, isArrayModelType, isNeverType, isNullType, isRecordModelType, isTemplateDeclarationOrInstance, isVoidType, resolveEncodedName } from "@typespec/compiler";
+import { DiagnosticTarget, Enum, EnumMember, Model, ModelProperty, Namespace, Program, Scalar, TwoLevelMap, Type, Union, Value, getDiscriminator, getDoc, getEncode, getProjectedName, getProperty, isArrayModelType, isNeverType, isNullType, isRecordModelType, isService, isTemplateDeclaration, isVoidType, resolveEncodedName } from "@typespec/compiler";
 import { LroMetadata, PagedResultMetadata, UnionEnum, getLroMetadata, getPagedResult, getUnionAsEnum } from "@azure-tools/typespec-azure-core";
 import { XmsPageable } from "./model/x_ms_pageable.js";
-import { MutabilityEnum } from "./model/fields.js";
 import { CMDHttpRequest, CMDHttpResponse } from "./model/http.js";
-import { CMDArraySchemaBase, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase } from "./model/schema.js";
-import { getTracer, reportDiagnostic } from "./lib.js";
+import { CMDArraySchemaBase, CMDClsSchema, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, Ref, ClsType, ArrayType, CMDObjectSchemaDiscriminator} from "./model/schema.js";
+import { reportDiagnostic } from "./lib.js";
 import {
   getExtensions,
+  getOpenAPITypeName,
   isReadonlyProperty,
 } from "@typespec/openapi";
+import { assert } from "console";
+import { shouldFlattenProperty } from "@azure-tools/typespec-client-generator-core";
+
+
+interface DiscriminatorInfo {
+  propertyName:string;
+  value:string;
+}
+
 
 export function retrieveAAZOperation(context: AAZEmitterContext, operation: HttpOperation, pathItem: TypeSpecPathItem | undefined): TypeSpecPathItem {
+  context.tracer.trace("RetrieveOperation", `${operation.verb} ${operation.path}`);
   if (!pathItem) {
     pathItem = {};
   }
@@ -28,47 +38,54 @@ export function retrieveAAZOperation(context: AAZEmitterContext, operation: Http
   pathItem[verb]!.operationId = opId;
   pathItem[verb]!.pageable = extractPagedMetadata(context.program, operation);
 
+  const metadateInfo = createMetadataInfo(context.program, {
+    canonicalVisibility: Visibility.Read,
+  });
+  const typeNameOptions = {
+    // shorten type names by removing TypeSpec and service namespace
+    namespaceFilter(ns: Namespace) {
+      return !isService(context.program, ns);
+    },
+  };
+  const opContext: AAZOperationEmitterContext = {
+    ...context,
+    typeNameOptions,
+    metadateInfo,
+    operationId: opId,
+    visibility: Visibility.Read,
+    pendingSchemas: new TwoLevelMap(),
+    refs: new TwoLevelMap(),
+  };
+  const verbVisibility = resolveRequestVisibility(context.program, operation.operation, verb);
   if (verb === 'get') {
-    pathItem[verb]!.read = convert2CMDOperation({
-      ...context,
-      operationId: opId,
-      mutability: MutabilityEnum.Read,
-    }, operation);
+    opContext.visibility = Visibility.Query;
+    pathItem[verb]!.read = convert2CMDOperation(opContext, operation);
+    processPendingSchemas(opContext, verbVisibility, "read");
   } else if (verb === 'head') {
-    pathItem[verb]!.read = convert2CMDOperation({
-      ...context,
-      operationId: opId,
-      mutability: MutabilityEnum.Read,
-    }, operation);
+    opContext.visibility = Visibility.Query;
+    pathItem[verb]!.read = convert2CMDOperation(opContext, operation);
+    processPendingSchemas(opContext, verbVisibility, "read");
   } else if (verb === 'delete') {
-    pathItem[verb]!.create = convert2CMDOperation({
-      ...context,
-      operationId: opId,
-      mutability: MutabilityEnum.Create,
-    }, operation);
+    opContext.visibility = Visibility.Delete;
+    pathItem[verb]!.create = convert2CMDOperation(opContext, operation);
+    processPendingSchemas(opContext, verbVisibility, "create");
   } else if (verb === 'post') {
-    pathItem[verb]!.create = convert2CMDOperation({
-      ...context,
-      operationId: opId,
-      mutability: MutabilityEnum.Create,
-    }, operation);
+    opContext.visibility = Visibility.Create;
+    pathItem[verb]!.create = convert2CMDOperation(opContext, operation);
+    processPendingSchemas(opContext, verbVisibility, "create");
   } else if (verb === 'put') {
-    pathItem[verb]!.create = convert2CMDOperation({
-      ...context,
-      operationId: opId,
-      mutability: MutabilityEnum.Create,
-    }, operation);
-    pathItem[verb]!.update = convert2CMDOperation({
-      ...context,
-      operationId: opId,
-      mutability: MutabilityEnum.Update,
-    }, operation);
+    opContext.visibility = Visibility.Create;
+    pathItem[verb]!.create = convert2CMDOperation(opContext, operation);
+    processPendingSchemas(opContext, verbVisibility, "create");
+    opContext.visibility = Visibility.Update;
+    opContext.pendingSchemas.clear();
+    opContext.refs.clear();
+    pathItem[verb]!.update = convert2CMDOperation(opContext, operation);
+    processPendingSchemas(opContext, verbVisibility, "update");
   } else if (verb === 'patch') {
-    pathItem[verb]!.update = convert2CMDOperation({
-      ...context,
-      operationId: opId,
-      mutability: MutabilityEnum.Update,
-    }, operation);
+    opContext.visibility = Visibility.Update;
+    pathItem[verb]!.update = convert2CMDOperation(opContext, operation);
+    processPendingSchemas(opContext, verbVisibility, "update");
   } else {
     console.log(" verb not expected: ", verb)
   }
@@ -99,7 +116,10 @@ function convert2CMDOperation(context: AAZOperationEmitterContext, operation: Ht
   }
 
   op.http.request = extractHttpRequest(context, operation);
-  op.http.responses = extractHttpResponses(context, operation, lroMetadata);
+  op.http.responses = extractHttpResponses({
+    ...context,
+    visibility: Visibility.Read,
+  }, operation, lroMetadata);
   return op;
 }
 
@@ -108,13 +128,13 @@ function convert2CMDOperation(context: AAZOperationEmitterContext, operation: Ht
 //     // return context.sdkContext.host;
 // }
 
-
 function extractHttpRequest(context: AAZOperationEmitterContext, operation: HttpOperation): CMDHttpRequest | undefined {
   // TODO: Add host parameters to the request
   const request: CMDHttpRequest = {
     method: operation.verb,
   };
 
+  let schemaContext;
   const methodParams = operation.parameters;
   const paramModels: Record<string, Record<string, CMDSchema>> = {};
   let clientRequestIdName;
@@ -125,14 +145,17 @@ function extractHttpRequest(context: AAZOperationEmitterContext, operation: Http
     if (isNeverType(httpOpParam.param.type)) {
       continue;
     }
+    schemaContext = buildSchemaEmitterContext(context, httpOpParam.param, httpOpParam.type);
     const schema = convert2CMDSchema(
-      buildSchemaEmitterContext(context, httpOpParam.param, httpOpParam.type),
+      schemaContext,
       httpOpParam.param,
       httpOpParam.name
     );
     if (!schema) {
       continue;
     }
+
+    schema.required = !httpOpParam.param.optional;
 
     if (paramModels[httpOpParam.type] === undefined) {
       paramModels[httpOpParam.type] = {};
@@ -197,15 +220,19 @@ function extractHttpRequest(context: AAZOperationEmitterContext, operation: Http
 
     let schema: CMDSchema | undefined;
     if (body.property) {
+      context.tracer.trace("RetrieveBody", context.visibility.toString());
+      schemaContext = buildSchemaEmitterContext(context, body.property, "body");
       schema = convert2CMDSchema(
-        buildSchemaEmitterContext(context, body.property, "body"),
+        schemaContext,
         body.property,
         getJsonName(context, body.property)
-      );
+      )!;
+      schema.required = !body.property.optional;
     } else {
+      schemaContext = buildSchemaEmitterContext(context, body.type, "body");
       schema = {
         ...convert2CMDSchemaBase(
-          buildSchemaEmitterContext(context, body.type, "body"),
+          schemaContext,
           body.type
         )!,
         name: "body",
@@ -213,6 +240,7 @@ function extractHttpRequest(context: AAZOperationEmitterContext, operation: Http
       };
     }
     if (schema !== undefined) {
+      // schema.required = !methodParams.body.type.optional;
       if (schema.type === "object") {
         schema = {
           ...schema,
@@ -270,16 +298,18 @@ function extractHttpResponses(context: AAZOperationEmitterContext, operation: Ht
         }
         success204Response = convert2CMDHttpResponse(context, response, ["204"], false);
       }
-      statusCodes = statusCodes.splice(statusCodes.indexOf("202"), 1);
-      statusCodes = statusCodes.splice(statusCodes.indexOf("204"), 1);
+      // remove 202 and 204 from statusCodes
+      statusCodes = statusCodes.filter((code) => code !== "202" && code !== "204");
       if (statusCodes.length > 0) {
         if (success2xxResponse !== undefined) {
-          reportDiagnostic(context.program, {
-            code: "Duplicated-success-2xx",
-            target: response.type,
-          });
+          success2xxResponse.statusCode = [
+            ...success2xxResponse.statusCode!,
+            ...statusCodes.map((code) => Number(code)),
+          ]
+          context.tracer.trace("AppendSuccess2xxStatusCodes", JSON.stringify(success2xxResponse.statusCode));
+        } else {
+          success2xxResponse = convert2CMDHttpResponse(context, response, statusCodes, false);
         }
-        success2xxResponse = convert2CMDHttpResponse(context, response, statusCodes, false);
       }
     } else if (isRedirect) {
       if (redirectResponse !== undefined) {
@@ -319,7 +349,7 @@ function extractHttpResponses(context: AAZOperationEmitterContext, operation: Ht
 function convert2CMDHttpResponse(context: AAZOperationEmitterContext, response: HttpOperationResponse, statusCodes: string[] | undefined, isError: boolean): CMDHttpResponse {
   const res: CMDHttpResponse = {
     statusCode: statusCodes?.map((code) => Number(code)),
-    isError: isError,
+    isError: isError ? true: undefined,
     description: response.description ?? getResponseDescriptionForStatusCodes(statusCodes),
   };
 
@@ -356,7 +386,7 @@ function convert2CMDHttpResponse(context: AAZOperationEmitterContext, response: 
     let schema = convert2CMDSchemaBase(
       {
         ...buildSchemaEmitterContext(context, body.type, "body"),
-        mutability: MutabilityEnum.Read,
+        visibility: Visibility.Read,
       },
       body.type
     );
@@ -398,7 +428,7 @@ function buildSchemaEmitterContext(context: AAZOperationEmitterContext, param: T
   return {
     ...context,
     collectionFormat,
-    deep: 0,
+    supportClsSchema: true,
   }
 }
 
@@ -445,6 +475,12 @@ function convert2CMDSchema(context: AAZSchemaEmitterContext, param: ModelPropert
       name: name ?? param.name,
       description: getDoc(context.program, param),
     }
+
+    if (param.defaultValue) {
+      schema.default = {
+        value: getDefaultValue(context, param.defaultValue),
+      }
+    }
   }
   return schema;
 }
@@ -453,55 +489,32 @@ function convert2CMDSchemaBase(context: AAZSchemaEmitterContext, type: Type): CM
   if (isNeverType(type)) {
     return undefined;
   }
-  // const tracer = getTracer(context.program);
-  // tracer.trace("Deeps", context.deep.toString());
   let schema;
   switch (type.kind) {
     case "Intrinsic":
       schema = undefined;
       break;
     case "Scalar":
-      schema = convertScalar2CMDSchemaBase({
-        ...context,
-        deep: context.deep + 1,
-      }, type as Scalar);
+      schema = convertScalar2CMDSchemaBase(context, type as Scalar);
       break;
     case "Model":
       if (isArrayModelType(context.program, type)) {
-        schema = convertModel2CMDArraySchemaBase({
-          ...context,
-          deep: context.deep + 1,
-        }, type as Model);
+        schema = convertModel2CMDArraySchemaBase(context, type as Model);
       } else {
-        schema = convertModel2CMDObjectSchemaBase({
-          ...context,
-          deep: context.deep + 1,
-        }, type as Model);
+        schema = convertModel2CMDObjectSchemaBase(context, type as Model);
       }
       break;
     case "ModelProperty":
-      schema = convert2CMDSchema({
-        ...context,
-        deep: context.deep + 1,
-      }, type.type as ModelProperty);
+      schema = convert2CMDSchema(context, type.type as ModelProperty);
       break;
     case "UnionVariant":
-      schema = convert2CMDSchemaBase({
-        ...context,
-        deep: context.deep + 1,
-      }, type.type);
+      schema = convert2CMDSchemaBase(context, type.type);
       break;
     case "Union":
-      schema = convertUnion2CMDSchemaBase({
-        ...context,
-        deep: context.deep + 1,
-      }, type as Union);
+      schema = convertUnion2CMDSchemaBase(context, type as Union);
       break;
     case "Enum":
-      schema = convertEnum2CMDSchemaBase({
-        ...context,
-        deep: context.deep + 1,
-      }, type as Enum);
+      schema = convertEnum2CMDSchemaBase(context, type as Enum);
       break;
     // TODO: handle Literals
     // case "Number":
@@ -511,102 +524,309 @@ function convert2CMDSchemaBase(context: AAZSchemaEmitterContext, type: Type): CM
     default:
       reportDiagnostic(context.program, { code: "Unsupported-Type", target: type });
   }
+
   return schema;
 }
 
-function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, model: Model): CMDObjectSchemaBase | undefined {
-  if (isArrayModelType(context.program, model)) {
+function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, model: Model): CMDObjectSchemaBase | CMDClsSchemaBase | undefined {
+  const payloadModel = context.metadateInfo.getEffectivePayloadType(model, context.visibility) as Model;
+  if (isArrayModelType(context.program, payloadModel)) {
     return undefined;
   }
 
+  let pending;
+  if (context.supportClsSchema) {
+    pending = context.pendingSchemas.getOrAdd(payloadModel, context.visibility, () => ({
+      type: payloadModel,
+      visibility: context.visibility,
+      ref: context.refs.getOrAdd(payloadModel, context.visibility, () => new Ref()),
+      count: 0,
+    }));
+    pending.count++;
+    if (pending.count > 1) {
+      return {
+        type: new ClsType(pending),
+      } as CMDClsSchemaBase;
+    }
+  }
+
+  // const name = getOpenAPITypeName(context.program, type, context.typeNameOptions);
+
   const object: CMDObjectSchemaBase = {
     type: "object",
+    cls: pending?.ref,
   };
 
-  if (model.baseModel) {
-    // TODO: handle discriminator
-  }
+  const properties: Record<string, CMDSchema> = {};
 
-  if (isRecordModelType(context.program, model)) {
-    object.additionalProps = {
-      item: convert2CMDSchemaBase(context, model.indexer.value),
+  // inherit from base model
+  if (payloadModel.baseModel) {
+    const baseSchema = convert2CMDSchemaBase({
+      ...context,
+      supportClsSchema: false,
+    }, payloadModel.baseModel);
+    if (baseSchema) {
+      Object.assign(object, baseSchema, {cls: pending?.ref});
     }
-  }
-  
-  // TODO: handle derived models
-  const discriminator = getDiscriminator(context.program, model);
-  if (discriminator) {
-    const { propertyName } = discriminator;
-    // Push discriminator into base type, but only if it is not already there
-    if (!model.properties.get(propertyName)) {
-      const discriminatorProperty: CMDStringSchema = {
-        name: propertyName,
-        type: "string",
-        required: true,
-        description: `Discriminator property for ${model.name}.`,
-      };
-      object.props = [
-        ...object.props ?? [],
-        discriminatorProperty,
-      ]
+    const discriminatorInfo = getDiscriminatorInfo(context, payloadModel);
+    if (discriminatorInfo) {
+      // directly use child definition instead of polymorphism.
+      // So the value for discriminator property is const.
+      // filter prop in object.props by discriminatorInfo.propertyName and set its const value
+      const prop = object.props!.find((prop) => prop.name === discriminatorInfo.propertyName)!;
+      prop.const = true;
+      prop.default = {
+        value: discriminatorInfo.value,
+      }
+      object.discriminators = undefined;
     }
 
-    // TODO: add possible enum values for the discriminatorProperty
-    // TODO: handle discriminators
+    if (object.props) {
+      for (const prop of object.props) {
+        properties[prop.name] = prop;
+      }
+      object.props = undefined;
+    }
   }
 
-  for (const prop of model.properties.values()) {
+  const discriminator = getDiscriminator(context.program, payloadModel);
+
+  for (const prop of payloadModel.properties.values()) {
     if (isNeverType(prop.type)) {
       // If the property has a type of 'never', don't include it in the schema
       continue;
     }
+    if (!context.metadateInfo.isPayloadProperty(prop, context.visibility)) {
+      continue;
+    }
 
     const jsonName = getJsonName(context, prop);
-    const schema = convert2CMDSchema(context, prop, jsonName);
+    let schema = convert2CMDSchema({
+      ...context,
+      supportClsSchema: true,
+    }, prop, jsonName);
     if (schema) {
       if (isReadonlyProperty(context.program, prop)) {
         schema.readOnly = true;
       }
-
-      object.props = [
-        ...object.props ?? [],
-        schema,
-      ]
+      if (!context.metadateInfo.isOptional(prop, context.visibility) || prop.name === discriminator?.propertyName) {
+        schema.required = true;
+      }
+      if (shouldFlattenProperty(context.sdkContext, prop)) {
+        if (schema.type === "object") {
+          schema = {
+            ...schema,
+            clientFlatten: true,
+          } as CMDObjectSchema;
+        } else if (schema.type instanceof ClsType) {
+          schema = {
+            ...schema,
+            clientFlatten: true,
+          } as CMDClsSchema;
+        }
+      }
+      properties[schema.name] = schema;
     }
   }
 
-  // Special case: if a model type extends a single *templated* base type and
-  // has no properties of its own, absorb the definition of the base model
-  // into this schema definition.  The assumption here is that any model type
-  // defined like this is just meant to rename the underlying instance of a
-  // templated type.
-  if (model.baseModel && isTemplateDeclarationOrInstance(model.baseModel) && (object.props ?? []).length === 0) {
-    // Take the base model schema but carry across the documentation property
-    // that we set before
-    const baseSchema = convert2CMDSchemaBase(context, model.baseModel);
-    Object.assign(object, baseSchema);
-  } else if (model.baseModel) {
-    // TODO:
+  if (discriminator) {
+    const { propertyName } = discriminator;
+    assert(object.discriminators === undefined, "Discriminator should be undefined.");
+    // Push discriminator into base type, but only if it is not already there
+    if (!payloadModel.properties.get(propertyName)) {
+      const discriminatorProperty: CMDStringSchema = {
+        name: propertyName,
+        type: "string",
+        required: true,
+        description: `Discriminator property for ${payloadModel.name}.`,
+      };
+      properties[propertyName] = discriminatorProperty;
+    }
+
+    const discProperty = properties[propertyName] as CMDStringSchema;
+
+    const derivedModels = payloadModel.derivedModels.filter(includeDerivedModel);
+    for (const child of derivedModels) {
+      const childDiscriminatorValue = getDiscriminatorInfo(context, child);
+      if (childDiscriminatorValue) {
+        const disc = convertModel2CMDObjectDiscriminator(context, child, childDiscriminatorValue);
+        if (disc) {
+          object.discriminators ??= [];
+          object.discriminators.push(disc);
+          discProperty.enum ??= {
+            items: [],
+          };
+          discProperty.enum.items.push({
+            value: childDiscriminatorValue.value,
+          });
+        }
+      }
+    }
   }
 
+  if (isRecordModelType(context.program, payloadModel)) {
+    object.additionalProps = {
+      item: convert2CMDSchemaBase({
+        ...context,
+        supportClsSchema: true,
+      }, payloadModel.indexer.value),
+    }
+  }
+
+  if (Object.keys(properties).length > 0) {
+    object.props = Object.values(properties).filter((prop) => !isEmptiedSchema(prop));
+    if (object.props.length === 0) {
+      object.props = undefined;
+    }
+  }
+
+  if (pending) {
+    pending.schema = object;
+  }
 
   return object;
 }
 
-function convertModel2CMDArraySchemaBase(context: AAZSchemaEmitterContext, model: Model): CMDArraySchemaBase | undefined {
-  if (isArrayModelType(context.program, model)) {
-    const array: CMDArraySchemaBase = {
-      type: "array",
-      // item: convert2CMDSchemaBase(context, model.indexer.value!),
-      identifiers: getExtensions(context.program, model).get("x-ms-identifiers"),
-    };
-    if (!array.identifiers && getProperty(model.indexer.value as Model, "id")) {
-      array.identifiers = ["id"];
-    }
-    return array;
+function convertModel2CMDArraySchemaBase(context: AAZSchemaEmitterContext, model: Model): CMDArraySchemaBase | CMDClsSchemaBase | undefined {
+  const payloadModel = context.metadateInfo.getEffectivePayloadType(model, context.visibility) as Model;
+  if (!isArrayModelType(context.program, payloadModel)) {
+    return undefined;
   }
-  return undefined;
+
+  let pending;
+  if (context.supportClsSchema) {
+    pending = context.pendingSchemas.getOrAdd(payloadModel, context.visibility, () => ({
+      type: payloadModel,
+      visibility: context.visibility,
+      ref: context.refs.getOrAdd(payloadModel, context.visibility, () => new Ref()),
+      count: 0,
+    }));
+    pending.count++;
+    
+    if (pending.count > 1) {
+      return {
+        type: new ClsType(pending),
+      } as CMDClsSchemaBase;
+    }
+  }
+
+  const item = convert2CMDSchemaBase({
+    ...context,
+    supportClsSchema: true,
+  }, payloadModel.indexer.value!)
+  if (!item) {
+    return undefined;
+  }
+  const array: CMDArraySchemaBase = {
+    type: new ArrayType(item.type),
+    item: item,
+    identifiers: getExtensions(context.program, payloadModel).get("x-ms-identifiers"),
+    cls: pending?.ref,
+  };
+  if (!array.identifiers && getProperty(payloadModel.indexer.value as Model, "id") && getProperty(payloadModel.indexer.value as Model, "name")) {
+    array.identifiers = ["name"];
+  }
+  if (pending) {
+    pending.schema = array;
+  }
+  return array;
 }
+
+function convertModel2CMDObjectDiscriminator(context: AAZSchemaEmitterContext, model: Model, discriminatorInfo: DiscriminatorInfo): CMDObjectSchemaDiscriminator | undefined {
+  const object: CMDObjectSchemaDiscriminator = {
+    property: discriminatorInfo.propertyName,
+    value: discriminatorInfo.value,
+  };
+
+  const payloadModel = context.metadateInfo.getEffectivePayloadType(model, context.visibility) as Model;
+
+  const properties: Record<string, CMDSchema> = {};
+  const discriminator = getDiscriminator(context.program, payloadModel);
+
+  for (const prop of payloadModel.properties.values()) {
+    if (isNeverType(prop.type)) {
+      // If the property has a type of 'never', don't include it in the schema
+      continue;
+    }
+    if (!context.metadateInfo.isPayloadProperty(prop, context.visibility)) {
+      continue;
+    }
+
+    const jsonName = getJsonName(context, prop);
+    let schema = convert2CMDSchema({
+      ...context,
+      supportClsSchema: true,
+    }, prop, jsonName);
+    if (schema) {
+      if (isReadonlyProperty(context.program, prop)) {
+        schema.readOnly = true;
+      }
+      if (!context.metadateInfo.isOptional(prop, context.visibility) || prop.name === discriminator?.propertyName) {
+        schema.required = true;
+      }
+      if (shouldFlattenProperty(context.sdkContext, prop)) {
+        if (schema.type === "object") {
+          schema = {
+            ...schema,
+            clientFlatten: true,
+          } as CMDObjectSchema;
+        } else if (schema.type instanceof ClsType) {
+          schema = {
+            ...schema,
+            clientFlatten: true,
+          } as CMDClsSchema;
+        }
+      }
+      properties[schema.name] = schema;
+    }
+  }
+
+  // TODO: handle discriminator.propertyName === discriminatorInfo.propertyName
+  if (discriminator && discriminator.propertyName !== discriminatorInfo.propertyName) {
+    const { propertyName } = discriminator;
+    assert(object.discriminators === undefined, "Discriminator should be undefined.");
+    // Push discriminator into base type, but only if it is not already there
+    if (!payloadModel.properties.get(propertyName)) {
+      const discriminatorProperty: CMDStringSchema = {
+        name: propertyName,
+        type: "string",
+        required: true,
+        description: `Discriminator property for ${payloadModel.name}.`,
+      };
+      properties[propertyName] = discriminatorProperty;
+    }
+
+    const discProperty = properties[propertyName] as CMDStringSchema;
+
+    const derivedModels = payloadModel.derivedModels.filter(includeDerivedModel);
+    for (const child of derivedModels) {
+      const childDiscriminatorValue = getDiscriminatorInfo(context, child);
+      if (childDiscriminatorValue) {
+        const disc = convertModel2CMDObjectDiscriminator(context, child, childDiscriminatorValue);
+        if (disc) {
+          object.discriminators ??= [];
+          object.discriminators.push(disc);
+          discProperty.enum ??= {
+            items: [],
+          };
+          discProperty.enum.items.push({
+            value: childDiscriminatorValue.value,
+          });
+        }
+      }
+    }
+  }
+
+  if (Object.keys(properties).length > 0) {
+    object.props = Object.values(properties).filter((prop) => !isEmptiedSchema(prop));
+    if (object.props.length === 0) {
+      object.props = undefined;
+    }
+  }
+
+  return object;
+}
+
 
 function convertScalar2CMDSchemaBase(context: AAZSchemaEmitterContext, scalar: Scalar): CMDSchemaBase | undefined {
   const isStd = context.program.checker.isStdType(scalar);
@@ -747,7 +967,6 @@ function convertScalar2CMDSchemaBase(context: AAZSchemaEmitterContext, scalar: S
   } else if (scalar.baseScalar) {
     schema = convertScalar2CMDSchemaBase(context, scalar.baseScalar);
   }
-
   return schema;
 }
 
@@ -766,7 +985,7 @@ function convertUnion2CMDSchemaBase(context: AAZSchemaEmitterContext, union: Uni
     const type = nonNullOptions[0];
     schema = {
       ...convert2CMDSchemaBase(context, type)!,
-      nullable,
+      nullable: nullable ? true : undefined,
     }
   } else {
     const [asEnum] = getUnionAsEnum(union);
@@ -787,7 +1006,7 @@ function convertUnionEnum2CMDSchemaBase(context: AAZSchemaEmitterContext, union:
   if (e.kind === 'number') {
     schema = {
       type: "integer",
-      nullable: e.nullable,
+      nullable: e.nullable ? true : undefined,
       enum: {
         items: Array.from(e.flattenedMembers.values()).map((member) => {
           return {
@@ -799,7 +1018,7 @@ function convertUnionEnum2CMDSchemaBase(context: AAZSchemaEmitterContext, union:
   } else if (e.kind === 'string') {
     schema = {
       type: "string",
-      nullable: e.nullable,
+      nullable: e.nullable ? true : undefined,
       enum: {
         items: Array.from(e.flattenedMembers.values()).map((member) => {
           return {
@@ -862,7 +1081,94 @@ function convertEnum2CMDSchemaBase(context: AAZSchemaEmitterContext, e: Enum): C
 //   const newTarget = { ...target };
 // }
 
+function includeDerivedModel(model: Model): boolean {
+  return (
+    !isTemplateDeclaration(model) &&
+    (model.templateMapper?.args === undefined ||
+      model.templateMapper?.args.length === 0 ||
+      model.derivedModels.length > 0)
+  );
+}
 
+function getDiscriminatorInfo(context: AAZSchemaEmitterContext, model: Model): DiscriminatorInfo | undefined {
+  let discriminator;
+  let current = model;
+  while (current.baseModel) {
+    discriminator = getDiscriminator(context.program, current.baseModel);
+    if (discriminator) {
+      break;
+    }
+    current = current.baseModel;
+  }
+  if (discriminator === undefined) {
+    return undefined;
+  }
+  const prop = getProperty(model, discriminator.propertyName);
+  if (prop) {
+    const values = getStringValues(prop.type);
+    if (values.length === 1) {
+      return {propertyName:discriminator.propertyName, value:values[0]};
+    }
+  }
+  return undefined;
+}
+
+// Return any string literal values for type
+function getStringValues(type: Type): string[] {
+  switch (type.kind) {
+    case "String":
+      return [type.value];
+    case "Union":
+      return [...type.variants.values()].flatMap((x) => getStringValues(x.type)).filter((x) => x);
+    case "EnumMember":
+      return typeof type.value !== "number" ? [type.value ?? type.name] : [];
+    case "UnionVariant":
+      return getStringValues(type.type);
+    default:
+      return [];
+  }
+}
+
+function processPendingSchemas(context: AAZOperationEmitterContext, verbVisibility: Visibility, suffix: "read" | "create" | "update") {
+  for (const type of context.pendingSchemas.keys()) {
+    const group = context.pendingSchemas.get(type)!;
+    for (const visibility of group.keys()) {
+      const pending = context.pendingSchemas.get(type)!.get(visibility)!;
+      if (pending.count < 2) {
+        pending.ref!.value = undefined;
+      } else {
+        let name = getOpenAPITypeName(context.program, type, context.typeNameOptions);
+        if (group.size > 1 && visibility !== Visibility.Read) {
+          // TODO: handle item
+          name += getVisibilitySuffix(verbVisibility, Visibility.Read);
+        }
+        if (Visibility.Read !== visibility) {
+          name += '_' + suffix;
+        } else {
+          name += '_read';
+        }
+        pending.ref!.value = name;
+      }
+    }
+  }
+}
+
+function isEmptiedSchema(schema: CMDSchema): boolean {
+  if (!schema.required) {
+    if (schema.type === "object") {
+      const objectSchema = schema as CMDObjectSchema
+      if (!objectSchema.additionalProps && !objectSchema.props && !objectSchema.discriminators && !objectSchema.nullable) {
+        return true;
+      }
+    } else if (schema.type instanceof ArrayType) {
+      const arraySchema = schema as CMDArraySchemaBase;
+      if (!arraySchema.item && !arraySchema.nullable) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 // Utils functions
 
@@ -1026,8 +1332,8 @@ function getResponseDescriptionForStatusCodes(statusCodes: string[] | undefined)
 }
 
 function classifyErrorFormat(context: AAZOperationEmitterContext, schema: CMDSchemaBase): "ODataV4Format" | "MgmtErrorFormat" | undefined {
-  if (schema.type.startsWith("@")) {
-    schema = getClsDefinitionModel(context, schema as CMDClsSchemaBase);
+  if (schema.type instanceof ClsType) {
+    schema = getClsDefinitionModel(schema as CMDClsSchemaBase);
   }
   if (schema.type !== "object" || (schema as CMDObjectSchemaBase).props === undefined) {
     return undefined;
@@ -1039,8 +1345,8 @@ function classifyErrorFormat(context: AAZOperationEmitterContext, schema: CMDSch
   }
 
   if (props.error) {
-    if (props.error.type.startsWith("@")) {
-      errorSchema = getClsDefinitionModel(context, props.error as CMDClsSchemaBase) as CMDObjectSchemaBase;
+    if (props.error.type instanceof ClsType) {
+      errorSchema = getClsDefinitionModel(props.error as CMDClsSchemaBase) as CMDObjectSchemaBase;
     } else if (props.error.type !== "object") {
       return undefined;
     }
@@ -1070,9 +1376,41 @@ function classifyErrorFormat(context: AAZOperationEmitterContext, schema: CMDSch
   return undefined;
 }
 
-function getClsDefinitionModel(context: AAZOperationEmitterContext, schema: CMDClsSchemaBase): CMDSchemaBase {
-  // TODO:
-  return {
-    type: "object",
-  };
+function getClsDefinitionModel(schema: CMDClsSchemaBase): CMDObjectSchemaBase | CMDArraySchemaBase {
+  return schema.type.pendingSchema.schema!
 }
+
+function getDefaultValue(content: AAZSchemaEmitterContext, defaultType: Value): any {
+  switch (defaultType.valueKind) {
+    case "StringValue":
+      return defaultType.value;
+    case "NumericValue":
+      return defaultType.value.asNumber() ?? undefined;
+    case "BooleanValue":
+      return defaultType.value;
+    case "ArrayValue":
+      return defaultType.values.map((x) => getDefaultValue(content, x));
+    case "NullValue":
+      return null;
+    case "EnumValue":
+      return defaultType.value.value ?? defaultType.value.name;
+    default:
+      reportDiagnostic(content.program, {
+        code: "invalid-default",
+        format: { type: defaultType.valueKind },
+        target: defaultType,
+      });
+  }
+}
+
+// function getTypeName(context: AAZSchemaEmitterContext, type: Type): string {
+//   let name = getOpenAPITypeName(context.program, type, context.typeNameOptions);
+//   name = camelCase(encodeURIComponent(name));
+//   name += `_${context.mutability}`;
+//   // if (shouldInline(context.program, type)) {
+
+//   // } else {
+
+//   // }
+//   return name;
+// }
