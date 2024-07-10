@@ -86,7 +86,14 @@ def handle_keyword(env, data):
 
     data = data.split(".")
 
-    return data[0] + "".join(get_prop(env, i) for i in data[1:])  # keyword in response, x.else.x -> x["else"].x
+    properties = ""
+    for d in data[1:]:
+        if d in _PYTHON_BUILD_IN_KEYWORDS:
+            properties += get_prop(env, d)
+        else:
+            properties += f".{d}"
+
+    return data[0] + properties  # keyword in response, e.g., x.else.x -> x["else"].x
 
 
 custom_filters = {
