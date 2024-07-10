@@ -612,7 +612,7 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
       if (!context.metadateInfo.isOptional(prop, context.visibility) || prop.name === discriminator?.propertyName) {
         schema.required = true;
       }
-      if (shouldFlattenProperty(context.sdkContext, prop)) {
+      if (shouldClientFlatten(context, prop)) {
         if (schema.type === "object") {
           schema = {
             ...schema,
@@ -764,7 +764,7 @@ function convertModel2CMDObjectDiscriminator(context: AAZSchemaEmitterContext, m
       if (!context.metadateInfo.isOptional(prop, context.visibility) || prop.name === discriminator?.propertyName) {
         schema.required = true;
       }
-      if (shouldFlattenProperty(context.sdkContext, prop)) {
+      if (shouldClientFlatten(context, prop)) {
         if (schema.type === "object") {
           schema = {
             ...schema,
@@ -1080,6 +1080,10 @@ function convertEnum2CMDSchemaBase(context: AAZSchemaEmitterContext, e: Enum): C
 // ): CMDSchemaBase {
 //   const newTarget = { ...target };
 // }
+
+function shouldClientFlatten(context: AAZSchemaEmitterContext, target: ModelProperty): boolean {
+  return !!(shouldFlattenProperty(context.sdkContext, target) || getExtensions(context.program, target).get("x-ms-client-flatten"));
+}
 
 function includeDerivedModel(model: Model): boolean {
   return (
