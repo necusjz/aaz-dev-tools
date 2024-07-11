@@ -395,15 +395,35 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
         });
 
         if (defaultResourceProvider?.endsWith("TypeSpec")){
-            let requestEmitterObj = JSON.parse(JSON.stringify(requestBody))
+            const requestEmitterObj = JSON.parse(JSON.stringify(requestBody))
+            console.log("requestEmitterObj: ", requestEmitterObj)
             requestEmitterObj.resourceProviderUrl = defaultResourceProvider
             getTypespecRPResourcesOperations(requestEmitterObj).then((res)=>{
                 console.log("emitter getTypespecRPResourceOperations res: ", res);
-                // todo: call addTypespec here
-                this.setState({
-                    loading: false
-                });
-                this.props.onClose(true);
+                const addTypespecData = {
+                    version: selectedVersion,
+                    resources: res
+                }
+                axios.post(`/AAZ/Editor/Workspaces/${this.props.workspaceName}/CommandTree/Nodes/aaz/AddTypespec`, addTypespecData)
+                .then(() => {
+                    this.setState({
+                        loading: false
+                    });
+                    this.props.onClose(true);
+                })
+                .catch((err) => {
+                    console.error(err);
+                    this.setState({
+                        loading: false
+                    });
+                    this.props.onClose(false);
+                    if (err.response?.data?.message) {
+                        const data = err.response!.data!;
+                        this.setState({
+                            invalidText: `ResponseError: ${data.message!}`,
+                        })
+                    }
+                })
             }).catch((err: any)=>{
                 this.setState({
                     loading: false
