@@ -786,7 +786,7 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
             updating: true,
         })
 
-        let reloadUrl = this.props.source.toLowerCase() === "typespec" ? `${this.props.workspaceUrl}/Resources/ReloadTypespec` :  `${this.props.workspaceUrl}/Resources/ReloadSwagger`;
+        const reloadUrl = this.props.source.toLowerCase() === "typespec" ? `${this.props.workspaceUrl}/Resources/ReloadTypespec` :  `${this.props.workspaceUrl}/Resources/ReloadSwagger`;
 
         try {
             if (this.props.source.toLowerCase() === "typespec") {
@@ -815,7 +815,6 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
                     })
                     return;
                 }
-                reloadUrl = `${this.props.workspaceUrl}/Resources/ReloadTypespec`;
                 data.resources = emitterOptionRes;
                 // console.log("reload typespec data: ", data);
             }
