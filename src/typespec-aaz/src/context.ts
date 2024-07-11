@@ -23,6 +23,6 @@ export interface AAZOperationEmitterContext extends AAZEmitterContext {
 }
 
 export interface AAZSchemaEmitterContext extends AAZOperationEmitterContext {
-    readonly collectionFormat?: string;
+    readonly collectionFormat?: "csv" | "ssv" | "tsv" | "pipes" | "multi" |  "simple" | "form";
     readonly supportClsSchema: boolean;
 }

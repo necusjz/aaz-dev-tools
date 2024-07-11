@@ -3,19 +3,21 @@ import { AAZEmitterContext, AAZOperationEmitterContext, AAZSchemaEmitterContext 
 import { resolveOperationId } from "./utils.js";
 import { TypeSpecPathItem } from "./model/path_item.js";
 import { CMDHttpOperation } from "./model/operation.js";
-import { DiagnosticTarget, Enum, EnumMember, Model, ModelProperty, Namespace, Program, Scalar, TwoLevelMap, Type, Union, Value, getDiscriminator, getDoc, getEncode, getProjectedName, getProperty, isArrayModelType, isNeverType, isNullType, isRecordModelType, isService, isTemplateDeclaration, isVoidType, resolveEncodedName } from "@typespec/compiler";
+import { DiagnosticTarget, Enum, EnumMember, Model, ModelProperty, Namespace, Program, Scalar, TwoLevelMap, Type, Union, Value, getDiscriminator, getDoc, getEncode, getMaxItems, getMaxLength, getMaxValue, getMaxValueExclusive, getMinItems, getMinLength, getMinValue, getMinValueExclusive, getPattern, getProjectedName, getProperty, isArrayModelType, isNeverType, isNullType, isRecordModelType, isService, isTemplateDeclaration, isVoidType, resolveEncodedName } from "@typespec/compiler";
 import { LroMetadata, PagedResultMetadata, UnionEnum, getLroMetadata, getPagedResult, getUnionAsEnum } from "@azure-tools/typespec-azure-core";
 import { XmsPageable } from "./model/x_ms_pageable.js";
 import { CMDHttpRequest, CMDHttpResponse } from "./model/http.js";
-import { CMDArraySchemaBase, CMDClsSchema, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, Ref, ClsType, ArrayType, CMDObjectSchemaDiscriminator} from "./model/schema.js";
+import { CMDArraySchemaBase, CMDClsSchema, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, Ref, ClsType, ArrayType, CMDObjectSchemaDiscriminator, CMDByteSchemaBase, CMDInteger32SchemaBase, CMDInteger64SchemaBase, CMDFloatSchemaBase, CMDFloat64SchemaBase, CMDFloat32SchemaBase} from "./model/schema.js";
 import { reportDiagnostic } from "./lib.js";
 import {
   getExtensions,
   getOpenAPITypeName,
   isReadonlyProperty,
 } from "@typespec/openapi";
+import { getMaxProperties, getMinProperties, getMultipleOf, getUniqueItems } from "@typespec/json-schema";
 import { assert } from "console";
 import { shouldFlattenProperty } from "@azure-tools/typespec-client-generator-core";
+import { CMDArrayFormat, CMDFloatFormat, CMDIntegerFormat, CMDObjectFormat, CMDStringFormat } from "./model/format.js";
 
 
 interface DiscriminatorInfo {
@@ -154,6 +156,8 @@ function extractHttpRequest(context: AAZOperationEmitterContext, operation: Http
     if (!schema) {
       continue;
     }
+
+
 
     schema.required = !httpOpParam.param.optional;
 
@@ -482,6 +486,12 @@ function convert2CMDSchema(context: AAZSchemaEmitterContext, param: ModelPropert
       }
     }
   }
+  if (schema) {
+    schema = {
+      ...schema,
+      ...applySchemaFormat(context, param, schema as CMDSchemaBase)
+    }
+  }
   return schema;
 }
 
@@ -523,6 +533,9 @@ function convert2CMDSchemaBase(context: AAZSchemaEmitterContext, type: Type): CM
     // case "Tuple":
     default:
       reportDiagnostic(context.program, { code: "Unsupported-Type", target: type });
+  }
+  if (schema) {
+    schema = applySchemaFormat(context, type, schema);
   }
 
   return schema;
@@ -827,7 +840,6 @@ function convertModel2CMDObjectDiscriminator(context: AAZSchemaEmitterContext, m
   return object;
 }
 
-
 function convertScalar2CMDSchemaBase(context: AAZSchemaEmitterContext, scalar: Scalar): CMDSchemaBase | undefined {
   const isStd = context.program.checker.isStdType(scalar);
   const encodeData = getEncode(context.program, scalar);
@@ -837,90 +849,114 @@ function convertScalar2CMDSchemaBase(context: AAZSchemaEmitterContext, scalar: S
       case "bytes":
         schema = {
           type: "byte",
-        }
+        } as CMDByteSchemaBase;
         break;
       case "numeric":
         schema = {
           type: "integer",
-        }
+        } as CMDIntegerSchemaBase;
         break;
       case "integer":
         schema = {
           type: "integer",
-        }
+        } as CMDIntegerSchemaBase;
         break;
       case "int8":
         // TODO: add format for int8
         schema = {
           type: "integer",
-        }
+        } as CMDIntegerSchemaBase;
         break;
       case "int16":
         // TODO: add format for int16
         schema = {
           type: "integer",
-        }
+        } as CMDIntegerSchemaBase;
         break;
       case "int32":
-        schema = { type: "integer32" };
+        schema = { 
+          type: "integer32",
+        } as CMDInteger32SchemaBase;
         break;
       case "int64":
-        schema = { type: "integer64" };
+        schema = { 
+          type: "integer64",
+        } as CMDInteger64SchemaBase;
         break;
       case "safeint":
-        schema = { type: "integer64" };
+        schema = { 
+          type: "integer64",
+        } as CMDInteger64SchemaBase;
         break;
       case "uint8":
         // TODO: add format for uint8
         schema = {
           type: "integer",
-        }
+        } as CMDIntegerSchemaBase;
         break;
       case "uint16":
         // TODO: add format for uint16
         schema = {
           type: "integer",
-        }
+        } as CMDIntegerSchemaBase;
         break;
       case "uint32":
         // TODO: add format for uint32
         schema = {
           type: "integer",
-        }
+        } as CMDIntegerSchemaBase;
         break;
       case "uint64":
         // TODO: add format for uint64
         schema = {
           type: "integer",
-        }
+        } as CMDIntegerSchemaBase;
         break;
       case "float":
-        schema = { type: "float" }
-        break;
-      case "float64":
-        schema = { type: "float64" }
+        schema = {
+          type: "float",
+        } as CMDFloatSchemaBase;
         break;
       case "float32":
-        schema = { type: "float32" }
+        schema = { 
+          type: "float32",
+        } as CMDFloat32SchemaBase;
+        break;
+      case "float64":
+        schema = {
+          type: "float64",
+        } as CMDFloat64SchemaBase;
         break;
       case "decimal":
-        schema = { type: "float64" }
+        schema = {
+          type: "float64",
+        } as CMDFloat64SchemaBase;
         break;
       case "decimal128":
         // TODO: add format for decimal128
-        schema = { type: "float" }
+        schema = {
+          type: "float",
+        } as CMDFloatSchemaBase;
         break;
       case "string":
-        schema = { type: "string" }
+        schema = {
+          type: "string",
+        } as CMDStringSchemaBase;
         break;
       case "url":
-        schema = { type: "string" }
+        schema = {
+          type: "string",
+        } as CMDStringSchemaBase;
         break;
       case "plainDate":
-        schema = { type: "date" }
+        schema = { 
+          type: "date",
+        }
         break;
       case "plainTime":
-        schema = { type: "time" }
+        schema = { 
+          type: "time",
+        }
         break;
       case "utcDateTime":
       case "offsetDateTime":
@@ -963,10 +999,10 @@ function convertScalar2CMDSchemaBase(context: AAZSchemaEmitterContext, scalar: S
         schema = { type: "boolean" }
         break;
     }
-    // return scalar.name;
   } else if (scalar.baseScalar) {
     schema = convertScalar2CMDSchemaBase(context, scalar.baseScalar);
   }
+
   return schema;
 }
 
@@ -1073,14 +1109,6 @@ function convertEnum2CMDSchemaBase(context: AAZSchemaEmitterContext, e: Enum): C
   }
 }
 
-// function applyIntrinsicSchemaDecorators(
-//   context: AAZSchemaEmitterContext,
-//   typespecType: Model | Scalar | ModelProperty | Union,
-//   target: CMDSchemaBase
-// ): CMDSchemaBase {
-//   const newTarget = { ...target };
-// }
-
 function shouldClientFlatten(context: AAZSchemaEmitterContext, target: ModelProperty): boolean {
   return !!(shouldFlattenProperty(context.sdkContext, target) || getExtensions(context.program, target).get("x-ms-client-flatten"));
 }
@@ -1173,6 +1201,255 @@ function isEmptiedSchema(schema: CMDSchema): boolean {
   }
   return false;
 }
+
+// format functions
+function applySchemaFormat(
+  context: AAZSchemaEmitterContext,
+  type:Type,
+  target: CMDSchemaBase
+): CMDSchemaBase {
+  let schema = target;
+  switch (target.type) {
+    case "byte":
+      schema = {
+        ...schema,
+        format: emitStringFormat(context, type, (schema as CMDByteSchemaBase).format),
+      } as CMDByteSchemaBase;
+      break;
+    case "integer":
+      schema = {
+        ...schema,
+        format: emitIntegerFormat(context, type, (schema as CMDIntegerSchemaBase).format),
+      } as CMDIntegerSchemaBase;
+      break;
+    case "integer32":
+      schema = {
+        ...schema,
+        format: emitIntegerFormat(context, type, (schema as CMDInteger32SchemaBase).format),
+      } as CMDInteger32SchemaBase;
+      break;
+    case "integer64":
+      schema = {
+        ...schema,
+        format: emitIntegerFormat(context, type, (schema as CMDInteger64SchemaBase).format),
+      } as CMDInteger64SchemaBase;
+      break;
+    case "float":
+      schema = {
+        ...schema,
+        format: emitFloatFormat(context, type, (schema as CMDFloatSchemaBase).format),
+      } as CMDFloatSchemaBase;
+      break;
+    case "float32":
+      schema = {
+        ...schema,
+        format: emitFloatFormat(context, type, (schema as CMDFloat32SchemaBase).format),
+      } as CMDFloat32SchemaBase;
+      break;
+    case "float64":
+      schema = {
+        ...schema,
+        format: emitFloatFormat(context, type, (schema as CMDFloat64SchemaBase).format),
+      } as CMDFloat64SchemaBase;
+      break;
+    case "string":
+      schema = {
+        ...schema,
+        format: emitStringFormat(context, type, (schema as CMDStringSchemaBase).format),
+      } as CMDStringSchemaBase;
+      break;
+    // case "date":
+    // case "time":
+    // case "dateTime":
+    // case "duration":
+    // case "boolean":
+    case "object":
+      schema = {
+        ...schema,
+        format: emitObjectFormat(context, type as Model, (schema as CMDObjectSchemaBase).format),
+      } as CMDObjectSchemaBase;
+      break;
+    default:
+      if (schema.type instanceof ArrayType) {
+        schema = {
+          ...schema,
+          format: emitArrayFormat(context, type as Model, (schema as CMDArraySchemaBase).format),
+        } as CMDArraySchemaBase;
+      }
+  }
+  return schema;
+}
+
+
+function emitStringFormat(context: AAZSchemaEmitterContext, type: Type, targetFormat: CMDStringFormat | undefined): CMDStringFormat | undefined {
+  let format = targetFormat;
+
+  const pattern = getPattern(context.program, type);
+  if (pattern !== undefined) {
+    format = {
+      ...format ?? {},
+      pattern,
+    };
+  }
+
+  const maxLength = getMaxLength(context.program, type);
+  if (maxLength !== undefined) {
+    format = {
+      ...format ?? {},
+      maxLength,
+    };
+  }
+
+  const minLength = getMinLength(context.program, type);
+  if (minLength !== undefined) {
+    format = {
+      ...format ?? {},
+      minLength,
+    };
+  }
+
+  return format;
+}
+
+function emitIntegerFormat(context: AAZSchemaEmitterContext, type: Type, targetFormat: CMDIntegerFormat | undefined): CMDIntegerFormat | undefined {
+  let format = targetFormat;
+
+  const maximum = getMaxValue(context.program, type);
+  if (maximum !== undefined) {
+    format = {
+      ...format ?? {},
+      maximum,
+    };
+  }
+
+  const minimum = getMinValue(context.program, type);
+  if (minimum !== undefined) {
+    format = {
+      ...format ?? {},
+      minimum,
+    };
+  }
+  
+  const multipleOf = getMultipleOf(context.program, type);
+  if (multipleOf !== undefined) {
+    format = {
+      ...format ?? {},
+      multipleOf,
+    };
+  }
+
+  return format;
+}
+
+function emitFloatFormat(context: AAZSchemaEmitterContext, type: Type, targetFormat: CMDFloatFormat | undefined): CMDFloatFormat | undefined {
+  let format = targetFormat;
+
+  const maximum = getMaxValue(context.program, type);
+  if (maximum !== undefined) {
+    format = {
+      ...format ?? {},
+      maximum,
+    };
+  }
+
+  const minimum = getMinValue(context.program, type);
+  if (minimum !== undefined) {
+    format = {
+      ...format ?? {},
+      minimum,
+    };
+  }
+
+  const minValueExclusive = getMinValueExclusive(context.program, type);
+  if (minValueExclusive !== undefined) {
+    format = {
+      ...format ?? {},
+      minimum: minValueExclusive,
+      exclusiveMinimum: true,
+    };
+  }
+
+  const maxValueExclusive = getMaxValueExclusive(context.program, type);
+  if (maxValueExclusive !== undefined) {
+    format = {
+      ...format ?? {},
+      maximum: maxValueExclusive,
+      exclusiveMaximum: true,
+    };
+  }
+
+  const multipleOf = getMultipleOf(context.program, type);
+  if (multipleOf !== undefined) {
+    format = {
+      ...format ?? {},
+      multipleOf,
+    };
+  }
+
+  return format;
+}
+
+function emitObjectFormat(context: AAZSchemaEmitterContext, type: Model, targetFormat: CMDObjectFormat | undefined): CMDObjectFormat | undefined {
+  let format = targetFormat;
+
+  const maxProperties = getMaxProperties(context.program, type);
+  if (maxProperties !== undefined) {
+    format = {
+      ...format ?? {},
+      maxProperties,
+    };
+  }
+
+  const minProperties = getMinProperties(context.program, type);
+  if (minProperties !== undefined) {
+    format = {
+      ...format ?? {},
+      minProperties,
+    };
+  }
+
+  return format;
+}
+
+function emitArrayFormat(context: AAZSchemaEmitterContext, type: Model, targetFormat: CMDArrayFormat | undefined): CMDArrayFormat | undefined {
+  let format = targetFormat;
+
+  const maxLength = getMaxItems(context.program, type);
+  if (maxLength !== undefined) {
+    format = {
+      ...format ?? {},
+      maxLength,
+    };
+  }
+
+  const minLength = getMinItems(context.program, type);
+  if (minLength !== undefined) {
+    format = {
+      ...format ?? {},
+      minLength,
+    };
+  }
+
+  const uniqueItems = getUniqueItems(context.program, type);
+  if (uniqueItems !== undefined) {
+    format = {
+      ...format ?? {},
+      unique: true,
+    };
+  }
+
+  if (context.collectionFormat !== undefined) {
+    format = {
+      ...format ?? {},
+      strFormat: context.collectionFormat,
+    };
+  }
+
+  return format;
+}
+
+// TODO: add emitResourceIdFormat
+
 
 // Utils functions
 
@@ -1406,15 +1683,3 @@ function getDefaultValue(content: AAZSchemaEmitterContext, defaultType: Value): 
       });
   }
 }
-
-// function getTypeName(context: AAZSchemaEmitterContext, type: Type): string {
-//   let name = getOpenAPITypeName(context.program, type, context.typeNameOptions);
-//   name = camelCase(encodeURIComponent(name));
-//   name += `_${context.mutability}`;
-//   // if (shouldInline(context.program, type)) {
-
-//   // } else {
-
-//   // }
-//   return name;
-// }
