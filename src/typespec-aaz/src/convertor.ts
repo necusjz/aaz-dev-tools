@@ -15,7 +15,6 @@ import {
   isReadonlyProperty,
 } from "@typespec/openapi";
 import { getMaxProperties, getMinProperties, getMultipleOf, getUniqueItems } from "@typespec/json-schema";
-import { assert } from "console";
 import { shouldFlattenProperty } from "@azure-tools/typespec-client-generator-core";
 import { CMDArrayFormat, CMDFloatFormat, CMDIntegerFormat, CMDObjectFormat, CMDStringFormat } from "./model/format.js";
 
@@ -644,7 +643,7 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
 
   if (discriminator) {
     const { propertyName } = discriminator;
-    assert(object.discriminators === undefined, "Discriminator should be undefined.");
+    console.assert(object.discriminators === undefined, "Discriminator should be undefined.");
     // Push discriminator into base type, but only if it is not already there
     if (!payloadModel.properties.get(propertyName)) {
       const discriminatorProperty: CMDStringSchema = {
@@ -797,7 +796,7 @@ function convertModel2CMDObjectDiscriminator(context: AAZSchemaEmitterContext, m
   // TODO: handle discriminator.propertyName === discriminatorInfo.propertyName
   if (discriminator && discriminator.propertyName !== discriminatorInfo.propertyName) {
     const { propertyName } = discriminator;
-    assert(object.discriminators === undefined, "Discriminator should be undefined.");
+    console.assert(object.discriminators === undefined, "Discriminator should be undefined.");
     // Push discriminator into base type, but only if it is not already there
     if (!payloadModel.properties.get(propertyName)) {
       const discriminatorProperty: CMDStringSchema = {

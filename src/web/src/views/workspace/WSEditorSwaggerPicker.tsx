@@ -357,6 +357,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
     addSwagger = () => {
         const { selectedResources, selectedVersion, selectedModule, moduleOptionsCommonPrefix, updateOption, resourceMap, selectedResourceInheritanceAAZVersionMap, defaultResourceProvider } = this.state;
         const resources: { id: string, options: { update_by?: string, aaz_version: string | null } }[] = [];
+        const resourceOptionMap: {[key: string]: [value: { update_by?: string, aaz_version: string | null }] }= {};
         selectedResources.forEach((resourceId) => {
             const res: any = {
                 id: resourceId,
@@ -380,6 +381,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 // No update command generation
                 res.options.update_by = "None"
             }
+            resourceOptionMap[resourceId] = res.options;
             resources.push(res)
         });
 
@@ -395,15 +397,42 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
         });
 
         if (defaultResourceProvider?.endsWith("TypeSpec")){
-            let requestEmitterObj = JSON.parse(JSON.stringify(requestBody))
+            const requestEmitterObj = JSON.parse(JSON.stringify(requestBody))
             requestEmitterObj.resourceProviderUrl = defaultResourceProvider
+            console.log("requestEmitterObj: ", requestEmitterObj)
             getTypespecRPResourcesOperations(requestEmitterObj).then((res)=>{
                 console.log("emitter getTypespecRPResourceOperations res: ", res);
-                // todo: call addTypespec here
-                this.setState({
-                    loading: false
-                });
-                this.props.onClose(true);
+                console.log("resourceOptionMap: ", resourceOptionMap)
+                const addTypespecData = {
+                    version: selectedVersion,
+                    resources: res.map((item: {id: string, [key: string]: any}) => {
+                        if (item.id in resourceOptionMap) {
+                            item.options = resourceOptionMap[item.id];
+                        }
+                        return item;
+                    })
+                }
+                console.log("addTypespec data: ", addTypespecData);
+                axios.post(`/AAZ/Editor/Workspaces/${this.props.workspaceName}/CommandTree/Nodes/aaz/AddTypespec`, addTypespecData)
+                .then(() => {
+                    this.setState({
+                        loading: false
+                    });
+                    this.props.onClose(true);
+                })
+                .catch((err) => {
+                    console.error(err);
+                    this.setState({
+                        loading: false
+                    });
+                    this.props.onClose(false);
+                    if (err.response?.data?.message) {
+                        const data = err.response!.data!;
+                        this.setState({
+                            invalidText: `ResponseError: ${data.message!}`,
+                        })
+                    }
+                })
             }).catch((err: any)=>{
                 this.setState({
                     loading: false
