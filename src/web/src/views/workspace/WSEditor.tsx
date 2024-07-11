@@ -792,7 +792,7 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
             if (this.props.source.toLowerCase() === "typespec") {
                 const res = await axios.get(`/AAZ/Editor/Workspaces/${this.props.workspaceName}/SwaggerDefault`);
                 const { modNames, rpName, source } = res.data;
-                if (modNames === null || modNames.length === 0 || rpName === null || source === null || source.toLowerCase() !== "typespec") {
+                if (!modNames || modNames.length === 0 || !rpName || !source || source.toLowerCase() !== "typespec") {
                     this.setState({
                         invalidText: "Invalid workspace info",
                         updating: false,
@@ -805,9 +805,9 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
                     resources: data.resources,
                     resourceProviderUrl: resourceProviderUrl
                 }
-                // console.log("request emitter data: ", requestBody)
+                console.log("request emitter data: ", requestBody)
                 const emitterOptionRes = await getTypespecRPResourcesOperations(requestBody)
-                // console.log("emitterResourceOptionRes: ", emitterOptionRes);
+                console.log("emitterResourceOptionRes: ", emitterOptionRes);
                 if (emitterOptionRes.length === 0) {
                     this.setState({
                         invalidText: "Invalid resource operation emitter info",
