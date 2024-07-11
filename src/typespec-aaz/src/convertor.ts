@@ -3,11 +3,11 @@ import { AAZEmitterContext, AAZOperationEmitterContext, AAZSchemaEmitterContext 
 import { resolveOperationId } from "./utils.js";
 import { TypeSpecPathItem } from "./model/path_item.js";
 import { CMDHttpOperation } from "./model/operation.js";
-import { DiagnosticTarget, Enum, EnumMember, Model, ModelProperty, Namespace, Program, Scalar, TwoLevelMap, Type, Union, Value, getDiscriminator, getDoc, getEncode, getMaxItems, getMaxLength, getMaxValue, getMaxValueExclusive, getMinItems, getMinLength, getMinValue, getMinValueExclusive, getPattern, getProjectedName, getProperty, isArrayModelType, isNeverType, isNullType, isRecordModelType, isService, isTemplateDeclaration, isVoidType, resolveEncodedName } from "@typespec/compiler";
-import { LroMetadata, PagedResultMetadata, UnionEnum, getLroMetadata, getPagedResult, getUnionAsEnum } from "@azure-tools/typespec-azure-core";
+import { DiagnosticTarget, Enum, EnumMember, Model, ModelProperty, Namespace, Program, Scalar, TwoLevelMap, Type, Union, Value, getDiscriminator, getDoc, getEncode, getFormat, getMaxItems, getMaxLength, getMaxValue, getMaxValueExclusive, getMinItems, getMinLength, getMinValue, getMinValueExclusive, getPattern, getProjectedName, getProperty, isArrayModelType, isNeverType, isNullType, isRecordModelType, isService, isTemplateDeclaration, isVoidType, resolveEncodedName } from "@typespec/compiler";
+import { LroMetadata, PagedResultMetadata, UnionEnum, getArmResourceIdentifierConfig, getLroMetadata, getPagedResult, getUnionAsEnum } from "@azure-tools/typespec-azure-core";
 import { XmsPageable } from "./model/x_ms_pageable.js";
 import { CMDHttpRequest, CMDHttpResponse } from "./model/http.js";
-import { CMDArraySchemaBase, CMDClsSchema, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, Ref, ClsType, ArrayType, CMDObjectSchemaDiscriminator, CMDByteSchemaBase, CMDInteger32SchemaBase, CMDInteger64SchemaBase, CMDFloatSchemaBase, CMDFloat64SchemaBase, CMDFloat32SchemaBase} from "./model/schema.js";
+import { CMDArraySchemaBase, CMDClsSchema, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, Ref, ClsType, ArrayType, CMDObjectSchemaDiscriminator, CMDByteSchemaBase, CMDInteger32SchemaBase, CMDInteger64SchemaBase, CMDFloatSchemaBase, CMDFloat64SchemaBase, CMDFloat32SchemaBase, CMDUuidSchemaBase, CMDPasswordSchemaBase, CMDResourceIdSchemaBase, CMDDateSchemaBase, CMDDateTimeSchemaBase, CMDDurationSchemaBase, CMDResourceLocationSchema, CMDIdentityObjectSchemaBase} from "./model/schema.js";
 import { reportDiagnostic } from "./lib.js";
 import {
   getExtensions,
@@ -16,7 +16,8 @@ import {
 } from "@typespec/openapi";
 import { getMaxProperties, getMinProperties, getMultipleOf, getUniqueItems } from "@typespec/json-schema";
 import { shouldFlattenProperty } from "@azure-tools/typespec-client-generator-core";
-import { CMDArrayFormat, CMDFloatFormat, CMDIntegerFormat, CMDObjectFormat, CMDStringFormat } from "./model/format.js";
+import { CMDArrayFormat, CMDFloatFormat, CMDIntegerFormat, CMDObjectFormat, CMDResourceIdFormat, CMDStringFormat } from "./model/format.js";
+import { match } from "assert";
 
 
 interface DiscriminatorInfo {
@@ -564,7 +565,7 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
 
   // const name = getOpenAPITypeName(context.program, type, context.typeNameOptions);
 
-  const object: CMDObjectSchemaBase = {
+  let object: CMDObjectSchemaBase = {
     type: "object",
     cls: pending?.ref,
   };
@@ -683,6 +684,20 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
         supportClsSchema: true,
       }, payloadModel.indexer.value),
     }
+  }
+
+  if (isAzureResource(context, payloadModel) && properties.location) {
+    properties.location = {
+      ...(properties.location as CMDStringSchema),
+      type: "ResourceLocation"
+    } as CMDResourceLocationSchema;
+  }
+
+  if (properties.userAssignedIdentities && properties.type) {
+    object = {
+      ...object,
+      type: "IdentityObject",
+    } as CMDIdentityObjectSchemaBase;
   }
 
   if (Object.keys(properties).length > 0) {
@@ -1144,6 +1159,16 @@ function getDiscriminatorInfo(context: AAZSchemaEmitterContext, model: Model): D
   return undefined;
 }
 
+function isAzureResource(context: AAZSchemaEmitterContext, model: Model): boolean {
+  let current = model;
+  let isResource = getExtensions(context.program, current).get("x-ms-azure-resource");
+  while (!isResource && current.baseModel) {
+    current = current.baseModel;
+    isResource = getExtensions(context.program, current).get("x-ms-azure-resource");
+  }
+  return !!isResource;
+}
+
 // Return any string literal values for type
 function getStringValues(type: Type): string[] {
   switch (type.kind) {
@@ -1208,6 +1233,7 @@ function applySchemaFormat(
   target: CMDSchemaBase
 ): CMDSchemaBase {
   let schema = target;
+  const formatStr = getFormat(context.program, type);
   switch (target.type) {
     case "byte":
       schema = {
@@ -1251,11 +1277,80 @@ function applySchemaFormat(
         format: emitFloatFormat(context, type, (schema as CMDFloat64SchemaBase).format),
       } as CMDFloat64SchemaBase;
       break;
-    case "string":
+    case "ResourceId":
       schema = {
         ...schema,
-        format: emitStringFormat(context, type, (schema as CMDStringSchemaBase).format),
-      } as CMDStringSchemaBase;
+        type: "ResourceId",
+        format: emitResourceIdFormat(context, type, (schema as CMDResourceIdSchemaBase).format),
+      } as CMDResourceIdSchemaBase;
+      break;
+    case "string":
+      switch (formatStr) {
+        case "uuid":
+          schema = {
+            ...schema,
+            type: "uuid",
+            format: emitStringFormat(context, type, (schema as CMDStringSchemaBase).format),
+          } as CMDUuidSchemaBase;
+          break;
+        case "password":
+          schema = {
+            ...schema,
+            type: "password",
+            format: emitStringFormat(context, type, (schema as CMDStringSchemaBase).format),
+          } as CMDPasswordSchemaBase;
+          break;
+        // TODO: add certificate supports
+        case "arm-id":
+          schema = {
+            ...schema,
+            type: "ResourceId",
+            format: emitResourceIdFormat(context, type, undefined),
+          } as CMDResourceIdSchemaBase;
+          break;
+        case "date":
+          schema = {
+            ...schema,
+            type: "date",
+            format: emitStringFormat(context, type, (schema as CMDStringSchemaBase).format),
+          } as CMDDateSchemaBase;
+          break;
+        case "date-time":
+          schema = {
+            ...schema,
+            type: "date-time",
+            format: emitStringFormat(context, type, (schema as CMDStringSchemaBase).format),
+          } as CMDDateTimeSchemaBase;
+          break;
+        case "date-time-rfc1123":
+          // TODO: add "date-time-rfc1123" support
+          schema = {
+            ...schema,
+            type: "date-time",
+            format: emitStringFormat(context, type, (schema as CMDStringSchemaBase).format),
+          } as CMDDateTimeSchemaBase;
+          break;
+        case "date-time-rfc7231":
+          // TODO: add "date-time-rfc7231" support
+          schema = {
+            ...schema,
+            type: "date-time",
+            format: emitStringFormat(context, type, (schema as CMDStringSchemaBase).format),
+          } as CMDDateTimeSchemaBase;
+          break;
+        case "duration":
+          schema = {
+            ...schema,
+            type: "duration",
+            format: emitStringFormat(context, type, (schema as CMDStringSchemaBase).format),
+          } as CMDDurationSchemaBase;
+          break;
+        default:
+          schema = {
+            ...schema,
+            format: emitStringFormat(context, type, (schema as CMDStringSchemaBase).format),
+          } as CMDStringSchemaBase;
+      }
       break;
     // case "date":
     // case "time":
@@ -1307,6 +1402,38 @@ function emitStringFormat(context: AAZSchemaEmitterContext, type: Type, targetFo
     };
   }
 
+  return format;
+}
+
+function emitResourceIdFormat(context: AAZSchemaEmitterContext, type: Type, targetFormat: CMDResourceIdFormat | undefined): CMDResourceIdFormat | undefined {
+  // TODO:
+  let format = targetFormat;
+  const ext = getArmResourceIdentifierConfig(context.program, type as Scalar);
+  if (ext && ext.allowedResources.length === 1) {
+    const type = ext.allowedResources[0].type;
+    const scopes = ext.allowedResources[0].scopes ?? ["ResourceGroup"];
+    if (scopes.length === 1) {
+      switch (scopes[0]) {
+        case "ResourceGroup":
+          format = {
+            template: "/subscriptions/{}/resourceGroups/{}/providers/" + type + "/{}",
+          };
+          break;
+        case "Subscription":
+          format = {
+            template: "/subscriptions/{}/providers/" + type + "/{}",
+          };
+          break;
+        case "ManagementGroup":
+          return {
+            template: "/providers/Microsoft.Management/managementGroups/{}/providers/" + type + "/{}",
+          };
+        case "Extension":
+        case "Tenant":
+          break;
+      }
+    }
+  }
   return format;
 }
 
