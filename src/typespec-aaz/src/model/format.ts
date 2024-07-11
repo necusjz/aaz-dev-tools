@@ -34,5 +34,5 @@ export interface CMDArrayFormat extends CMDFormat {
     maxLength?: number;
     minLength?: number;
     unique?: boolean;
-    strFormat?: "csv" | "ssv" | "tsv" | "pipes" | "multi";
+    strFormat?: "csv" | "ssv" | "tsv" | "pipes" | "multi" |  "simple" | "form";
 }

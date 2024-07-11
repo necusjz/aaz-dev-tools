@@ -107,7 +107,7 @@ export interface CMDClsSchema extends CMDClsSchemaBase, CMDSchema {
 }
 
 
-type CMDStringSchemaTypeValues = "string" | "byte" | "binary" | "duration" | "date" | "date-time" | "time" | "uuid" | "password" | "ResourceLocation" | "ResourceId";
+export type CMDStringSchemaTypeValues = "string" | "byte" | "binary" | "duration" | "date" | "date-time" | "time" | "uuid" | "password" | "ResourceLocation" | "ResourceId";
 
 export interface CMDStringSchemaBase extends CMDSchemaBaseT<string> {
   type: CMDStringSchemaTypeValues;
@@ -216,12 +216,12 @@ type CMDIntegerSchemaTypeValues = "integer" | "integer32" | "integer64";
 // type: integer
 export interface CMDIntegerSchemaBase extends CMDSchemaBaseT<number> {
   type: CMDIntegerSchemaTypeValues;
+  format?: CMDIntegerFormat;
+  enum?: CMDSchemaEnum<number>;
 }
 
 export interface CMDIntegerSchema extends CMDIntegerSchemaBase, CMDSchemaT<number> {
   type: CMDIntegerSchemaTypeValues;
-  format?: CMDIntegerFormat;
-  enum?: CMDSchemaEnum<number>;
 }
 
 // type: integer32
