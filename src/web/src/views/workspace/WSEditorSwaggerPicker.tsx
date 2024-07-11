@@ -396,10 +396,10 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
 
         if (defaultResourceProvider?.endsWith("TypeSpec")){
             const requestEmitterObj = JSON.parse(JSON.stringify(requestBody))
-            console.log("requestEmitterObj: ", requestEmitterObj)
+            // console.log("requestEmitterObj: ", requestEmitterObj)
             requestEmitterObj.resourceProviderUrl = defaultResourceProvider
             getTypespecRPResourcesOperations(requestEmitterObj).then((res)=>{
-                console.log("emitter getTypespecRPResourceOperations res: ", res);
+                // console.log("emitter getTypespecRPResourceOperations res: ", res);
                 const addTypespecData = {
                     version: selectedVersion,
                     resources: res

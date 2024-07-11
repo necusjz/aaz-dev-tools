@@ -776,8 +776,7 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
                 })
         }
 
-        if (data.resources.length == 0) {
-            console.log("empty selected resources")
+        if (data.resources.length === 0) {
             this.props.onClose(false);
             return;
         }
@@ -792,7 +791,8 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
         try {
             if (this.props.source.toLowerCase() === "typespec") {
                 const res = await axios.get(`/AAZ/Editor/Workspaces/${this.props.workspaceName}/SwaggerDefault`);
-                if (res.data.modNames === null || res.data.modNames.length == 0 || res.data.rpName === null || res.data.source === null || res.data.source.toLowerCase() != "typespec") {
+                const { modNames, rpName, source } = res.data;
+                if (modNames === null || modNames.length === 0 || rpName === null || source === null || source.toLowerCase() !== "typespec") {
                     this.setState({
                         invalidText: "Invalid workspace info",
                         updating: false,
@@ -805,10 +805,10 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
                     resources: data.resources,
                     resourceProviderUrl: resourceProviderUrl
                 }
-                console.log("request emitter data: ", requestBody)
+                // console.log("request emitter data: ", requestBody)
                 const emitterOptionRes = await getTypespecRPResourcesOperations(requestBody)
-                console.log("emitterResourceOptionRes: ", emitterOptionRes);
-                if (emitterOptionRes.length == 0) {
+                // console.log("emitterResourceOptionRes: ", emitterOptionRes);
+                if (emitterOptionRes.length === 0) {
                     this.setState({
                         invalidText: "Invalid resource operation emitter info",
                         updating: false,
@@ -817,7 +817,7 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
                 }
                 reloadUrl = `${this.props.workspaceUrl}/Resources/ReloadTypespec`;
                 data.resources = emitterOptionRes;
-                console.log("reload typespec data: ", data);
+                // console.log("reload typespec data: ", data);
             }
             await axios.post(reloadUrl, data);
             this.setState({
