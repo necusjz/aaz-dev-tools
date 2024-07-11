@@ -786,7 +786,7 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
             updating: true,
         })
 
-        let reloadUrl = `${this.props.workspaceUrl}/Resources/ReloadSwagger`;
+        let reloadUrl = this.props.source.toLowerCase() === "typespec" ? `${this.props.workspaceUrl}/Resources/ReloadTypespec` :  `${this.props.workspaceUrl}/Resources/ReloadSwagger`;
 
         try {
             if (this.props.source.toLowerCase() === "typespec") {
