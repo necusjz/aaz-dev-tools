@@ -29,6 +29,7 @@
     "@azure-tools/typespec-client-generator-core": "workspace:~",
     "@typespec/compiler": "workspace:~",
     "@typespec/http": "workspace:~",
+    "@typespec/json-schema": "workspace:~",
     "@typespec/openapi": "workspace:~",
     "@typespec/rest": "workspace:~",
     "@typespec/versioning": "workspace:~"
