@@ -394,7 +394,7 @@ function convert2CMDHttpResponse(context: AAZOperationEmitterContext, response: 
       },
       body.type
     );
-    if (!schema || schema.frozen) {
+    if (!schema) {
       throw new Error("Invalid Response Schema. It's None.");
     }
     if (isError) {
@@ -404,7 +404,6 @@ function convert2CMDHttpResponse(context: AAZOperationEmitterContext, response: 
       }
       schema = {
         readOnly: schema.readOnly,
-        frozen: schema.frozen,
         type: `@${errorFormat}`,
       }
     }
@@ -719,24 +718,7 @@ function convertModel2CMDArraySchemaBase(context: AAZSchemaEmitterContext, model
   if (!isArrayModelType(context.program, payloadModel)) {
     return undefined;
   }
-
-  let pending;
-  if (context.supportClsSchema) {
-    pending = context.pendingSchemas.getOrAdd(payloadModel, context.visibility, () => ({
-      type: payloadModel,
-      visibility: context.visibility,
-      ref: context.refs.getOrAdd(payloadModel, context.visibility, () => new Ref()),
-      count: 0,
-    }));
-    pending.count++;
-    
-    if (pending.count > 1) {
-      return {
-        type: new ClsType(pending),
-      } as CMDClsSchemaBase;
-    }
-  }
-
+  
   const item = convert2CMDSchemaBase({
     ...context,
     supportClsSchema: true,
@@ -748,13 +730,9 @@ function convertModel2CMDArraySchemaBase(context: AAZSchemaEmitterContext, model
     type: new ArrayType(item.type),
     item: item,
     identifiers: getExtensions(context.program, payloadModel).get("x-ms-identifiers"),
-    cls: pending?.ref,
   };
-  if (!array.identifiers && getProperty(payloadModel.indexer.value as Model, "id") && getProperty(payloadModel.indexer.value as Model, "name")) {
+  if (item.type === "object" && !array.identifiers && getProperty(payloadModel.indexer.value as Model, "id") && getProperty(payloadModel.indexer.value as Model, "name")) {
     array.identifiers = ["name"];
-  }
-  if (pending) {
-    pending.schema = array;
   }
   return array;
 }
