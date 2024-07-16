@@ -43,6 +43,8 @@ export async function getTypespecRPResources(resourceProviderUrl: string) {
     const file = await host.readFile(outputDir + files[0]);
     results = [...results, ...JSON.parse(file.text)];
   }
+  // exclude "/providers/[\w.]+/operations" id in results
+  results = results.filter((it: any) => !it.id.match(/^\/providers\/[\w.]+\/operations$/g));
   return results;
 }
 
