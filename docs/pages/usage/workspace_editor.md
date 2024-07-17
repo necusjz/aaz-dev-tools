@@ -57,11 +57,11 @@ Here's an example of `Microsoft.Attestation` data-plane client configuration usi
 If you want do some modification in existing client configuration, you can click the `Edit Client Config` button. The change will apply to all the data-plane commands of that resource-provider when you export models from the workspace to aaz.
 ![edit_client_config](../../assets/recordings/workspace_editor/dataplane_edit_client_config.gif)
 
-## Add Swagger Resources
+## Add Swagger/TypeSpec Resources
 
-When an empty workspace is opened, the `Add Swagger Resources` page will be prompted out by default.
+When an empty workspace is opened, the `Add Resources` page will be prompted out by default.
 
-For a workspace contains commands, click the `+` button besides the `command tree`, the `Add Swagger Resources` page will prompted out as well.
+For a workspace contains commands, click the `+` button besides the `command tree`, the `Add Resources` page will prompted out as well.
 
 ![prompt_add_swagger_resources_page](../../assets/recordings/workspace_editor/prompt_add_swagger_resources_page.gif)
 
