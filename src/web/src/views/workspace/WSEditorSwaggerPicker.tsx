@@ -624,7 +624,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                             <CloseIcon />
                         </IconButton>
                         <Typography sx={{ ml: 2, flex: 1, flexDirection: "row", display: "flex", justifyContent: "center", alignContent: "center" }} variant='h5' component='div'>
-                            Add Swagger Resources
+                            Add Resources
                         </Typography>
                     </Toolbar>
                 </AppBar>
