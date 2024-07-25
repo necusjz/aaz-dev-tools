@@ -445,6 +445,10 @@ class Schema(Model, Linkable):
             if self.required:
                 for name in self.required:
                     if name in prop_dict:
+                        # read_only property is not required
+                        if prop_dict[name].read_only:
+                            logger.info(f"Ignore requirement of the read only property: {name}")
+                            continue
                         # because required property will not be included in a cls definition,
                         # so it's fine to update it in parent level when prop_dict[name] is a cls definition.
                         prop_dict[name].required = True
