@@ -2,6 +2,12 @@
 
 Release History
 ===============
+2.10.0
+++++++
+* Fix discriminate_by method in generated response schema code (#380)
+* Ignore the required flag for read only property in swagger (#390)
+* Escape backslashes in examples docstrings (#391)
+
 2.9.0
 ++++++
 * Support output flatten control in workspace editor (#368)
