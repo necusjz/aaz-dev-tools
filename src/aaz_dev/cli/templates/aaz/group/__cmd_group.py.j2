@@ -22,10 +22,10 @@ from azure.cli.core.aaz import *
 )
 {%- endif %}
 class __CMDGroup(AAZCommandGroup):
-    """{{ node.help.short|replace('\\', '\\\\') }}
+    """{{ node.help.short | replace('\\', '\\\\') }}
     {%- if node.help.long is not none and node.help.long|length %}
 
-    {{ node.help.long.split('\n')|join('\n    ')|replace('\\', '\\\\') }}
+    {{ node.help.long.split('\n') | join('\n    ') | replace('\\', '\\\\') }}
     {%- endif %}
     """
     pass

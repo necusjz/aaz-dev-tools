@@ -34,17 +34,17 @@ class {{ leaf.cls_name }}(
         AAZCommand
     {%- endif -%}
 ):
-    """{{ leaf.help.short|replace('\\', '\\\\') }}
+    """{{ leaf.help.short | replace('\\', '\\\\') }}
     {%- if leaf.help.long is not none and leaf.help.long|length %}
 
-    {{ leaf.help.long.split('\n')|join('\n    ')|replace('\\', '\\\\') }}
+    {{ leaf.help.long.split('\n') | join('\n    ') | replace('\\', '\\\\') }}
     {%- endif %}
     {%- if leaf.help.examples is not none and leaf.help.examples|length %}
     {%- for example in leaf.help.examples %}
 
     :example: {{ example.name }}
         {%- for command in example.commands %}
-        az {{ command }}
+        az {{ command | replace('\\', '\\\\') }}
         {%- endfor %}
     {%- endfor %}
     {%- endif %}
