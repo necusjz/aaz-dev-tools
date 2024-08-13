@@ -1,4 +1,4 @@
-import { HttpOperation, HttpOperationBody, HttpOperationMultipartBody, HttpOperationResponse, HttpStatusCodeRange, HttpStatusCodesEntry, Visibility, createMetadataInfo, getHeaderFieldOptions, getQueryParamOptions, getStatusCodeDescription, getVisibilitySuffix, isContentTypeHeader, isVisible, resolveRequestVisibility } from "@typespec/http";
+import { HttpOperation, HttpOperationBody, HttpOperationMultipartBody, HttpOperationResponse, HttpStatusCodeRange, HttpStatusCodesEntry, Visibility, createMetadataInfo, getHeaderFieldOptions, getQueryParamOptions, getServers, getStatusCodeDescription, getVisibilitySuffix, isContentTypeHeader, resolveRequestVisibility } from "@typespec/http";
 import { AAZEmitterContext, AAZOperationEmitterContext, AAZSchemaEmitterContext } from "./context.js";
 import { resolveOperationId } from "./utils.js";
 import { TypeSpecPathItem } from "./model/path_item.js";
@@ -17,7 +17,6 @@ import {
 import { getMaxProperties, getMinProperties, getMultipleOf, getUniqueItems } from "@typespec/json-schema";
 import { shouldFlattenProperty } from "@azure-tools/typespec-client-generator-core";
 import { CMDArrayFormat, CMDFloatFormat, CMDIntegerFormat, CMDObjectFormat, CMDResourceIdFormat, CMDStringFormat } from "./model/format.js";
-import { match } from "assert";
 
 
 interface DiscriminatorInfo {
@@ -96,13 +95,14 @@ export function retrieveAAZOperation(context: AAZEmitterContext, operation: Http
 
 function convert2CMDOperation(context: AAZOperationEmitterContext, operation: HttpOperation): CMDHttpOperation {
   // TODO: resolve host parameters for the operation
-
+  const hostPathAndParameters = extractHostPathAndParameters(context);
+  const hostPath = hostPathAndParameters?.hostPath ?? "";
   const op: CMDHttpOperation = {
     operationId: context.operationId,
     description: getDoc(context.program, operation.operation),
     http: {
-      // TODO: add host path if exists
-      path: getPathWithoutQuery(operation.path),
+      // merge host path and operation path
+      path: hostPath + getPathWithoutQuery(operation.path),
     }
   };
 
@@ -117,7 +117,7 @@ function convert2CMDOperation(context: AAZOperationEmitterContext, operation: Ht
     // TODO: add support for custom polling information
   }
 
-  op.http.request = extractHttpRequest(context, operation);
+  op.http.request = extractHttpRequest(context, operation, hostPathAndParameters?.hostParameters ?? {});
   op.http.responses = extractHttpResponses({
     ...context,
     visibility: Visibility.Read,
@@ -125,13 +125,55 @@ function convert2CMDOperation(context: AAZOperationEmitterContext, operation: Ht
   return op;
 }
 
-// function extractHostParameters(context: AAZEmitterContext) {
-//     // TODO: resolve host parameters
-//     // return context.sdkContext.host;
-// }
+function extractHostPathAndParameters(context: AAZOperationEmitterContext): { hostPath: string, hostParameters: Record<string, CMDSchema> } | undefined {
+  const servers = getServers(context.program, context.service.type);
+  if (servers === undefined || servers.length > 1) {
+    return undefined;
+  }
+  const server = servers[0];
+  const url = new URL(server.url);
+  const hostPath = url.pathname;
+  if (hostPath === "/" || hostPath === "") {
+    return undefined;
+  }
+  // using r"\{([^{}]*)}" to iterate over all parameter names in hostPath, the name should not contain '{' or '}'
+  const hostParameters: Record<string, CMDSchema> = {};
+  const hostPathParameters = hostPath.matchAll(/\{([^{}]*)\}/g);
+  for (const match of hostPathParameters) {
+    const name = match[1];
+    const param = server.parameters?.get(name);
+    let schema;
+    if (param === undefined) {
+      reportDiagnostic(context.program, {
+        code: "missing-host-parameter",
+        target: context.service.type,
+        message: `Host parameter '${name}' is not defined in the server parameters.`,
+      });
+    } else {
+      schema = convert2CMDSchema({
+        ...context,
+        visibility: Visibility.Read,
+        supportClsSchema: false,
+      }, param, name);
+    }
+    if (schema === undefined) {
+      schema ={
+        name,
+        type: "string",
+      };
+    }
+    schema.required = true;
+    schema.skipUrlEncoding = true;
+    hostParameters[name] = schema;
+  }
 
-function extractHttpRequest(context: AAZOperationEmitterContext, operation: HttpOperation): CMDHttpRequest | undefined {
-  // TODO: Add host parameters to the request
+  return {
+    hostPath,
+    hostParameters,
+  }
+}
+
+function extractHttpRequest(context: AAZOperationEmitterContext, operation: HttpOperation, hostParameters: Record<string, CMDSchema>): CMDHttpRequest | undefined {
   const request: CMDHttpRequest = {
     method: operation.verb,
   };
@@ -139,6 +181,13 @@ function extractHttpRequest(context: AAZOperationEmitterContext, operation: Http
   let schemaContext;
   const methodParams = operation.parameters;
   const paramModels: Record<string, Record<string, CMDSchema>> = {};
+  // add host parameters from the host path to path parameters
+  if (hostParameters && Object.keys(hostParameters).length > 0) {
+    paramModels["path"] = {
+      ...hostParameters,
+    };
+  }
+
   let clientRequestIdName;
   for (const httpOpParam of methodParams.parameters) {
     if (httpOpParam.type === "header" && isContentTypeHeader(context.program, httpOpParam.param)) {
@@ -156,8 +205,6 @@ function extractHttpRequest(context: AAZOperationEmitterContext, operation: Http
     if (!schema) {
       continue;
     }
-
-
 
     schema.required = !httpOpParam.param.optional;
 
@@ -1765,7 +1812,7 @@ function getClsDefinitionModel(schema: CMDClsSchemaBase): CMDObjectSchemaBase | 
   return schema.type.pendingSchema.schema!
 }
 
-function getDefaultValue(content: AAZSchemaEmitterContext, defaultType: Value): any {
+function getDefaultValue(content: AAZSchemaEmitterContext, defaultType: Value): unknown {
   switch (defaultType.valueKind) {
     case "StringValue":
       return defaultType.value;

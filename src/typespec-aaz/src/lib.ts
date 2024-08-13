@@ -92,6 +92,12 @@ const libDef = {
         default: "Invalid default value",
       }
     },
+    "missing-host-parameter": {
+      severity: "error",
+      messages: {
+        default: "Missing host parameter",
+      }
+    }
   },
   emitter: {
     options: EmitterOptionsSchema as JSONSchemaType<AAZEmitterOptions>,
