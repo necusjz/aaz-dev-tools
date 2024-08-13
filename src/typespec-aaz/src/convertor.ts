@@ -131,8 +131,8 @@ function extractHostPathAndParameters(context: AAZOperationEmitterContext): { ho
     return undefined;
   }
   const server = servers[0];
-  const url = new URL(server.url);
-  const hostPath = url.pathname;
+  // using r"^(.*://)?[^/]*(/.*)$" to split server url into host and path if url matches the pattern else the path should be empty
+  const hostPath = server.url.match(/^(.*:\/\/)?[^/]*(\/.*)$/)?.[2] ?? "";
   if (hostPath === "/" || hostPath === "") {
     return undefined;
   }
@@ -163,7 +163,6 @@ function extractHostPathAndParameters(context: AAZOperationEmitterContext): { ho
       };
     }
     schema.required = true;
-    schema.skipUrlEncoding = true;
     hostParameters[name] = schema;
   }
 
@@ -434,26 +433,29 @@ function convert2CMDHttpResponse(context: AAZOperationEmitterContext, response: 
     if (body.bodyKind === "multipart") {
       throw new Error("NotImplementedError: Multipart form data responses are not supported.");
     }
-    let schema = convert2CMDSchemaBase(
-      {
-        ...buildSchemaEmitterContext(context, body.type, "body"),
-        visibility: Visibility.Read,
-      },
-      body.type
-    );
-    if (!schema) {
-      throw new Error("Invalid Response Schema. It's None.");
-    }
+    let schema;
     if (isError) {
-      const errorFormat = classifyErrorFormat(context, schema);
+      const errorFormat = classifyErrorFormat(context, body.type);
       if (errorFormat === undefined) {
         throw new Error("Error response schema is not supported yet.");
       }
       schema = {
-        readOnly: schema.readOnly,
+        readOnly: true,
         type: `@${errorFormat}`,
       }
+    } else {
+      schema = convert2CMDSchemaBase(
+        {
+          ...buildSchemaEmitterContext(context, body.type, "body"),
+          visibility: Visibility.Read,
+        },
+        body.type
+      );
     }
+    if (!schema) {
+      throw new Error("Invalid Response Schema. It's None.");
+    }
+    
     res.body = {
       json: {
         schema: schema,
@@ -1763,7 +1765,20 @@ function getResponseDescriptionForStatusCodes(statusCodes: string[] | undefined)
   return getStatusCodeDescription(statusCodes[0]) ?? undefined;
 }
 
-function classifyErrorFormat(context: AAZOperationEmitterContext, schema: CMDSchemaBase): "ODataV4Format" | "MgmtErrorFormat" | undefined {
+function classifyErrorFormat(context: AAZOperationEmitterContext, type: Type): "ODataV4Format" | "MgmtErrorFormat" | undefined {
+  // In order to not effect the normal schema's cls reference count, create the new context
+  let schema = convert2CMDSchemaBase({
+    ...context,
+    pendingSchemas: new TwoLevelMap(),
+    refs: new TwoLevelMap(),
+    visibility: Visibility.Read,
+    supportClsSchema: true,
+  }, type);
+
+  if (schema === undefined) {
+    return undefined;
+  }
+  
   if (schema.type instanceof ClsType) {
     schema = getClsDefinitionModel(schema as CMDClsSchemaBase);
   }
@@ -1775,7 +1790,6 @@ function classifyErrorFormat(context: AAZOperationEmitterContext, schema: CMDSch
   for (const prop of errorSchema.props!) {
     props[prop.name] = prop;
   }
-
   if (props.error) {
     if (props.error.type instanceof ClsType) {
       errorSchema = getClsDefinitionModel(props.error as CMDClsSchemaBase) as CMDObjectSchemaBase;
