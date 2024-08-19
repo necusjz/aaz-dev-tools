@@ -2883,6 +2883,95 @@ class APIEditorTest(CommandTestCase):
             self.assertTrue(rv.status_code == 400)
             self.assertEqual(rv.json['message'], "Not support remain index ['invalid']")
 
+    @workspace_name("test_dataplane_api_center_typespec")
+    def test_dataplane_api_center_typespec(self, ws_name):
+        module = "apicenter"
+        resource_provider = "ApiCenter.DataApi"
+        api_version = '2024-02-01-preview'
+        with self.app.test_client() as c:
+            rv = c.post(f"/AAZ/Editor/Workspaces", json={
+                "name": ws_name,
+                "plane": PlaneEnum._Data,
+                "modNames": module,
+                "resourceProvider": resource_provider,
+                "source": SourceTypeEnum.TypeSpec,
+            })
+            self.assertTrue(rv.status_code == 200)
+            ws = rv.get_json()
+            self.assertEqual(ws['plane'], PlaneEnum.Data(resource_provider))
+            self.assertEqual(ws['resourceProvider'], resource_provider)
+            self.assertEqual(ws['modNames'], module)
+            ws_url = ws['url']
+
+            # add client configuration
+            rv = c.post(f"{ws_url}/ClientConfig", json={
+                "auth": {
+                    "aad": {
+                        "scopes": ["https://azure-apicenter.net/user_impersonation"]
+                    }
+                },
+                "templates": [
+                    {
+                        "cloud": CloudEnum.AzureCloud,
+                        "template": "https://{serviceName}.data.azure-apicenter.net"
+                    }
+                ]
+            })
+            self.assertTrue(rv.status_code == 200)
+
+            client_config = rv.get_json()
+            self.assertEqual(client_config['endpoints']['type'], "template")
+            self.assertEqual(client_config['endpoints']['templates'], [{
+                "cloud": CloudEnum.AzureCloud,
+                "template": "https://{serviceName}.data.azure-apicenter.net",
+            }])
+
+            # update client arguments
+            rv = c.get(f"{ws_url}/ClientConfig/Arguments/$Client.Endpoint.serviceName")
+            self.assertTrue(rv.status_code == 200)
+            client_arg = rv.get_json()
+            self.assertEqual(client_arg, {'group': 'Client', 'options': ['service-name'], 'required': True, 'type': 'string',
+                                          'var': '$Client.Endpoint.serviceName'})
+            ws_manager = WorkspaceManager(ws_name)
+            ws_manager.load()
+
+            rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/AddTypespec", json={
+                'module': module,
+                'version': api_version,
+                'resources': [
+                    build_typespec_resource(ws_manager, '/workspaces/{workspaceName}/apis/{apiName}/deployments', api_version),
+                    build_typespec_resource(ws_manager, '/workspaces/{workspaceName}/apis/{apiName}/deployments/{deploymentName}', api_version)
+                ]
+            })
+
+            self.assertTrue(rv.status_code == 200)
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            self.assertTrue(rv.status_code == 200)
+            command_tree = rv.get_json()
+            print("command_tree")
+            print(command_tree)
+            return
+
+            # modify command tree
+            rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/api-center/data-api/workspace/api/deployment/Rename", json={
+                "name": "apic workspace deployment"
+            })
+            self.assertTrue(rv.status_code == 200)
+            rv = c.delete(f"{ws_url}/CommandTree/Nodes/aaz/api-center/data-api/workspace/api")
+            self.assertTrue(rv.status_code == 200)
+            rv = c.delete(f"{ws_url}/CommandTree/Nodes/aaz/api-center/data-api/workspace")
+            self.assertTrue(rv.status_code == 200)
+            rv = c.delete(f"{ws_url}/CommandTree/Nodes/aaz/api-center/data-api")
+            self.assertTrue(rv.status_code == 200)
+            rv = c.delete(f"{ws_url}/CommandTree/Nodes/aaz/api-center")
+            self.assertTrue(rv.status_code == 200)
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            self.assertTrue(rv.status_code == 200)
+            command_tree = rv.get_json()
+
+            rv = c.post(f"{ws_url}/Generate")
     @workspace_name("test_workspace_generate_examples_array")
     def test_workspace_generate_examples_array(self, ws_name):
         module = "eventhub"
