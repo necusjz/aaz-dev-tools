@@ -2949,9 +2949,6 @@ class APIEditorTest(CommandTestCase):
             rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
             self.assertTrue(rv.status_code == 200)
             command_tree = rv.get_json()
-            print("command_tree")
-            print(command_tree)
-            return
 
             # modify command tree
             rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/api-center/data-api/workspace/api/deployment/Rename", json={
