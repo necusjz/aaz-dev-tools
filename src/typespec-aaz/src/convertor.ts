@@ -132,7 +132,7 @@ function extractHostPathAndParameters(context: AAZOperationEmitterContext): { ho
   }
   const server = servers[0];
   // using r"^(.*://)?[^/]*(/.*)$" to split server url into host and path if url matches the pattern else the path should be empty
-  const hostPath = server.url.match(/^(.*:\/\/)?[^/]*(\/.*)$/)?.[2] ?? "";
+  const hostPath = server.url.match(/^(.*:\/\/[^/]+)?(\/.*)$/)?.[2] ?? "";
   if (hostPath === "/" || hostPath === "") {
     return undefined;
   }
