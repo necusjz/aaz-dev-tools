@@ -7,8 +7,9 @@ from ._arg import CMDArg, CMDArgBase, CMDArgumentHelp, CMDArgEnum, CMDArgDefault
     CMDArgBlank, CMDObjectArgAdditionalProperties, CMDResourceLocationArgBase, CMDClsArgBase, CMDPasswordArgPromptInput
 from ._format import CMDFormat
 from ._schema import CMDObjectSchema, CMDSchema, CMDSchemaBase, CMDObjectSchemaBase, CMDObjectSchemaDiscriminator, \
-    CMDArraySchemaBase, CMDObjectSchemaAdditionalProperties, CMDResourceIdSchema, CMDBooleanSchemaBase, \
-    CMDResourceLocationSchemaBase, CMDPasswordSchema
+    CMDArraySchemaBase, CMDArraySchema, CMDObjectSchemaAdditionalProperties, CMDResourceIdSchema, \
+    CMDResourceLocationSchemaBase, CMDPasswordSchema, CMDBooleanSchemaBase, CMDBooleanSchema
+from ..configuration._schema import CMDIdentityObjectSchema, CMDIdentityObjectSchemaBase, CMDStringSchemaBase
 
 
 class CMDArgBuilder:
@@ -120,6 +121,8 @@ class CMDArgBuilder:
             if self.schema.name == "properties" and self.schema.props:
                 # flatten 'properties' property by default if it has props
                 return True
+            if isinstance(self.schema, CMDIdentityObjectSchema):
+                return True
         if isinstance(self.schema, CMDObjectSchemaDiscriminator):
             return self._parent._flatten_discriminators
         return False
@@ -188,9 +191,33 @@ class CMDArgBuilder:
                 sub_builder = self.get_sub_builder(schema=prop, ref_args=sub_ref_args)
                 sub_args.extend(sub_builder.get_args())
 
+            if isinstance(self.schema, CMDIdentityObjectSchema) and not self._is_update_action:
+                self.add_identity_args(sub_args, sub_ref_args)
+
         if not sub_args:
             return None
         return sub_args
+
+    def add_identity_args(self, args, ref_args):
+        if not self.schema.props:
+            self.schema.props = []
+
+        user_assigned_schema = CMDArraySchema({
+            "name": "miUserAssigned",
+            "item": CMDStringSchemaBase(),
+            "description": "Set the user managed identities on the media services account."
+        })
+        builder = self.get_sub_builder(schema=user_assigned_schema, ref_args=ref_args)
+        args.extend(builder.get_args())
+        self.schema.mi_user_assigned = user_assigned_schema
+
+        system_assigned_schema = CMDBooleanSchema({
+            "name": "miSystemAssigned",
+            "description": "Set the system managed identity on the media services account.",
+        })
+        builder = self.get_sub_builder(schema=system_assigned_schema, ref_args=ref_args)
+        args.extend(builder.get_args())
+        self.schema.mi_system_assigned = system_assigned_schema
 
     def get_sub_item(self):
         if hasattr(self.schema, "item") and self.schema.item:
@@ -290,6 +317,11 @@ class CMDArgBuilder:
                 for prop in self._parent.schema.props:
                     if prop.name == 'name':
                         return True
+
+        if getattr(self.schema, 'name', None) in ['userAssignedIdentities', 'type'] and self._parent and \
+                isinstance(self._parent.schema, CMDIdentityObjectSchema):
+            return True
+
         return False
 
     def get_var(self):
