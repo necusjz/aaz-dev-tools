@@ -2,6 +2,10 @@
 
 Release History
 ===============
+2.10.1
+++++++
+* Fix swagger additional property patch (#397)
+
 2.10.0
 ++++++
 * Fix discriminate_by method in generated response schema code (#380)
