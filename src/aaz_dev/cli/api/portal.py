@@ -48,7 +48,7 @@ def generate_module_command_portal(module):
     az_main_manager = AzMainManager()
     az_ext_manager = AzExtensionManager()
     aaz_spec_manager = AAZSpecsManager()
-    root = aaz_spec_manager.find_command_group()
+    root = aaz_spec_manager.tree.find_command_group()
     if not root:
         return "Command group spec root not exist"
     portal_cli_generator = PortalCliGenerator()

@@ -15,7 +15,7 @@ def command_tree_node(node_names):
     node_names = node_names[1:]
 
     manager = AAZSpecsManager()
-    node = manager.find_command_group(*node_names)
+    node = manager.tree.find_command_group(*node_names)
     if not node:
         raise exceptions.ResourceNotFind("Command group not exist")
 
@@ -30,7 +30,7 @@ def command_tree_leaf(node_names, leaf_name):
     node_names = node_names[1:]
 
     manager = AAZSpecsManager()
-    leaf = manager.find_command(*node_names, leaf_name)
+    leaf = manager.tree.find_command(*node_names, leaf_name)
     if not leaf:
         raise exceptions.ResourceNotFind("Command not exist")
 
@@ -45,7 +45,7 @@ def aaz_command_in_version(node_names, leaf_name, version_name):
     node_names = node_names[1:]
 
     manager = AAZSpecsManager()
-    leaf = manager.find_command(*node_names, leaf_name)
+    leaf = manager.tree.find_command(*node_names, leaf_name)
     if not leaf:
         raise exceptions.ResourceNotFind("Command not exist")
 

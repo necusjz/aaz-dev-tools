@@ -16,7 +16,7 @@ class AAZSpecPortalGenTest(TestCase):
         node_names = node_names[1:]
 
         manager = AAZSpecsManager()
-        leaf = manager.find_command(*node_names, leaf_name)
+        leaf = manager.tree.find_command(*node_names, leaf_name)
         if not leaf:
             raise exceptions.ResourceNotFind("Command group not exist")
 

@@ -105,7 +105,7 @@ class AzAtomicProfileBuilder:
         return command, client
 
     def _build_command_group_from_aaz(self, *names):
-        aaz_cg = self._aaz_spec_manager.find_command_group(*names)
+        aaz_cg = self._aaz_spec_manager.tree.find_command_group(*names)
         if not aaz_cg:
             raise ResourceNotFind("Command group '{}' not exist in AAZ".format(' '.join(names)))
         command_group = CLIAtomicCommandGroup()
@@ -120,7 +120,7 @@ class AzAtomicProfileBuilder:
         return command_group
 
     def _build_command_from_aaz(self, *names, version_name, load_cfg=True):
-        aaz_cmd = self._aaz_spec_manager.find_command(*names)
+        aaz_cmd = self._aaz_spec_manager.tree.find_command(*names)
         if not aaz_cmd:
             raise ResourceNotFind("Command '{}' not exist in AAZ".format(' '.join(names)))
         version = None

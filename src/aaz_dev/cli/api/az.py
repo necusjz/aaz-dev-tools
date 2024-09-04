@@ -151,7 +151,7 @@ def portal_generate_main_module(module_name):
         return
 
     aaz_spec_manager = AAZSpecsManager()
-    root = aaz_spec_manager.find_command_group()
+    root = aaz_spec_manager.tree.find_command_group()
     if not root:
         raise exceptions.ResourceNotFind("Command group not exist")
     portal_cli_generator = PortalCliGenerator()
@@ -172,7 +172,7 @@ def portal_generate_extension_module(module_name):
         return
 
     aaz_spec_manager = AAZSpecsManager()
-    root = aaz_spec_manager.find_command_group()
+    root = aaz_spec_manager.tree.find_command_group()
     if not root:
         raise exceptions.ResourceNotFind("Command group not exist")
     portal_cli_generator = PortalCliGenerator()
