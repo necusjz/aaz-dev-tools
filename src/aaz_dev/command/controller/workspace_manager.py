@@ -7,13 +7,14 @@ from datetime import datetime
 from command.model.configuration import CMDHelp, CMDResource, CMDCommandExample, CMDArg, CMDCommand, \
     CMDBuildInVariants, CMDHttpOperation
 from command.model.editor import CMDEditorWorkspace, CMDCommandTreeNode, CMDCommandTreeLeaf
-from swagger.controller.command_generator import CommandGenerator
 from swagger.controller.example_generator import ExampleGenerator
+from swagger.controller.command_generator import SwaggerCommandGenerator, TypespecCommandGenerator
 from swagger.controller.specs_manager import SwaggerSpecsManager
 from swagger.utils.exceptions import InvalidSwaggerValueError
 from utils import exceptions
 from utils.config import Config
 from utils.plane import PlaneEnum
+from utils.base64 import b64encode_str
 from .specs_manager import AAZSpecsManager
 from .workspace_cfg_editor import WorkspaceCfgEditor, build_endpoint_selector_for_client_config
 from .workspace_client_cfg_editor import WorkspaceClientCfgEditor
@@ -45,7 +46,7 @@ class WorkspaceManager:
         return workspaces
 
     @classmethod
-    def new(cls, name, plane, mod_names, resource_provider, **kwargs):
+    def new(cls, name, plane, mod_names, resource_provider, source, **kwargs):
         manager = cls(name, **kwargs)
         if not manager.is_in_memory and os.path.exists(manager.path):
             raise exceptions.ResourceConflict(
@@ -58,6 +59,7 @@ class WorkspaceManager:
             "plane": plane,
             "modNames": mod_names,
             "resourceProvider": resource_provider,
+            "source": source,
             "version": datetime.utcnow(),
             "commandTree": {
                 "names": [cls.COMMAND_TREE_ROOT_NAME],
@@ -89,6 +91,8 @@ class WorkspaceManager:
         self._aaz_specs = aaz_manager
         self._swagger_specs = swagger_manager
         self._swagger_command_generator = None
+        
+        self._typespec_command_generator = None
         self._swagger_example_generator = None
 
     @property
@@ -110,8 +114,14 @@ class WorkspaceManager:
     @property
     def swagger_command_generator(self):
         if not self._swagger_command_generator:
-            self._swagger_command_generator = CommandGenerator()
+            self._swagger_command_generator = SwaggerCommandGenerator()
         return self._swagger_command_generator
+    
+    @property
+    def typespec_command_generator(self):
+        if not self._typespec_command_generator:
+            self._typespec_command_generator = TypespecCommandGenerator()
+        return self._typespec_command_generator
 
     @property
     def swagger_example_generator(self):
@@ -617,21 +627,53 @@ class WorkspaceManager:
         # load swagger resources
         self.swagger_command_generator.load_resources(swagger_resources)
 
+        self._add_new_resources(self.swagger_command_generator, swagger_resources, resource_options)
+
+    def add_new_resources_by_typespec(self, version, resources):
+        root_node = self.find_command_tree_node()
+        assert root_node
+
+        cmd_resources = []
+        resource_options = []
+        used_resource_ids = set()
+        for r in resources:
+            if r['id'] in used_resource_ids:
+                continue
+            if self.check_resource_exist(r['id']):
+                raise exceptions.InvalidAPIUsage(
+                    f"Resource already added in Workspace: {r['id']}")
+            used_resource_ids.update(r['id'])
+            cmd_resources.append(CMDResource({
+                "id": r['id'],
+                "version": version,
+                "swagger": f"{self.ws.plane}/{self.ws.mod_names}/ResourceProviders/{self.ws.resource_provider}/Paths/{b64encode_str(r['path'])}/V/{b64encode_str(version)}" 
+            }))
+            resource_options.append(r.get("options", {}))
+        
+        # load typespec resources
+        self.typespec_command_generator.load_resources(resources)
+
+        self._add_new_resources(self.typespec_command_generator, cmd_resources, resource_options)
+    
+    def _add_new_resources(self, command_generator, resources, resource_options):
         # generate cfg editors by resource
         cfg_editors = []
         aaz_ref = {}
-        for resource, options in zip(swagger_resources, resource_options):
+        for resource, options in zip(resources, resource_options):
             try:
-                command_group = self.swagger_command_generator.create_draft_command_group(
+                command_group = command_generator.create_draft_command_group(
                     resource, instance_var=CMDBuildInVariants.Instance, **options)
             except InvalidSwaggerValueError as err:
                 raise exceptions.InvalidAPIUsage(
                     message=str(err)
                 ) from err
             assert not command_group.command_groups, "The logic to support sub command groups is not supported"
+            if not isinstance(resource, CMDResource):
+                # Typespec use CMDResource directly, but swagger use swagger Resource
+                resource = resource.to_cmd()
             cfg_editor = WorkspaceCfgEditor.new_cfg(
                 plane=self.ws.plane,
-                resources=[resource.to_cmd()],
+                resources=[resource],
                 command_groups=[command_group]
             )
 
@@ -646,9 +688,7 @@ class WorkspaceManager:
                 cfg_editor.inherit_modification(aaz_cfg_reader)
                 for cmd_names, _ in cfg_editor.iter_commands():
                     aaz_ref[' '.join(cmd_names)] = aaz_version
-
             cfg_editors.append(cfg_editor)
-
         # add cfg_editors
         self._add_cfg_editors(cfg_editors, aaz_ref=aaz_ref)
 
@@ -691,7 +731,7 @@ class WorkspaceManager:
             if not merged:
                 self.add_cfg(cfg_editor, aaz_ref=aaz_ref)
 
-    def reload_swagger_resources(self, resources):
+    def reload_resources_by_swagger(self, resources):
         reload_resource_map = {
             r['id']: {"version": r['version']} for r in resources}
         for leaf in self.iter_command_tree_leaves():
@@ -704,8 +744,8 @@ class WorkspaceManager:
                 reload_resource = reload_resource_map[r.id]
                 version = reload_resource['version']
                 reload_versions.add(version)
-                if 'swagger_resource' not in reload_resource:
-                    reload_resource['swagger_resource'] = self.swagger_specs.get_module_manager(
+                if 'resource' not in reload_resource:
+                    reload_resource['resource'] = self.swagger_specs.get_module_manager(
                         self.ws.plane, r.mod_names
                     ).get_resource_in_version(r.id, version)
 
@@ -720,22 +760,59 @@ class WorkspaceManager:
                 # not support multiple resource version for the same command
                 raise exceptions.InvalidAPIUsage(
                     f"Please select the same resource version for command: '{' '.join(leaf.names)}'")
-
         swagger_resources = []
         for resource_id, reload_resource in reload_resource_map.items():
-            swagger_resource = reload_resource.get('swagger_resource', None)
-            if not swagger_resource:
+            resource = reload_resource.get('resource', None)
+            if not resource:
                 raise exceptions.ResourceNotFind(
                     f"Command not exist for '{resource_id}'")
-            swagger_resources.append(swagger_resource)
+            swagger_resources.append(resource)
 
         self.swagger_command_generator.load_resources(swagger_resources)
+        
+        self._reload_resources(self.swagger_command_generator, reload_resource_map)
 
+    def reload_resources_by_typespec(self, resources):
+        reload_resource_map = {
+            r['id']: {"version": r['version']} for r in resources}
+        for leaf in self.iter_command_tree_leaves():
+            ignore_resources = set()
+            reload_versions = set()
+            for r in leaf.resources:
+                if r.id not in reload_resource_map:
+                    ignore_resources.add(r.id)
+                    continue
+                reload_resource = reload_resource_map[r.id]
+                version = reload_resource['version']
+                reload_versions.add(version)
+                if 'resource' not in reload_resource:
+                    # Ignore subresource property
+                    reload_resource['resource'] = CMDResource({
+                        "id": r.id,
+                        "version": r.version,
+                        "swagger": r.swagger, 
+                    })
+                if 'cfg_editor' not in reload_resource:
+                    reload_resource['cfg_editor'] = self.load_cfg_editor_by_command(
+                        leaf)
+            if ignore_resources and len(ignore_resources) != len(leaf.resources):
+                # not support partial resources reload
+                raise exceptions.InvalidAPIUsage(
+                    f"Not support partial resources reload in one command: please select the following resources as well: {list(ignore_resources)}")
+            if len(reload_versions) > 1:
+                # not support multiple resource version for the same command
+                raise exceptions.InvalidAPIUsage(
+                    f"Please select the same resource version for command: '{' '.join(leaf.names)}'")
+
+        self.typespec_command_generator.load_resources(resources)
+        self._reload_resources(self.typespec_command_generator, reload_resource_map)
+
+    def _reload_resources(self, command_generator, reload_resource_map):
         new_cfg_editors = []
         for resource_id, reload_resource in reload_resource_map.items():
             options = {}
             cfg_editor = reload_resource['cfg_editor']
-            swagger_resource = reload_resource['swagger_resource']
+            resource = reload_resource['resource']
             methods = cfg_editor.get_used_http_methods(resource_id)
             if methods:
                 options['methods'] = methods
@@ -744,16 +821,19 @@ class WorkspaceManager:
                 _, _, update_by = update_cmd_info
                 options['update_by'] = update_by
             try:
-                command_group = self.swagger_command_generator.create_draft_command_group(
-                    swagger_resource, instance_var=CMDBuildInVariants.Instance, **options)
+                command_group = command_generator.create_draft_command_group(
+                    resource, instance_var=CMDBuildInVariants.Instance, **options)
             except InvalidSwaggerValueError as err:
                 raise exceptions.InvalidAPIUsage(
                     message=str(err)
                 ) from err
             assert not command_group.command_groups, "The logic to support sub command groups is not supported"
+            if not isinstance(resource, CMDResource):
+                # Typespec use CMDResource directly, but swagger use swagger Resource
+                resource = resource.to_cmd()
             new_cfg_editor = WorkspaceCfgEditor.new_cfg(
                 plane=self.ws.plane,
-                resources=[swagger_resource.to_cmd()],
+                resources=[resource],
                 command_groups=[command_group]
             )
             new_cfg_editor.inherit_modification(cfg_editor)
@@ -786,7 +866,7 @@ class WorkspaceManager:
                 for leaf_resource in leaf.resources:
                     # cannot find match resource of resource_id with current mod_names and version
                     cg_names = self.swagger_command_generator.generate_command_group_name_by_resource(
-                        resource_path=leaf_resource.swagger_path, rp_name=leaf_resource.rp_name)
+                        resource_path=leaf_resource.path, rp_name=leaf_resource.rp_name)
                     cg_names = cg_names.split(" ")
                     groups_names.append(cg_names)
 
@@ -1105,7 +1185,7 @@ class WorkspaceManager:
         return results
 
     # client config
-
+    # TODO: support typespec
     def create_cfg_editor(self, auth, templates=None, cloud_medadata=None, arm_resource=None):
         ref_cfg = self.load_client_cfg_editor()
         if templates:

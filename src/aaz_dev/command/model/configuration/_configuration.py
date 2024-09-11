@@ -1,5 +1,5 @@
 from schematics.models import Model
-from schematics.types import ModelType, ListType, UTCDateTimeType
+from schematics.types import ModelType, ListType
 from utils.fields import PlaneField
 
 from ._command_group import CMDCommandGroup

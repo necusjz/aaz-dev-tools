@@ -16,13 +16,14 @@ def editor_workspaces():
         # create a new workspace
         # the name of workspace is required
         data = request.get_json()
-        if not data or not isinstance(data, dict) or 'name' not in data or 'plane' not in data or 'modNames' not in data or 'resourceProvider' not in data:
+        if not data or not isinstance(data, dict) or 'name' not in data or 'plane' not in data or 'modNames' not in data or 'resourceProvider' not in data or 'source' not in data:
             raise exceptions.InvalidAPIUsage("Invalid request body")
         name = data['name']
         plane = data['plane']
         mod_names = data['modNames']
         resource_provider = data['resourceProvider']
-        manager = WorkspaceManager.new(name, plane, mod_names, resource_provider)
+        source = data['source']
+        manager = WorkspaceManager.new(name, plane, mod_names, resource_provider, source)
         manager.save()
         result = manager.ws.to_primitive()
         result.update({
@@ -71,6 +72,7 @@ def get_workspace_swagger_default_options(name):
     manager.load()
     result = {
         "plane": manager.ws.plane,
+        "source": manager.ws.source,
         "modNames": manager.ws.mod_names if manager.ws.mod_names else Config.DEFAULT_SWAGGER_MODULE,
         "rpName": manager.ws.resource_provider if manager.ws.resource_provider else Config.DEFAULT_RESOURCE_PROVIDER,
     }
@@ -593,7 +595,7 @@ def editor_workspace_command_argument_find_similar(name, node_names, leaf_name, 
 
 # command tree resource operations
 @bp.route("/Workspaces/<name>/CommandTree/Nodes/<names_path:node_names>/AddSwagger", methods=("POST",))
-def editor_workspace_tree_node_resources(name, node_names):
+def editor_workspace_tree_node_add_swagger_resources(name, node_names):
     if node_names[0] != WorkspaceManager.COMMAND_TREE_ROOT_NAME:
         raise exceptions.ResourceNotFind("Command group not exist")
     node_names = node_names[1:]
@@ -619,6 +621,39 @@ def editor_workspace_tree_node_resources(name, node_names):
 
     manager.add_new_resources_by_swagger(
         mod_names=mod_names,
+        version=version,
+        resources=resources,
+    )
+    manager.save()
+    return "", 200
+
+
+# command tree resource operations
+@bp.route("/Workspaces/<name>/CommandTree/Nodes/<names_path:node_names>/AddTypespec", methods=("POST",))
+def editor_workspace_tree_node_add_typespec_resources(name, node_names):
+    if node_names[0] != WorkspaceManager.COMMAND_TREE_ROOT_NAME:
+        raise exceptions.ResourceNotFind("Command group not exist")
+    node_names = node_names[1:]
+    if len(node_names) > 0:
+        raise exceptions.InvalidAPIUsage("Not support to add resources under a specific node.")
+
+    manager = WorkspaceManager(name)
+    manager.load()
+    if not manager.find_command_tree_node(*node_names):
+        raise exceptions.ResourceNotFind("Command group not exist")
+
+    # add new resource
+    data = request.get_json()
+    if not isinstance(data, dict):
+        raise exceptions.InvalidAPIUsage("Invalid request")
+
+    try:
+        version = data['version']
+        resources = data['resources']
+    except KeyError:
+        raise exceptions.InvalidAPIUsage("Invalid request")
+
+    manager.add_new_resources_by_typespec(
         version=version,
         resources=resources,
     )
@@ -670,7 +705,22 @@ def editor_workspace_resource_reload_swagger(name):
         resources = data['resources']
     except KeyError:
         raise exceptions.InvalidAPIUsage("Invalid request")
-    manager.reload_swagger_resources(resources=resources)
+    manager.reload_resources_by_swagger(resources=resources)
+    manager.save()
+    return "", 200
+
+
+@bp.route("/Workspaces/<name>/Resources/ReloadTypespec", methods=("POST",))
+def editor_workspace_resource_reload_typespec(name):
+    # update resource by reloading typespec
+    manager = WorkspaceManager(name)
+    manager.load()
+    data = request.get_json()
+    try:
+        resources = data['resources']
+    except KeyError:
+        raise exceptions.InvalidAPIUsage("Invalid request")
+    manager.reload_resources_by_typespec(resources=resources)
     manager.save()
     return "", 200
 

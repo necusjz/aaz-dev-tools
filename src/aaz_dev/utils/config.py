@@ -114,6 +114,14 @@ class Config:
             if os.path.exists(cls.AAZ_DEV_WORKSPACE_FOLDER) and not os.path.isdir(cls.AAZ_DEV_WORKSPACE_FOLDER):
                 raise ValueError(f"Path '{cls.AAZ_DEV_WORKSPACE_FOLDER}' is not a folder.")
         return cls.AAZ_DEV_WORKSPACE_FOLDER
+    
+    @classmethod
+    def get_swagger_root(cls):
+        if cls.SWAGGER_PATH:
+            return cls.SWAGGER_PATH
+        if cls.SWAGGER_MODULE_PATH:
+            return cls.SWAGGER_MODULE_PATH
+        return None
 
 
 __all__ = ["Config"]

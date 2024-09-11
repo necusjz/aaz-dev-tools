@@ -24,16 +24,16 @@ AddElementTag("AazRepo", $bgColor="#2c858a", $borderColor="#7bb0b3")
 
 AddElementTag("Boundary", $bgColor="#f0f0f0")
 
-
 Person(developer, "CLI Developer")
 
 Boundary(api, "API Specs") {
     SystemDb(swagger, "Swagger 2.0", "Repo", "", "Repo", $tags="Repo")
-    SystemDb(other_specs, "Other Source", "Repo", "", "Repo", $tags="FetureRepo")
+    SystemDb(typespec, "Typespec", "Repo", "", "Repo", $tags="Repo")
+    SystemDb(other_specs, "Other API Specs", "Repo", "", "Repo", $tags="FetureRepo")
 }
 
-Lay_D(swagger, other_specs)
-
+Lay_D(swagger, typespec)
+Lay_D(typespec, other_specs)
 
 Boundary(aazdev, "AAZ Dev Tool") {
     Boundary(models, "Command Models") {
@@ -49,7 +49,8 @@ Boundary(aazdev, "AAZ Dev Tool") {
     }
     Boundary(translator, "API Translators", "", "") {
         Container(swagger_translator, " Swagger 2.0\nTranslator", "", "", $tags="CodeGenPart")
-        Boundary(other_translator, "Other Source\nTranslator", "", "", $tags="FetureCodeGenPart")
+        Container(typespec_translator, " Typespec Emitter\nTranslator", "", "", $tags="CodeGenPart")
+        Boundary(other_translator, "Other API Specs\nTranslator", "", "", $tags="FetureCodeGenPart")
     }
 }
 
@@ -65,12 +66,12 @@ Lay_R(editor, generator)
 Lay_D(editor, models)
 ' Lay_R(aaz, cli_generator)
 
-Lay_D(swagger_translator, other_translator)
+Lay_D(swagger_translator, typespec_translator)
+Lay_D(typespec_translator, other_translator)
 
 Lay_D(cli_generator, cli_extension_generator)
 
 Lay_D(cli_extension_generator, other_generator)
-
 
 Boundary(cli, "CLI Commands") {
     SystemDb(azure_cli, "Azure CLI", "Repo", "", "Repo", $tags="Repo")
@@ -101,8 +102,11 @@ cli_extension_generator <-[#Green,thickness=2]l-> azure_cli_extension
 developer -[#DarkGreen,thickness=2]d-+ editor
 developer -[#DarkGreen,thickness=2]d-+ generator
 
+typespec -[#Green,thickness=2]l-> typespec_translator
+typespec_translator -[#Green,thickness=2]l-> workspace
+
 other_specs .[#Green]l.> other_translator
-other_translator .[#Green]u.> workspace
+other_translator .[#Green]l.> workspace
 
 aaz .[#Green]d.> other_generator
 other_generator <.[#Green]l.> other_repo

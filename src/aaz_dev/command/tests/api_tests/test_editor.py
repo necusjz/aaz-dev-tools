@@ -5,12 +5,78 @@ from command.controller.workspace_cfg_editor import WorkspaceCfgEditor
 from command.controller.workspace_manager import WorkspaceManager
 from command.tests.common import CommandTestCase, workspace_name
 from swagger.utils.tools import swagger_resource_path_to_resource_id
+from swagger.utils.source import SourceTypeEnum
 from utils.base64 import b64encode_str
 from utils.plane import PlaneEnum
 from utils.client import CloudEnum
 from utils.stage import AAZStageEnum
+from utils.config import Config
 from command.model.configuration import DEFAULT_CONFIRMATION_PROMPT
 
+
+def build_typespec_resource(ws_manager, path, version):
+    from swagger.model.schema.cmd_builder import CMDBuilder
+    from swagger.model.schema.fields import MutabilityEnum
+
+    resource_id = swagger_resource_path_to_resource_id(path)
+    swagger_resource = ws_manager.swagger_specs.get_swagger_resource(
+        plane=ws_manager.ws.plane, mod_names=ws_manager.ws.mod_names, resource_id=resource_id, version=version)
+    ws_manager.swagger_command_generator.load_resources([swagger_resource])
+    path_item = ws_manager.swagger_command_generator.get_path_item(swagger_resource)
+    item = {}
+    if path_item.get:
+            cmd_builder = CMDBuilder(path=path, method='get')
+            op = cmd_builder(path_item, mutability=MutabilityEnum.Read)
+            cmd_builder.apply_cls_definitions(op)
+            item['get'] = {
+                MutabilityEnum.Read: op.to_primitive(),
+            }
+    if path_item.delete:
+            cmd_builder = CMDBuilder(path=path, method='delete')
+            op = cmd_builder(path_item, mutability=MutabilityEnum.Create)
+            cmd_builder.apply_cls_definitions(op)
+            item['delete'] = {
+                MutabilityEnum.Create: op.to_primitive(),
+            }
+    if path_item.put:
+        cmd_builder = CMDBuilder(path=path, method='put')
+        op = cmd_builder(path_item, mutability=MutabilityEnum.Create)
+        cmd_builder.apply_cls_definitions(op)
+        item['put'] = {
+            MutabilityEnum.Create: op.to_primitive(),
+        }
+        cmd_builder = CMDBuilder(path=path, method='put')
+        op = cmd_builder(path_item, mutability=MutabilityEnum.Update)
+        cmd_builder.apply_cls_definitions(op)
+        item['put'][MutabilityEnum.Update] = op.to_primitive()
+    if path_item.post:
+        cmd_builder = CMDBuilder(path=path, method='post')
+        op = cmd_builder(path_item, mutability=MutabilityEnum.Create)
+        cmd_builder.apply_cls_definitions(op)
+        item['post'] = {
+            MutabilityEnum.Create: op.to_primitive(),
+        }
+    if path_item.patch:
+        cmd_builder = CMDBuilder(path=path, method='patch')
+        op = cmd_builder(path_item, mutability=MutabilityEnum.Update)
+        cmd_builder.apply_cls_definitions(op)
+        item['patch'] = {
+            MutabilityEnum.Update: op.to_primitive(),
+        }
+    if path_item.head:
+        cmd_builder = CMDBuilder(path=path, method='head')
+        op = cmd_builder(path_item, mutability=MutabilityEnum.Read)
+        cmd_builder.apply_cls_definitions(op)
+        item['head'] = {
+            MutabilityEnum.Read: op.to_primitive(),
+        }
+
+    return {
+        'id': resource_id,
+        "version": version,
+        "path": path,
+        "pathItem": item,
+    }
 
 class APIEditorTest(CommandTestCase):
 
@@ -22,7 +88,8 @@ class APIEditorTest(CommandTestCase):
                 "name": name1,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             assert rv.status_code == 200
             ws1 = rv.get_json()
@@ -30,6 +97,7 @@ class APIEditorTest(CommandTestCase):
             assert ws1['plane'] == PlaneEnum.Mgmt
             assert ws1['modNames'] == "edgeorder"
             assert ws1['resourceProvider'] == "Microsoft.EdgeOrder"
+            assert ws1['source'] == SourceTypeEnum.OpenAPI
             assert ws1['version']
             assert ws1['url']
             assert ws1['commandTree']['names'] == ['aaz']
@@ -39,7 +107,8 @@ class APIEditorTest(CommandTestCase):
                 "name": name2,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             assert rv.status_code == 200
             ws2 = rv.get_json()
@@ -64,7 +133,8 @@ class APIEditorTest(CommandTestCase):
                 "name": name2,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             assert rv.status_code == 409
 
@@ -75,7 +145,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             assert rv.status_code == 200
             ws = rv.get_json()
@@ -99,7 +170,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             assert rv.status_code == 200
             ws = rv.get_json()
@@ -205,6 +277,207 @@ class APIEditorTest(CommandTestCase):
             assert len(command['resources']) == 1
             assert command['version'] == '2021-12-01'
 
+    @workspace_name("test_workspace_add_sphere")
+    def test_workspace_add_sphere(self, ws_name):
+        with self.app.test_client() as c:
+            rv = c.post(f"/AAZ/Editor/Workspaces", json={
+                "name": ws_name,
+                "plane": PlaneEnum.Mgmt,
+                "modNames": "sphere",
+                "resourceProvider": "Microsoft.AzureSphere",
+                "source": SourceTypeEnum.TypeSpec,
+            })
+            assert rv.status_code == 200
+            ws = rv.get_json()
+            ws_url = ws['url']
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            assert rv.status_code == 200
+            node = rv.get_json()
+            assert node['names'] == ['aaz']
+
+            ws_manager = WorkspaceManager(ws_name)
+            ws_manager.load()
+            
+            version = '2024-04-01'
+            resources = [
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.AzureSphere/catalogs/{catalogName}/products/{productName}/deviceGroups/{deviceGroupName}/devices', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.AzureSphere/catalogs/{catalogName}/products/{productName}/deviceGroups/{deviceGroupName}/devices/{deviceName}', version),
+            ]
+            with open(os.path.join(Config.get_swagger_root(), 'specification', 'sphere', 'tsp-output', '@azure-tools', 'typespec-aaz','resources_operations.json'), 'w') as f:
+                json.dump(resources, f, indent=2, ensure_ascii=False, sort_keys=True)
+            
+            rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/AddTypespec", json={
+                'module': 'sphere',
+                'version': version,
+                'resources': resources,
+            })
+            assert rv.status_code == 200
+
+    @workspace_name("test_workspace_add_api_center")
+    def test_workspace_add_api_center(self, ws_name):
+        with self.app.test_client() as c:
+            rv = c.post(f"/AAZ/Editor/Workspaces", json={
+                "name": ws_name,
+                "plane": PlaneEnum.Mgmt,
+                "modNames": "apicenter",
+                "resourceProvider": "Microsoft.ApiCenter",
+                "source": SourceTypeEnum.TypeSpec,
+            })
+            assert rv.status_code == 200
+            ws = rv.get_json()
+            ws_url = ws['url']
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            assert rv.status_code == 200
+            node = rv.get_json()
+            assert node['names'] == ['aaz']
+
+            ws_manager = WorkspaceManager(ws_name)
+            ws_manager.load()
+
+            version = '2024-03-15-preview'
+            resources = [
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services/{serviceName}/workspaces/{workspaceName}/apis/{apiName}/deployments', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services/{serviceName}/workspaces/{workspaceName}/apis/{apiName}/deployments/{deploymentName}', version),
+            ]
+            output_folder = os.path.join(Config.get_swagger_root(), 'specification', 'apicenter', 'tsp-output', '@azure-tools', 'typespec-aaz')
+            os.makedirs(output_folder, exist_ok=True)
+            with open(os.path.join(output_folder,'resources_operations.json'), 'w') as f:
+                json.dump(resources, f, indent=2, ensure_ascii=False, sort_keys=True)
+            rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/AddTypespec", json={
+                'module': 'apicenter',
+                'version': version,
+                'resources': resources,
+            })
+            assert rv.status_code == 200
+
+
+    @workspace_name("test_workspace_add_typespec")
+    def test_workspace_add_typespec(self, ws_name):
+        with self.app.test_client() as c:
+            rv = c.post(f"/AAZ/Editor/Workspaces", json={
+                "name": ws_name,
+                "plane": PlaneEnum.Mgmt,
+                "modNames": "apicenter",
+                "resourceProvider": "Microsoft.ApiCenter",
+                "source": SourceTypeEnum.TypeSpec,
+            })
+            assert rv.status_code == 200
+            ws = rv.get_json()
+            ws_url = ws['url']
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            assert rv.status_code == 200
+            node = rv.get_json()
+            assert node['names'] == ['aaz']
+
+            
+            ws_manager = WorkspaceManager(ws_name)
+            ws_manager.load()
+
+            version = '2024-03-01'
+            rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/AddTypespec", json={
+                'module': 'apicenter',
+                'version': version,
+                'resources': [
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/providers/Microsoft.ApiCenter/services', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services/{serviceName}', version),
+                ]
+            })
+            assert rv.status_code == 200
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            assert rv.status_code == 200
+            node = rv.get_json()
+            cg = node['commandGroups']
+            assert len(cg) == 1 and 'api-center' in cg
+            assert cg['api-center']['names'] == ['api-center']
+            cg = cg['api-center']['commandGroups']
+            assert len(cg) == 1 and 'service' in cg
+            assert cg['service']['names'] == ['api-center', 'service']
+            commands = cg['service']['commands']
+            assert len(commands) == 5 and set(commands.keys()) == {'create', 'delete', 'list', 'show', 'update'}
+            for cmd_name in ('create', 'delete', 'show', 'update'):
+                assert len(commands[cmd_name]['resources']) == 1
+                assert commands[cmd_name]['resources'][0]['version'] == version
+                assert commands[cmd_name]['resources'][0]['id'] == swagger_resource_path_to_resource_id(
+                    '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services/{serviceName}')
+            assert len(commands['list']['resources']) == 2
+            assert commands['list']['resources'][0]['id'] == swagger_resource_path_to_resource_id(
+                '/subscriptions/{subscriptionId}/providers/Microsoft.ApiCenter/services')
+            assert commands['list']['resources'][0]['version'] == version
+            assert commands['list']['resources'][1]['id'] == swagger_resource_path_to_resource_id(
+                '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services')
+            assert commands['list']['resources'][1]['version'] == version
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz/api-center/service/Leaves/list")
+            assert rv.status_code == 200
+            command = rv.get_json()
+            assert command['names'] == ['api-center', 'service', 'list']
+            assert len(command['conditions']) == 2
+            assert len(command['argGroups']) == 1
+            assert len(command['argGroups'][0]['args']) == 2
+            assert len(command['operations']) == 2
+            assert len(command['outputs']) == 1
+            assert len(command['resources']) == 2
+            assert command['version'] == version
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz/api-center/service/Leaves/show")
+            assert rv.status_code == 200
+            command = rv.get_json()
+            assert command['names'] == ['api-center', 'service', 'show']
+            assert len(command['argGroups']) == 1
+            assert 'conditions' not in command
+            assert len(command['operations']) == 1
+            assert len(command['outputs']) == 1
+            assert len(command['resources']) == 1
+            assert command['version'] == version
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz/api-center/service/Leaves/delete")
+            assert rv.status_code == 200
+            command = rv.get_json()
+            assert command['names'] == ['api-center', 'service', 'delete']
+            assert len(command['argGroups']) == 1
+            assert 'conditions' not in command
+            assert len(command['operations']) == 1
+            assert 'outputs' not in command
+            assert len(command['resources']) == 1
+            assert command['version'] == version
+            assert command['confirmation'] == DEFAULT_CONFIRMATION_PROMPT
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz/api-center/service/Leaves/create")
+            assert rv.status_code == 200
+            command = rv.get_json()
+            assert command['names'] == ['api-center', 'service', 'create']
+            assert len(command['argGroups']) == 2
+            assert 'conditions' not in command
+            assert len(command['operations']) == 1
+            assert len(command['outputs']) == 1
+            assert len(command['resources']) == 1
+            assert command['version'] == version
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz/api-center/service/Leaves/update")
+            assert rv.status_code == 200
+            command = rv.get_json()
+            assert command['names'] == ['api-center', 'service', 'update']
+            assert len(command['argGroups']) == 2
+            assert 'conditions' not in command
+            assert len(command['operations']) == 3  # Get, InstanceUpdate, Put
+            assert len(command['outputs']) == 1
+            assert len(command['resources']) == 1
+            assert command['version'] == version
+
+            rv = c.post(f"{ws_url}/Resources/ReloadTypespec", json={
+                'resources': [
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/providers/Microsoft.ApiCenter/services', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services', version),
+                    build_typespec_resource(ws_manager, '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ApiCenter/services/{serviceName}', version),
+                ]
+            })
+            assert rv.status_code == 200
+
     @workspace_name("test_workspace_command_tree_update")
     def test_workspace_command_tree_update(self, ws_name):
         with self.app.test_client() as c:
@@ -212,7 +485,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -424,7 +698,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -461,7 +736,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -548,7 +824,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -705,7 +982,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "databricks",
-                "resourceProvider": "Microsoft.Databricks"
+                "resourceProvider": "Microsoft.Databricks",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -967,7 +1245,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "elastic",
-                "resourceProvider": "Microsoft.Elastic"
+                "resourceProvider": "Microsoft.Elastic",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -1288,7 +1567,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -1351,7 +1631,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "edgeorder",
-                "resourceProvider": "Microsoft.EdgeOrder"
+                "resourceProvider": "Microsoft.EdgeOrder",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -1404,7 +1685,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "databricks",
-                "resourceProvider": "Microsoft.Databricks"
+                "resourceProvider": "Microsoft.Databricks",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -1727,7 +2009,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": "databricks",
-                "resourceProvider": "Microsoft.Databricks"
+                "resourceProvider": "Microsoft.Databricks",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -1860,7 +2143,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": module,
-                "resourceProvider": "Microsoft.Cdn"
+                "resourceProvider": "Microsoft.Cdn",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -1948,7 +2232,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum._Data,
                 "modNames": module,
-                "resourceProvider": resource_provider
+                "resourceProvider": resource_provider,
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -2101,7 +2386,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name + "_another",
                 "plane": PlaneEnum._Data,
                 "modNames": module,
-                "resourceProvider": resource_provider
+                "resourceProvider": resource_provider,
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws2 = rv.get_json()
@@ -2192,7 +2478,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum._Data,
                 "modNames": module,
-                "resourceProvider": resource_provider
+                "resourceProvider": resource_provider,
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -2302,7 +2589,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": module,
-                "resourceProvider": resource_provider
+                "resourceProvider": resource_provider,
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -2363,7 +2651,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum._Data,
                 "modNames": module,
-                "resourceProvider": resource_provider
+                "resourceProvider": resource_provider,
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
             ws = rv.get_json()
@@ -2594,6 +2883,92 @@ class APIEditorTest(CommandTestCase):
             self.assertTrue(rv.status_code == 400)
             self.assertEqual(rv.json['message'], "Not support remain index ['invalid']")
 
+    @workspace_name("test_dataplane_api_center_typespec")
+    def test_dataplane_api_center_typespec(self, ws_name):
+        module = "apicenter"
+        resource_provider = "ApiCenter.DataApi"
+        api_version = '2024-02-01-preview'
+        with self.app.test_client() as c:
+            rv = c.post(f"/AAZ/Editor/Workspaces", json={
+                "name": ws_name,
+                "plane": PlaneEnum._Data,
+                "modNames": module,
+                "resourceProvider": resource_provider,
+                "source": SourceTypeEnum.TypeSpec,
+            })
+            self.assertTrue(rv.status_code == 200)
+            ws = rv.get_json()
+            self.assertEqual(ws['plane'], PlaneEnum.Data(resource_provider))
+            self.assertEqual(ws['resourceProvider'], resource_provider)
+            self.assertEqual(ws['modNames'], module)
+            ws_url = ws['url']
+
+            # add client configuration
+            rv = c.post(f"{ws_url}/ClientConfig", json={
+                "auth": {
+                    "aad": {
+                        "scopes": ["https://azure-apicenter.net/user_impersonation"]
+                    }
+                },
+                "templates": [
+                    {
+                        "cloud": CloudEnum.AzureCloud,
+                        "template": "https://{serviceName}.data.azure-apicenter.net"
+                    }
+                ]
+            })
+            self.assertTrue(rv.status_code == 200)
+
+            client_config = rv.get_json()
+            self.assertEqual(client_config['endpoints']['type'], "template")
+            self.assertEqual(client_config['endpoints']['templates'], [{
+                "cloud": CloudEnum.AzureCloud,
+                "template": "https://{serviceName}.data.azure-apicenter.net",
+            }])
+
+            # update client arguments
+            rv = c.get(f"{ws_url}/ClientConfig/Arguments/$Client.Endpoint.serviceName")
+            self.assertTrue(rv.status_code == 200)
+            client_arg = rv.get_json()
+            self.assertEqual(client_arg, {'group': 'Client', 'options': ['service-name'], 'required': True, 'type': 'string',
+                                          'var': '$Client.Endpoint.serviceName'})
+            ws_manager = WorkspaceManager(ws_name)
+            ws_manager.load()
+
+            rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/AddTypespec", json={
+                'module': module,
+                'version': api_version,
+                'resources': [
+                    build_typespec_resource(ws_manager, '/workspaces/{workspaceName}/apis/{apiName}/deployments', api_version),
+                    build_typespec_resource(ws_manager, '/workspaces/{workspaceName}/apis/{apiName}/deployments/{deploymentName}', api_version)
+                ]
+            })
+
+            self.assertTrue(rv.status_code == 200)
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            self.assertTrue(rv.status_code == 200)
+            command_tree = rv.get_json()
+
+            # modify command tree
+            rv = c.post(f"{ws_url}/CommandTree/Nodes/aaz/api-center/data-api/workspace/api/deployment/Rename", json={
+                "name": "apic workspace deployment"
+            })
+            self.assertTrue(rv.status_code == 200)
+            rv = c.delete(f"{ws_url}/CommandTree/Nodes/aaz/api-center/data-api/workspace/api")
+            self.assertTrue(rv.status_code == 200)
+            rv = c.delete(f"{ws_url}/CommandTree/Nodes/aaz/api-center/data-api/workspace")
+            self.assertTrue(rv.status_code == 200)
+            rv = c.delete(f"{ws_url}/CommandTree/Nodes/aaz/api-center/data-api")
+            self.assertTrue(rv.status_code == 200)
+            rv = c.delete(f"{ws_url}/CommandTree/Nodes/aaz/api-center")
+            self.assertTrue(rv.status_code == 200)
+
+            rv = c.get(f"{ws_url}/CommandTree/Nodes/aaz")
+            self.assertTrue(rv.status_code == 200)
+            command_tree = rv.get_json()
+
+            rv = c.post(f"{ws_url}/Generate")
     @workspace_name("test_workspace_generate_examples_array")
     def test_workspace_generate_examples_array(self, ws_name):
         module = "eventhub"
@@ -2604,7 +2979,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": module,
-                "resourceProvider": "Microsoft.EventHub"
+                "resourceProvider": "Microsoft.EventHub",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
 
@@ -2656,7 +3032,8 @@ class APIEditorTest(CommandTestCase):
                 "name": ws_name,
                 "plane": PlaneEnum.Mgmt,
                 "modNames": module,
-                "resourceProvider": "Microsoft.EventHub"
+                "resourceProvider": "Microsoft.EventHub",
+                "source": SourceTypeEnum.OpenAPI,
             })
             self.assertTrue(rv.status_code == 200)
 
@@ -2700,7 +3077,8 @@ class APIEditorTest(CommandTestCase):
                     "name": ws_name,
                     "plane": PlaneEnum.Mgmt,
                     "modNames": module,
-                    "resourceProvider": "Microsoft.Insights"
+                    "resourceProvider": "Microsoft.Insights",
+                    "source": SourceTypeEnum.OpenAPI,
                 }
             )
             self.assertTrue(rv.status_code == 200)

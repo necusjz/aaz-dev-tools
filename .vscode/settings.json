@@ -1,0 +1,64 @@
+{
+    "files.eol": "\n",
+    "files.insertFinalNewline": true,
+    "search.exclude": {
+      "**/dist/**": true,
+      "**/dist-dev/**": true,
+      "**/CHANGELOG.json": true,
+      "src/typespec/.changesets/*.md": true,
+      "src/typespec/docs/spec.html": true,
+      "**/bin/**": true,
+      "**/node_modules/**": true,
+      "src/typespec/packages/website/versioned_docs/**": true,
+      "src/typespec/core/packages/website/versioned_docs/**": true
+    },
+    "files.exclude": {
+      "**/common/temp/**": true,
+      "**/obj/**": true,
+      "**/.git": true,
+      "**/.DS_Store": true
+    },
+    "[javascript][javascriptreact][typescript][typescriptreact]": {
+      "editor.formatOnSave": true,
+      "editor.formatOnPaste": false, // work around https://github.com/simonhaenisch/prettier-plugin-organize-imports/issues/53
+      "editor.insertSpaces": true,
+      "editor.tabSize": 2,
+      "editor.detectIndentation": false,
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json][[jsonc][yaml][typespec][markdown][css]": {
+      "editor.formatOnSave": true,
+      "editor.formatOnPaste": true,
+      "editor.insertSpaces": true,
+      "editor.tabSize": 2,
+      "editor.detectIndentation": false,
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[csharp]": {
+      "editor.insertSpaces": true,
+      "editor.detectIndentation": false,
+      "editor.tabSize": 4
+    },
+    "[xml]": {
+      "editor.insertSpaces": true,
+      "editor.detectIndentation": false,
+      "editor.tabSize": 2
+    },
+    "files.associations": {
+      "rush.json": "jsonc",
+      "common-versions.json": "jsonc",
+      "command-line.json": "jsonc",
+      "pnpm-config.json": "jsonc",
+      "version-policies.json": "jsonc"
+    },
+    "typescript.tsdk": "${workspaceRoot}/src/typespec/core/packages/compiler/node_modules/typescript/lib",
+    "git.ignoreLimitWarning": true,
+    "prettier.configPath": ".prettierrc.json",
+    "prettier.ignorePath": ".prettierignore",
+    "prettier.documentSelectors": ["**/*.tsp"],
+    "testExplorer.errorDecoration": false,
+    "typespec.tsp-server.path": "${workspaceRoot}/src/typespec/core/packages/compiler",
+    "cSpell.words": ["autorest", "typespec"],
+    "dotnet.defaultSolution": "disable"
+  }
+  

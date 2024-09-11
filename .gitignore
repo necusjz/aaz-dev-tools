@@ -135,3 +135,6 @@ build/
 *.egg-info/
 
 src/aaz_dev/ui
+
+.env
+*/.env

@@ -49,7 +49,7 @@ class Operation(Model, Linkable):
         choices=("http", "https", "ws", "wss")
     ))  # TODO: # The transfer protocol for the operation. Values MUST be from the list: "http", "https", "ws", "wss". The value overrides the Swagger Object schemes definition.
     deprecated = BooleanType(default=False)  # TODO: # Declares this operation to be deprecated. Usage of the declared operation should be refrained. Default value is false.
-    security = ListType(SecurityRequirementField())  # TOOD: # A declaration of which security schemes are applied for this operation. The list of values describes alternative security schemes that can be used (that is, there is a logical OR between the security requirements). This definition overrides any declared top-level security. To remove a top-level security declaration, an empty array can be used.
+    security = ListType(SecurityRequirementField())  # TODO: # A declaration of which security schemes are applied for this operation. The list of values describes alternative security schemes that can be used (that is, there is a logical OR between the security requirements). This definition overrides any declared top-level security. To remove a top-level security declaration, an empty array can be used.
 
     x_ms_pageable = XmsPageableField()  # TODO:
     x_ms_long_running_operation = XmsLongRunningOperationField(default=False)

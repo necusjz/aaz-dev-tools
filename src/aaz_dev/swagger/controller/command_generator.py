@@ -2,15 +2,18 @@ import logging
 import re
 
 import inflect
+from abc import abstractmethod, ABC
+
 from command.model.configuration import CMDCommandGroup, CMDCommand, CMDHttpOperation, CMDHttpRequest, \
     CMDSchemaDefault, CMDHttpResponseJsonBody, CMDArrayOutput, CMDJsonInstanceUpdateAction, \
     CMDInstanceUpdateOperation, CMDRequestJson, DEFAULT_CONFIRMATION_PROMPT, CMDClsSchemaBase, CMDHttpResponse, \
-    CMDResponseJson
+    CMDResponseJson, CMDResource
 from swagger.model.schema.cmd_builder import CMDBuilder
 from swagger.model.schema.fields import MutabilityEnum
 from swagger.model.schema.path_item import PathItem
 from swagger.model.specs import SwaggerLoader
 from swagger.model.specs._utils import operation_id_separate, camel_case_to_snake_case, get_url_path_valid_parts
+from swagger.model.schema.typespec.path_item import TypeSpecPathItem
 from utils import exceptions
 from utils.config import Config
 from utils.plane import PlaneEnum
@@ -19,152 +22,26 @@ from utils.error_format import AAZErrorFormatEnum
 logger = logging.getLogger('backend')
 
 
-class CommandGenerator:
+class _CommandGenerator(ABC):
+
     _inflect_engine = inflect.engine()
-
-    def __init__(self):
-        self.loader = SwaggerLoader()
-
-    def load_resources(self, resources):
-        for resource in resources:
-            self.loader.load_file(resource.file_path)
-        self.loader.link_swaggers()
-
-    def create_draft_command_group(self, resource,
-                                   instance_var,
-                                   update_by=None,
-                                   methods=('get', 'delete', 'put', 'post', 'head', 'patch'),
-                                   **kwargs):
-        swagger = self.loader.get_loaded(resource.file_path)
-        assert swagger is not None
-        path_item = swagger.paths.get(resource.path, None)
-        if path_item is None:
-            path_item = swagger.x_ms_paths.get(resource.path, None)
-
-        command_group = CMDCommandGroup()
-        command_group.commands = []
-
-        assert isinstance(path_item, PathItem)
-        if path_item.get is not None and 'get' in methods:
-            cmd_builder = CMDBuilder(path=resource.path, method='get', mutability=MutabilityEnum.Read,
-                                     parameterized_host=swagger.x_ms_parameterized_host)
-            show_or_list_command = self.generate_command(path_item, resource, instance_var, cmd_builder)
-            command_group.commands.append(show_or_list_command)
-
-        if path_item.delete is not None and 'delete' in methods:
-            cmd_builder = CMDBuilder(path=resource.path, method='delete', mutability=MutabilityEnum.Create,
-                                     parameterized_host=swagger.x_ms_parameterized_host)
-            delete_command = self.generate_command(path_item, resource, instance_var, cmd_builder)
-            delete_command.confirmation = DEFAULT_CONFIRMATION_PROMPT   # add confirmation for delete command by default
-            command_group.commands.append(delete_command)
-
-        if path_item.put is not None and 'put' in methods:
-            cmd_builder = CMDBuilder(path=resource.path, method='put', mutability=MutabilityEnum.Create,
-                                     parameterized_host=swagger.x_ms_parameterized_host)
-            create_command = self.generate_command(path_item, resource, instance_var, cmd_builder)
-            command_group.commands.append(create_command)
-
-        if path_item.post is not None and 'post' in methods:
-            cmd_builder = CMDBuilder(path=resource.path, method='post', mutability=MutabilityEnum.Create,
-                                     parameterized_host=swagger.x_ms_parameterized_host)
-            action_command = self.generate_command(path_item, resource, instance_var, cmd_builder)
-            command_group.commands.append(action_command)
-
-        if path_item.head is not None and 'head' in methods:
-            cmd_builder = CMDBuilder(path=resource.path, method='head', mutability=MutabilityEnum.Read,
-                                     parameterized_host=swagger.x_ms_parameterized_host)
-            head_command = self.generate_command(path_item, resource, instance_var, cmd_builder)
-            command_group.commands.append(head_command)
-
-        # update command
-        if update_by is None:
-            update_by_patch_command = None
-            update_by_generic_command = None
-            if path_item.patch is not None and 'patch' in methods:
-                cmd_builder = CMDBuilder(path=resource.path, method='patch', mutability=MutabilityEnum.Update,
-                                         parameterized_host=swagger.x_ms_parameterized_host)
-                update_by_patch_command = self.generate_command(path_item, resource, instance_var, cmd_builder)
-            if path_item.get is not None and path_item.put is not None and 'get' in methods and 'put' in methods:
-                cmd_builder = CMDBuilder(path=resource.path,
-                                         parameterized_host=swagger.x_ms_parameterized_host)
-                update_by_generic_command = self.generate_generic_update_command(path_item, resource, instance_var, cmd_builder)
-            # generic update command first, patch update command after that
-            if update_by_generic_command:
-                command_group.commands.append(update_by_generic_command)
-            elif update_by_patch_command:
-                command_group.commands.append(update_by_patch_command)
-        else:
-            if update_by == 'GenericOnly':
-                if path_item.get is None or path_item.put is None:
-                    raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: resource needs to have 'get' and 'put' operations: '{resource}'")
-                if 'get' not in methods or 'put' not in methods:
-                    raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: '{resource}': 'get' or 'put' not in methods: '{methods}'")
-                cmd_builder = CMDBuilder(path=resource.path,
-                                         parameterized_host=swagger.x_ms_parameterized_host)
-                generic_update_command = self.generate_generic_update_command(path_item, resource, instance_var, cmd_builder)
-                if generic_update_command is None:
-                    raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: failed to generate generic update: '{resource}'")
-                command_group.commands.append(generic_update_command)
-                # elif 'update_by' in kwargs:
-                #     logger.error(f'Failed to generate generic update for resource: {resource}')
-            elif update_by == 'PatchOnly':
-                if path_item.patch is None:
-                    raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: resource needs to have 'patch' operation: '{resource}'")
-                if 'patch' not in methods:
-                    raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: '{resource}': 'patch' not in methods: '{methods}'")
-                cmd_builder = CMDBuilder(path=resource.path, method='patch', mutability=MutabilityEnum.Update,
-                                         parameterized_host=swagger.x_ms_parameterized_host)
-                patch_update_command = self.generate_command(path_item, resource, instance_var, cmd_builder)
-                command_group.commands.append(patch_update_command)
-            # elif update_by == 'GenericAndPatch':
-            #     # TODO: add support for generic and patch merge
-            #     if path_item.get is None or path_item.put is None or path_item.patch is None:
-            #         raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: resource needs to have 'get' and 'put' and 'patch' operation: '{resource}'")
-            #     if 'get' not in methods or 'put' not in methods or 'patch' not in methods:
-            #         raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: '{resource}': 'get' or 'put' or 'patch' not in methods: '{methods}'")
-            #     cmd_builder = CMDBuilder(path=resource.path,
-            #                              parameterized_host=swagger.x_ms_parameterized_host)
-            #     generic_update_command = self.generate_generic_update_command(path_item, resource, instance_var, cmd_builder)
-            #     if generic_update_command is None:
-            #         raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: failed to generate generic update: '{resource}'")
-            #     cmd_builder = CMDBuilder(path=resource.path, method='patch', mutability=MutabilityEnum.Update,
-            #                              parameterized_host=swagger.x_ms_parameterized_host)
-            #     patch_update_command = self.generate_command(path_item, resource, instance_var, cmd_builder)
-            #     generic_and_patch_update_command = self._merge_update_commands(
-            #         patch_command=patch_update_command, generic_command=generic_update_command
-            #     )
-            #     command_group.commands.append(generic_and_patch_update_command)
-            elif update_by != 'None':
-                raise exceptions.InvalidAPIUsage(f"Invalid update_by value: {update_by} : only support ['GenericOnly', 'PatchOnly', 'None'] values")
-
-        for command in command_group.commands:
-            parts = command.name.split(' ')
-            group_name = ' '.join(parts[:-1])
-            if command_group.name:
-                assert group_name == command_group.name
-            else:
-                command_group.name = group_name
-            command.name = parts[-1]  # remove the command group name parts
-            self.optimize_command_description(command)
-
-        return command_group
 
     @staticmethod
     def generate_command_version(resource):
         return resource.version
 
-    def generate_command(self, path_item, resource, instance_var, cmd_builder):
+    @classmethod
+    def generate_command(cls, path_item, resource, instance_var, cmd_builder, op):
         command = CMDCommand()
-        command.version = self.generate_command_version(resource)
+        command.version = cls.generate_command_version(resource)
         command.resources = [
-            resource.to_cmd()
+            resource.to_cmd() if not isinstance(resource, CMDResource) else resource
         ]
 
-        op = self._generate_operation(cmd_builder, path_item, instance_var)
         cmd_builder.apply_cls_definitions(op)
 
         assert isinstance(op, CMDHttpOperation)
-        if not self._set_api_version_parameter(op.http.request, api_version=resource.version):
+        if not cls._set_api_version_parameter(op.http.request, api_version=resource.version):
             logger.warning(
                 f"Cannot Find api version parameter: {cmd_builder.path}, '{cmd_builder.method}' : {path_item.traces}")
 
@@ -175,32 +52,28 @@ class CommandGenerator:
         command.generate_outputs(pageable=cmd_builder.get_pageable(path_item, op))
 
         output = command.outputs[0] if command.outputs else None
-        command.name = self._generate_command_name(path_item, resource, cmd_builder.method, output)
+        command.name = cls._generate_command_name(path_item, resource, cmd_builder.method, output)
 
         return command
 
-    def generate_generic_update_command(self, path_item, resource, instance_var, cmd_builder):
+    @classmethod
+    def generate_generic_update_command(cls, path_item, resource, instance_var, cmd_builder, get_op, put_op):
         command = CMDCommand()
-        command.version = self.generate_command_version(resource)
+        command.version = cls.generate_command_version(resource)
         command.resources = [
-            resource.to_cmd()
+            resource.to_cmd() if not isinstance(resource, CMDResource) else resource
         ]
         assert path_item.get is not None
         assert path_item.put is not None
-
-        get_op = self._generate_operation(
-            cmd_builder, path_item, instance_var, method='get', mutability=MutabilityEnum.Read)
-        put_op = self._generate_operation(
-            cmd_builder, path_item, instance_var, method='put', mutability=MutabilityEnum.Update)
 
         cmd_builder.apply_cls_definitions(get_op, put_op)
 
         if put_op.http.request.body is None:
             return None
 
-        if not self._set_api_version_parameter(get_op.http.request, api_version=resource.version):
+        if not cls._set_api_version_parameter(get_op.http.request, api_version=resource.version):
             logger.warning(f"Cannot Find api version parameter: {resource.path}, 'get' : {path_item.traces}")
-        if not self._set_api_version_parameter(put_op.http.request, api_version=resource.version):
+        if not cls._set_api_version_parameter(put_op.http.request, api_version=resource.version):
             logger.warning(f"Cannot Find api version parameter: {resource.path}, 'put' : {path_item.traces}")
 
         if not command.build_output_by_operation(get_op):
@@ -209,10 +82,10 @@ class CommandGenerator:
         if not command.build_output_by_operation(put_op):
             return None
 
-        self._filter_generic_update_parameters(get_op, put_op)
+        cls._filter_generic_update_parameters(get_op, put_op)
 
         command.description = put_op.description
-        json_update_op = self._generate_instance_update_operation(put_op, instance_var)
+        json_update_op = cls._generate_instance_update_operation(put_op, instance_var)
         command.operations = [
             get_op,
             json_update_op,
@@ -224,74 +97,10 @@ class CommandGenerator:
 
         assert command.outputs
 
-        group_name = self.generate_command_group_name_by_resource(
-            resource_path=resource.path, rp_name=resource.resource_provider.name)
+        group_name = cls.generate_command_group_name_by_resource(
+            resource_path=resource.path, rp_name=resource.rp_name)
         command.name = f"{group_name} update"
         return command
-
-    @staticmethod
-    def _generate_operation(cmd_builder, path_item, instance_var, **kwargs):
-        op = cmd_builder(path_item, **kwargs)
-
-        assert isinstance(op, CMDHttpOperation)
-        error_format = None
-        for resp in op.http.responses:
-            if resp.is_error:
-                if not isinstance(resp.body, CMDHttpResponseJsonBody):
-                    if not resp.body:
-                        raise exceptions.InvalidAPIUsage(
-                            f"Invalid `Error` response schema in operation `{op.operation_id}`: "
-                            f"Missing `schema` property in response "
-                            f"`{resp.status_codes or 'default'}`."
-                        )
-                    else:
-                        raise exceptions.InvalidAPIUsage(
-                            f"Invalid `Error` response schema in operation `{op.operation_id}`: "
-                            f"Only support json schema, current is '{type(resp.body)}' in response "
-                            f"`{resp.status_codes or 'default'}`"
-                        )
-                schema = resp.body.json.schema
-                if not isinstance(schema, CMDClsSchemaBase):
-                    raise NotImplementedError()
-                name = schema.type[1:]
-                if not error_format:
-                    error_format = name
-                if error_format != name:
-                    raise exceptions.InvalidAPIUsage(
-                        f"Invalid `Error` response schema in operation `{op.operation_id}`: "
-                        f"Multiple schema formats are founded: {name}, {error_format}"
-                    )
-            else:
-                if resp.body is None:
-                    continue
-                if isinstance(resp.body, CMDHttpResponseJsonBody):
-                    resp.body.json.var = instance_var
-
-        if not error_format:
-            # TODO: refactor the following line to support data plane command generation.
-            if Config.DEFAULT_PLANE != PlaneEnum.Mgmt:
-                raise exceptions.InvalidAPIUsage(
-                    f"Missing `Error` response schema in operation `{op.operation_id}`: "
-                    f"Please define the `default` response in swagger for error."
-                )
-            # use MgmtErrorFormat for default error response schema
-            error_format = AAZErrorFormatEnum.MgmtErrorFormat
-            err_response = CMDHttpResponse()
-            err_response.is_error = True
-            err_response.status_codes = []
-            err_response.body = CMDHttpResponseJsonBody()
-            err_response.body.json = CMDResponseJson()
-            err_schema = CMDClsSchemaBase()
-            err_schema._type = f"@{error_format}"
-            err_response.body.json.schema = err_schema
-            op.http.responses.append(err_response)
-        elif not AAZErrorFormatEnum.validate(error_format):
-            raise exceptions.InvalidAPIUsage(
-                f"Invalid `Error` response schema in operation `{op.operation_id}`: "
-                f"Invalid error format `{error_format}`. Support `ODataV4Format` and `MgmtErrorFormat` only"
-            )
-
-        return op
 
     @staticmethod
     def _set_api_version_parameter(request, api_version):
@@ -355,9 +164,10 @@ class CommandGenerator:
             names.append(singular_name)
         return " ".join([name for name in names if name])
 
-    def _generate_command_name(self, path_item, resource, method, output):
-        group_name = self.generate_command_group_name_by_resource(
-            resource_path=resource.path, rp_name=resource.resource_provider.name)
+    @classmethod
+    def _generate_command_name(cls, path_item, resource, method, output):
+        group_name = cls.generate_command_group_name_by_resource(
+            resource_path=resource.path, rp_name=resource.rp_name)
         url_path = resource.id.split("?")[0]
         if method == "get":
             if url_path.endswith("/{}"):
@@ -503,3 +313,274 @@ class CommandGenerator:
                 else:
                     keywords[0] = "Update"
             command.description = " ".join(keywords)
+    
+    @staticmethod
+    def format_http_operation(op, instance_var):
+        assert isinstance(op, CMDHttpOperation)
+        error_format = None
+        for resp in op.http.responses:
+            if resp.is_error:
+                if not isinstance(resp.body, CMDHttpResponseJsonBody):
+                    if not resp.body:
+                        raise exceptions.InvalidAPIUsage(
+                            f"Invalid `Error` response schema in operation `{op.operation_id}`: "
+                            f"Missing `schema` property in response "
+                            f"`{resp.status_codes or 'default'}`."
+                        )
+                    else:
+                        raise exceptions.InvalidAPIUsage(
+                            f"Invalid `Error` response schema in operation `{op.operation_id}`: "
+                            f"Only support json schema, current is '{type(resp.body)}' in response "
+                            f"`{resp.status_codes or 'default'}`"
+                        )
+                schema = resp.body.json.schema
+                if not isinstance(schema, CMDClsSchemaBase):
+                    raise NotImplementedError()
+                name = schema.type[1:]
+                if not error_format:
+                    error_format = name
+                if error_format != name:
+                    raise exceptions.InvalidAPIUsage(
+                        f"Invalid `Error` response schema in operation `{op.operation_id}`: "
+                        f"Multiple schema formats are founded: {name}, {error_format}"
+                    )
+            else:
+                if resp.body is None:
+                    continue
+                if isinstance(resp.body, CMDHttpResponseJsonBody):
+                    resp.body.json.var = instance_var
+
+        if not error_format:
+            # TODO: refactor the following line to support data plane command generation.
+            if Config.DEFAULT_PLANE != PlaneEnum.Mgmt:
+                raise exceptions.InvalidAPIUsage(
+                    f"Missing `Error` response schema in operation `{op.operation_id}`: "
+                    f"Please define the `default` response in swagger for error."
+                )
+            # use MgmtErrorFormat for default error response schema
+            error_format = AAZErrorFormatEnum.MgmtErrorFormat
+            err_response = CMDHttpResponse()
+            err_response.is_error = True
+            err_response.status_codes = []
+            err_response.body = CMDHttpResponseJsonBody()
+            err_response.body.json = CMDResponseJson()
+            err_schema = CMDClsSchemaBase()
+            err_schema._type = f"@{error_format}"
+            err_response.body.json.schema = err_schema
+            op.http.responses.append(err_response)
+        elif not AAZErrorFormatEnum.validate(error_format):
+            raise exceptions.InvalidAPIUsage(
+                f"Invalid `Error` response schema in operation `{op.operation_id}`: "
+                f"Invalid error format `{error_format}`. Support `ODataV4Format` and `MgmtErrorFormat` only"
+            )
+
+        return op
+
+    def create_draft_command_group(self, resource,
+                                   instance_var,
+                                   update_by=None,
+                                   methods=('get', 'delete', 'put', 'post', 'head', 'patch'),
+                                   **kwargs):
+
+        command_group = CMDCommandGroup()
+        command_group.commands = []
+        path_item = self.get_path_item(resource)
+        parameterized_host = self.get_parameterized_host(resource)
+
+        if path_item.get is not None and 'get' in methods:
+            cmd_builder = CMDBuilder(path=resource.path, method='get', mutability=MutabilityEnum.Read,
+                                     parameterized_host=parameterized_host)
+            op = self.generate_operation(cmd_builder, path_item, instance_var)
+            show_or_list_command = self.generate_command(path_item, resource, instance_var, cmd_builder, op)
+            command_group.commands.append(show_or_list_command)
+
+        if path_item.delete is not None and 'delete' in methods:
+            cmd_builder = CMDBuilder(path=resource.path, method='delete', mutability=MutabilityEnum.Create,
+                                     parameterized_host=parameterized_host)
+            op = self.generate_operation(cmd_builder, path_item, instance_var)
+            delete_command = self.generate_command(path_item, resource, instance_var, cmd_builder, op)
+            delete_command.confirmation = DEFAULT_CONFIRMATION_PROMPT   # add confirmation for delete command by default
+            command_group.commands.append(delete_command)
+
+        if path_item.put is not None and 'put' in methods:
+            cmd_builder = CMDBuilder(path=resource.path, method='put', mutability=MutabilityEnum.Create,
+                                     parameterized_host=parameterized_host)
+            op = self.generate_operation(cmd_builder, path_item, instance_var)
+            create_command = self.generate_command(path_item, resource, instance_var, cmd_builder, op)
+            command_group.commands.append(create_command)
+
+        if path_item.post is not None and 'post' in methods:
+            cmd_builder = CMDBuilder(path=resource.path, method='post', mutability=MutabilityEnum.Create,
+                                     parameterized_host=parameterized_host)
+            op = self.generate_operation(cmd_builder, path_item, instance_var)
+            action_command = self.generate_command(path_item, resource, instance_var, cmd_builder, op)
+            command_group.commands.append(action_command)
+
+        if path_item.head is not None and 'head' in methods:
+            cmd_builder = CMDBuilder(path=resource.path, method='head', mutability=MutabilityEnum.Read,
+                                     parameterized_host=parameterized_host)
+            op = self.generate_operation(cmd_builder, path_item, instance_var)
+            head_command = self.generate_command(path_item, resource, instance_var, cmd_builder, op)
+            command_group.commands.append(head_command)
+
+        # update command
+        if update_by is None:
+            update_by_patch_command = None
+            update_by_generic_command = None
+            if path_item.patch is not None and 'patch' in methods:
+                cmd_builder = CMDBuilder(path=resource.path, method='patch', mutability=MutabilityEnum.Update,
+                                         parameterized_host=parameterized_host)
+                op = self.generate_operation(cmd_builder, path_item, instance_var)
+                update_by_patch_command = self.generate_command(path_item, resource, instance_var, cmd_builder, op)
+            if path_item.get is not None and path_item.put is not None and 'get' in methods and 'put' in methods:
+                cmd_builder = CMDBuilder(path=resource.path,
+                                         parameterized_host=parameterized_host)
+                get_op = self.generate_operation(
+                    cmd_builder, path_item, instance_var, method='get', mutability=MutabilityEnum.Read)
+                put_op = self.generate_operation(
+                    cmd_builder, path_item, instance_var, method='put', mutability=MutabilityEnum.Update)
+                update_by_generic_command = self.generate_generic_update_command(path_item, resource, instance_var, cmd_builder, get_op, put_op)
+            # generic update command first, patch update command after that
+            if update_by_generic_command:
+                command_group.commands.append(update_by_generic_command)
+            elif update_by_patch_command:
+                command_group.commands.append(update_by_patch_command)
+        else:
+            if update_by == 'GenericOnly':
+                if path_item.get is None or path_item.put is None:
+                    raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: resource needs to have 'get' and 'put' operations: '{resource}'")
+                if 'get' not in methods or 'put' not in methods:
+                    raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: '{resource}': 'get' or 'put' not in methods: '{methods}'")
+                cmd_builder = CMDBuilder(path=resource.path,
+                                         parameterized_host=parameterized_host)
+                get_op = self.generate_operation(
+                    cmd_builder, path_item, instance_var, method='get', mutability=MutabilityEnum.Read)
+                put_op = self.generate_operation(
+                    cmd_builder, path_item, instance_var, method='put', mutability=MutabilityEnum.Update)
+                generic_update_command = self.generate_generic_update_command(path_item, resource, instance_var, cmd_builder, get_op, put_op)
+                if generic_update_command is None:
+                    raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: failed to generate generic update: '{resource}'")
+                command_group.commands.append(generic_update_command)
+                # elif 'update_by' in kwargs:
+                #     logger.error(f'Failed to generate generic update for resource: {resource}')
+            elif update_by == 'PatchOnly':
+                if path_item.patch is None:
+                    raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: resource needs to have 'patch' operation: '{resource}'")
+                if 'patch' not in methods:
+                    raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: '{resource}': 'patch' not in methods: '{methods}'")
+                cmd_builder = CMDBuilder(path=resource.path, method='patch', mutability=MutabilityEnum.Update,
+                                         parameterized_host=parameterized_host)
+                op = self.generate_operation(cmd_builder, path_item, instance_var)
+                patch_update_command = self.generate_command(path_item, resource, instance_var, cmd_builder, op)
+                command_group.commands.append(patch_update_command)
+            # elif update_by == 'GenericAndPatch':
+            #     # TODO: add support for generic and patch merge
+            #     if path_item.get is None or path_item.put is None or path_item.patch is None:
+            #         raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: resource needs to have 'get' and 'put' and 'patch' operation: '{resource}'")
+            #     if 'get' not in methods or 'put' not in methods or 'patch' not in methods:
+            #         raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: '{resource}': 'get' or 'put' or 'patch' not in methods: '{methods}'")
+            #     cmd_builder = CMDBuilder(path=resource.path,
+            #                              parameterized_host=parameterized_host)
+            #     get_op = self.generate_operation(
+            #         cmd_builder, path_item, instance_var, method='get', mutability=MutabilityEnum.Read)
+            #     put_op = self.generate_operation(
+            #         cmd_builder, path_item, instance_var, method='put', mutability=MutabilityEnum.Update)
+            #     generic_update_command = self.generate_generic_update_command(path_item, resource, instance_var, cmd_builder, get_op, put_op)
+            #     if generic_update_command is None:
+            #         raise exceptions.InvalidAPIUsage(f"Invalid update_by resource: failed to generate generic update: '{resource}'")
+            #     cmd_builder = CMDBuilder(path=resource.path, method='patch', mutability=MutabilityEnum.Update,
+            #                              parameterized_host=parameterized_host)
+            #     op = self.generate_operation(cmd_builder, path_item, instance_var)
+            #     patch_update_command = self.generate_command(path_item, resource, instance_var, cmd_builder, op)
+            #     generic_and_patch_update_command = self._merge_update_commands(
+            #         patch_command=patch_update_command, generic_command=generic_update_command
+            #     )
+            #     command_group.commands.append(generic_and_patch_update_command)
+            elif update_by != 'None':
+                raise exceptions.InvalidAPIUsage(f"Invalid update_by value: {update_by} : only support ['GenericOnly', 'PatchOnly', 'None'] values")
+
+        for command in command_group.commands:
+            parts = command.name.split(' ')
+            group_name = ' '.join(parts[:-1])
+            if command_group.name:
+                assert group_name == command_group.name
+            else:
+                command_group.name = group_name
+            command.name = parts[-1]  # remove the command group name parts
+            self.optimize_command_description(command)
+
+        return command_group
+
+    @abstractmethod
+    def load_resources(self, resources):
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def generate_operation(self, cmd_builder, path_item, instance_var, **kwargs):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_path_item(self, resource):
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def get_parameterized_host(self, resource):
+        raise NotImplementedError()
+
+
+class SwaggerCommandGenerator(_CommandGenerator):
+
+    def __init__(self):
+        super().__init__()
+        self.loader = SwaggerLoader()
+
+    def load_resources(self, resources):
+        for resource in resources:
+            self.loader.load_file(resource.file_path)
+        self.loader.link_swaggers()
+    
+    def get_path_item(self, resource):
+        swagger = self.loader.get_loaded(resource.file_path)
+        assert swagger is not None
+        path_item = swagger.paths.get(resource.path, None)
+        if path_item is None:
+            path_item = swagger.x_ms_paths.get(resource.path, None)
+        return path_item
+    
+    def get_parameterized_host(self, resource):
+        swagger = self.loader.get_loaded(resource.file_path)
+        return swagger.x_ms_parameterized_host
+
+    def generate_operation(self, cmd_builder, path_item, instance_var, **kwargs):
+        assert isinstance(path_item, PathItem)
+        op = cmd_builder(path_item, **kwargs)
+        return self.format_http_operation(op, instance_var)
+
+
+class TypespecCommandGenerator(_CommandGenerator):
+
+    def __init__(self):
+        super().__init__()
+        self._path_items = {}
+
+    def load_resources(self, resources):
+        for resource in resources:
+            self._path_items[resource['path']] = TypeSpecPathItem(resource['pathItem'])
+    
+    def get_path_item(self, resource):
+        return self._path_items.get(resource.path, None)
+
+    def generate_operation(self, cmd_builder, path_item, instance_var, **kwargs):
+        assert isinstance(path_item, TypeSpecPathItem)
+        method = kwargs.get('method', cmd_builder.method)
+        op = getattr(path_item, method, None)
+        if op is None:
+            return None
+        mutability = kwargs.get('mutability', cmd_builder.mutability)
+        op = getattr(op, mutability, None)
+        if op is None:
+            return None
+        return self.format_http_operation(op, instance_var)
+    
+    def get_parameterized_host(self, resource):
+        return None

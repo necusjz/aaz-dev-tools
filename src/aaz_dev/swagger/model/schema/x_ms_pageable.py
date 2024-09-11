@@ -30,9 +30,11 @@ class XmsPageable(Model):
 class XmsPageableField(ModelType):
 
     def __init__(self, **kwargs):
+        serialized_name=kwargs.pop('serialized_name', 'x-ms-pageable')
+        deserialize_from=kwargs.pop('deserialize_from', 'x-ms-pageable')
         super(XmsPageableField, self).__init__(
             XmsPageable,
-            serialized_name='x-ms-pageable',
-            deserialize_from='x-ms-pageable',
+            serialized_name=serialized_name,
+            deserialize_from=deserialize_from,
             **kwargs
         )
