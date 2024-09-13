@@ -11,6 +11,7 @@ from command.model.configuration import CMDCommandGroup, CMDCommand, CMDHttpOper
 from swagger.model.schema.cmd_builder import CMDBuilder
 from swagger.model.schema.fields import MutabilityEnum
 from swagger.model.schema.path_item import PathItem
+from swagger.model.schema.x_ms_parameterized_host import XmsParameterizedHost
 from swagger.model.specs import SwaggerLoader
 from swagger.model.specs._utils import operation_id_separate, camel_case_to_snake_case, get_url_path_valid_parts
 from swagger.model.schema.typespec.path_item import TypeSpecPathItem
@@ -549,7 +550,10 @@ class SwaggerCommandGenerator(_CommandGenerator):
     
     def get_parameterized_host(self, resource):
         swagger = self.loader.get_loaded(resource.file_path)
-        return swagger.x_ms_parameterized_host
+        if swagger.x_ms_parameterized_host:
+            return swagger.x_ms_parameterized_host
+        elif swagger.base_path:
+            return XmsParameterizedHost({"hostTemplate": swagger.base_path})
 
     def generate_operation(self, cmd_builder, path_item, instance_var, **kwargs):
         assert isinstance(path_item, PathItem)
