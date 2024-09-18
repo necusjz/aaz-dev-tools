@@ -48,6 +48,8 @@ class {{ client.cls_name }}(AAZBaseClient):
         {%- else %}
         endpoint = cls.get_cloud_endpoint(ctx, cls._CLOUD_HOST_METADATA_INDEX)
         {%- endif %}
+        {%- else %}
+        endpoint = None
         {%- endif %}
         if not endpoint:
             endpoint = cls._CLOUD_HOST_TEMPLATES.get(ctx.cli_ctx.cloud.name, None)
