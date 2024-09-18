@@ -37,9 +37,9 @@ Check the version of python, make use it's not less than 3.8.
     ```bash
     python --version
     ```
-    You can also specify the version number when you have multiple versions installed. For example if you want to run version 3.8
+    You can also specify the version number when you have multiple versions installed. For example if you want to run version 3.12
     ```bash
-    python3.8 --version
+    python3.12 --version
     ```
 
 #### 2.2 Setup a python virtual environment
@@ -53,7 +53,7 @@ You can run the following command to create a new virtual environment:
     ```
 - For linux:
     ```bash
-    python3.8 -m venv {some path}/{venv name}
+    python3.12 -m venv {some path}/{venv name}
     ```
 
 ### 3 Active existing virtual environment

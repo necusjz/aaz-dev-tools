@@ -35,7 +35,7 @@ After installation, you can run the following commands to check the version:
     ```
     You can also specify the version number when you have multiple versions installed like this:
     ```bash
-    python3.11 --version
+    python3.12 --version
     ```
 
 ### Setup a virtual environment
@@ -50,7 +50,7 @@ You can run the following command to create a new virtual environment:
     ```
 - For Linux users:
     ```bash
-    python3.8 -m venv {some path}/{venv name}
+    python3.12 -m venv {some path}/{venv name}
     ```
 
 ### Active existing virtual environment
