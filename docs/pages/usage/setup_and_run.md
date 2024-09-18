@@ -17,7 +17,7 @@ weight: 100
 
 ### Install python
 
-This tool is compatible with python versions >=3.8 and <=3.10. You can use an existing python or install a new one by the following ways:
+This tool is compatible with python versions >=3.8 and <=3.12. You can use an existing python or install a new one by the following ways:
 
 - For Windows users: You can download and run full installer from [Python Download](https://www.python.org/downloads/).
 - For Linux users: You can install python from Package Manager or build a stable release from source code
@@ -35,7 +35,7 @@ After installation, you can run the following commands to check the version:
     ```
     You can also specify the version number when you have multiple versions installed like this:
     ```bash
-    python3.8 --version
+    python3.11 --version
     ```
 
 ### Setup a virtual environment

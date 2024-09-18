@@ -2,8 +2,8 @@ import os
 import webbrowser
 
 import click
-from flask.cli import pass_script_info, show_server_banner, DispatchingApp, SeparatedPathType
-from flask.helpers import get_debug_flag, get_env
+from flask.cli import pass_script_info, show_server_banner, SeparatedPathType
+from flask.helpers import get_debug_flag
 from utils.config import Config
 
 
@@ -107,12 +107,6 @@ def is_port_in_use(host, port):
          "is active if debug is enabled.",
 )
 @click.option(
-    "--eager-loading/--lazy-loading",
-    default=None,
-    help="Enable or disable eager loading. By default eager "
-         "loading is enabled if the reloader is disabled.",
-)
-@click.option(
     "--with-threads/--without-threads",
     default=True,
     help="Enable or disable multithreading.",
@@ -135,7 +129,7 @@ def is_port_in_use(host, port):
 )
 @pass_script_info
 def run_command(
-        info, host, port, reload, debugger, eager_loading, with_threads, extra_files, quiet
+        info, host, port, reload, debugger, with_threads, extra_files, quiet
 ):
     """Run a local development server.
 
@@ -153,8 +147,8 @@ def run_command(
     if debugger is None:
         debugger = debug
 
-    show_server_banner(get_env(), debug, info.app_import_path, eager_loading)
-    app = DispatchingApp(info.load_app, use_eager_loading=eager_loading)
+    show_server_banner(debug, info.app_import_path)
+    app = info.load_app()
 
     if is_port_in_use(host, port):
         raise ValueError(f"The port '{port}' already been used in '{host}', please specify a new port in '--port' argument.")
