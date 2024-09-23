@@ -965,7 +965,6 @@ class CMDObjectSchema(CMDObjectSchemaBase, CMDSchema):
         return diff
 
 
-# identity
 class CMDIdentityObjectSchemaBase(CMDObjectSchemaBase):
     """ And identity object which contains 'userAssignedIdentities' property and 'type' property
     with "SystemAssigned", "UserAssigned", "SystemAssigned, UserAssigned" and "None" enum values.
