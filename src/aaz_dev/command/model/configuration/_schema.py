@@ -1073,23 +1073,7 @@ class CMDIdentityObjectSchemaBase(CMDObjectSchemaBase):
         serialized_name="miSystemAssigned",
         deserialize_from="miSystemAssigned"
     )
-    #
-    # @property
-    # def props(self):
-    #     if not self._props:
-    #         self._props = []
-    #
-    #     all_props = self._props
-    #     if self.mi_user_assigned and self.mi_system_assigned:
-    #         return all_props + [self.mi_user_assigned, self.mi_system_assigned]
-    #
-    #     return all_props
-    #
-    #
-    # @props.setter
-    # def props(self, value):
-    #     self._props = value
-    #
+
 
 class CMDIdentityObjectSchema(CMDIdentityObjectSchemaBase, CMDObjectSchema):
     ARG_TYPE = CMDObjectArg
