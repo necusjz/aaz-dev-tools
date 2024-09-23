@@ -1046,7 +1046,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             ref_options=None,
             action="assign"
         )
-        assign_command.description = "Assign identities"
+        assign_command.description = "Assign the user or system managed identities."
 
         # remove command
         remove_command = cls._build_subresource_update_command(
@@ -1056,7 +1056,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             ref_options=None,
             action="remove"
         )
-        remove_command.description = "Remove identities"
+        remove_command.description = "Remove the user or system managed identities."
 
         # show command
         show_command = cls._build_subresource_list_or_show_command(
@@ -1065,7 +1065,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             ref_args=ref_args,
             ref_options=None
         )
-        show_command.description = "Show identities"
+        show_command.description = "Show the details of managed identities."
 
         assign_command.name = 'assign'
         remove_command.name = 'remove'

@@ -209,7 +209,7 @@ class CMDArgBuilder:
         user_assigned_schema = CMDArraySchema({
             "name": "userAssigned" if is_subresource else "miUserAssigned",
             "item": CMDStringSchemaBase(),
-            "description": "Set the user managed identities on the media services account.",
+            "description": "Set the user managed identities.",
             "action": self.schema.action
         })
         builder = self.get_sub_builder(schema=user_assigned_schema, ref_args=ref_args)
@@ -220,7 +220,7 @@ class CMDArgBuilder:
 
         system_assigned_schema = CMDStringSchema({
             "name": "systemAssigned" if is_subresource else "miSystemAssigned",
-            "description": "Set the system managed identity on the media services account.",
+            "description": "Set the system managed identity.",
             "action": self.schema.action
         })
         builder = self.get_sub_builder(schema=system_assigned_schema, ref_args=ref_args)
