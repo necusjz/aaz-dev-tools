@@ -1,7 +1,7 @@
 from tempfile import TemporaryFile
 
 from command.model.configuration import CMDConfiguration, XMLSerializer, CMDBuildInVariants
-from swagger.controller.command_generator import CommandGenerator
+from swagger.controller.command_generator import SwaggerCommandGenerator
 from swagger.controller.specs_manager import SwaggerSpecsManager
 from swagger.tests.common import SwaggerSpecsTestCase
 from swagger.utils import exceptions
@@ -18,7 +18,7 @@ class XMLSerializerTest(SwaggerSpecsTestCase):
     def test_virtual_network_e2e(self):
         resource_id = "/subscriptions/{}/resourcegroups/{}/providers/microsoft.network/virtualnetworks/{}"
 
-        generator = CommandGenerator()
+        generator = SwaggerCommandGenerator()
         specs_module_manager = SwaggerSpecsManager().get_module_manager(plane=PlaneEnum.Mgmt, mod_names="network")
         resource = specs_module_manager.get_resource_in_version(resource_id=resource_id, version="2021-05-01")
 
@@ -38,7 +38,7 @@ class XMLSerializerTest(SwaggerSpecsTestCase):
         total = count = 0
         for rp in self.get_mgmt_plane_resource_providers():
             resource_map = rp.get_resource_map()
-            generator = CommandGenerator()
+            generator = SwaggerCommandGenerator()
 
             for r_id, r_version_map in resource_map.items():
                 for v, resource in r_version_map.items():

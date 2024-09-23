@@ -1,7 +1,6 @@
-import { Alert, Box, Button, Card, CardActions, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Accordion, InputLabel, LinearProgress, Radio, RadioGroup, TextField, Typography, TypographyProps, AccordionDetails, IconButton, Input, InputAdornment, AccordionSummaryProps, FormLabel, Switch, ButtonBase, FormLabelProps } from '@mui/material';
-import { styled } from '@mui/system';
+import { styled, Alert, Box, Button, Card, CardActions, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Accordion, InputLabel, LinearProgress, Radio, RadioGroup, TextField, Typography, TypographyProps, AccordionDetails, IconButton, Input, InputAdornment, AccordionSummaryProps, FormLabel, Switch, ButtonBase, FormLabelProps } from '@mui/material';
 import axios from 'axios';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import MuiAccordionSummary from '@mui/material/AccordionSummary';
 import { NameTypography, ShortHelpTypography, ShortHelpPlaceHolderTypography, LongHelpTypography, StableTypography, PreviewTypography, ExperimentalTypography, SubtitleTypography, CardTitleTypography } from './WSEditorTheme';
 import DoDisturbOnRoundedIcon from '@mui/icons-material/DoDisturbOnRounded';
@@ -56,9 +55,9 @@ function isArrayOutput(output: Output): output is ArrayOutput {
     return output.type === "array";
 }
 
-function isStringOutput(output: Output): output is StringOutput {
-    return output.type === "string";
-}
+// function isStringOutput(output: Output): output is StringOutput {
+//     return output.type === "string";
+// }
 
 interface Resource {
     id: string,
@@ -86,9 +85,9 @@ interface Command {
     clsArgDefineMap?: ClsArgDefinitionMap
 }
 
-interface ClientConfig {
-    args?: CMDArg[]
-}
+// interface ClientConfig {
+//     args?: CMDArg[]
+// }
 
 interface ResponseCommand {
     names: string[],
@@ -147,7 +146,7 @@ const ExampleCommandBodyTypography = styled(Typography)<TypographyProps>(({ them
     fontWeight: 400,
 }))
 
-const ExampleEditTypography = styled(Typography)<TypographyProps>(({ theme }) => ({
+const ExampleEditTypography = styled(Typography)<TypographyProps>(() => ({
     color: "#5d64cf",
     fontFamily: "'Work Sans', sans-serif",
     fontSize: 14,
@@ -159,7 +158,7 @@ const ExampleAccordionSummary = styled((props: AccordionSummaryProps) => (
         expandIcon={<LabelIcon fontSize="small" color="primary" />}
         {...props}
     />
-))(({ theme }) => ({
+))(() => ({
     flexDirection: 'row-reverse',
     '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': {
         transform: 'rotate(0deg)',
@@ -180,21 +179,21 @@ const OutputRefTypography = styled(Typography)<TypographyProps>(({ theme }) => (
     fontWeight: 700,
 }))
 
-const OutputFlagTypography = styled(Typography)<TypographyProps>(({ theme }) => ({
+const OutputFlagTypography = styled(Typography)<TypographyProps>(() => ({
     color: '#8888C3',
     fontFamily: "'Work Sans', sans-serif",
     fontSize: 10,
     fontWeight: 400,
 }))
 
-const OutputEditTypography = styled(Typography)<TypographyProps>(({ theme }) => ({
+const OutputEditTypography = styled(Typography)<TypographyProps>(() => ({
     color: "#5d64cf",
     fontFamily: "'Work Sans', sans-serif",
     fontSize: 14,
     fontWeight: 400,
 }));
 
-const OutputDialogLabel = styled(FormLabel)<FormLabelProps>(({ theme }) => ({
+const OutputDialogLabel = styled(FormLabel)<FormLabelProps>(() => ({
     fontSize: 12,
 }));
 
@@ -222,12 +221,12 @@ class WSEditorCommandContent extends React.Component<WSEditorCommandContentProps
 
     loadCommand = async () => {
         this.setState({ loading: true })
-        let { workspaceUrl, previewCommand } = this.props
-        let commandNames = previewCommand.names;
+        const { workspaceUrl, previewCommand } = this.props
+        const commandNames = previewCommand.names;
         const leafUrl = `${workspaceUrl}/CommandTree/Nodes/aaz/` + commandNames.slice(0, -1).join('/') + '/Leaves/' + commandNames[commandNames.length - 1];
         try {
-            let res = await axios.get(leafUrl);
-            let command = DecodeResponseCommand(res.data);
+            const res = await axios.get(leafUrl);
+            const command = DecodeResponseCommand(res.data);
             if (command.id === this.props.previewCommand.id) {
                 this.setState({
                     loading: false,
@@ -614,13 +613,13 @@ function CommandDeleteDialog(props: {
     const [relatedCommands, setRelatedCommands] = React.useState<string[]>([]);
 
     const getUrls = () => {
-        let urls: string[] = [];
+        const urls: string[] = [];
 
         props.command.resources.forEach(resource => {
             const resourceId = btoa(resource.id)
             const version = btoa(resource.version)
             if (resource.subresource !== undefined) {
-                let subresource = btoa(resource.subresource)
+                const subresource = btoa(resource.subresource)
                 // TODO: delete list command together with crud
                 // if (resource.subresource.endsWith('[]') || resource.subresource.endsWith('{}')) {
                 //     let subresource2 = btoa(resource.subresource.slice(0, -2))
@@ -661,7 +660,7 @@ function CommandDeleteDialog(props: {
                 setRelatedCommands(cmdNames);
             })
             .catch(err => {
-                console.error(err.response)
+                console.error(err)
             })
 
     }, [props.command]);
@@ -676,13 +675,13 @@ function CommandDeleteDialog(props: {
             return axios.delete(url)
         })
         Promise.all(promisesAll)
-            .then(res => {
+            .then(() => {
                 setUpdating(false);
                 props.onClose(true);
             })
             .catch(err => {
                 setUpdating(false);
-                console.error(err.response)
+                console.error(err)
             })
     }
     return (
@@ -744,9 +743,11 @@ class CommandDialog extends React.Component<CommandDialogProps, CommandDialogSta
         }
     }
 
-    handleModify = (event: any) => {
-        let { name, stage, shortHelp, longHelp, confirmation } = this.state
-        let { workspaceUrl, command } = this.props
+    handleModify = () => {
+        let { name, shortHelp, longHelp, confirmation } = this.state
+        const { stage } = this.state
+
+        const { workspaceUrl, command } = this.props
 
         name = name.trim();
         shortHelp = shortHelp.trim();
@@ -822,7 +823,7 @@ class CommandDialog extends React.Component<CommandDialogProps, CommandDialogSta
                 })
             }
         }).catch(err => {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -1005,7 +1006,7 @@ class ExampleDialog extends React.Component<ExampleDialogProps, ExampleDialogSta
     }
 
     onUpdateExamples = (examples: Example[]) => {
-        let { workspaceUrl, command } = this.props;
+        const { workspaceUrl, command } = this.props;
 
         const leafUrl = `${workspaceUrl}/CommandTree/Nodes/aaz/` + command.names.slice(0, -1).join('/') + '/Leaves/' + command.names[command.names.length - 1];
 
@@ -1021,7 +1022,7 @@ class ExampleDialog extends React.Component<ExampleDialogProps, ExampleDialogSta
             })
             this.props.onClose(cmd);
         }).catch(err => {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -1035,18 +1036,18 @@ class ExampleDialog extends React.Component<ExampleDialogProps, ExampleDialogSta
     }
 
     handleDelete = () => {
-        let { command } = this.props;
+        const { command } = this.props;
         let examples: Example[] = command.examples ?? [];
-        let idx = this.props.idx!;
+        const idx = this.props.idx!;
         examples = [...examples.slice(0, idx), ...examples.slice(idx + 1)];
         this.onUpdateExamples(examples);
     }
 
     handleModify = () => {
-        let { command } = this.props;
+        const { command } = this.props;
         let { name, exampleCommands } = this.state;
         let examples: Example[] = command.examples ?? [];
-        let idx = this.props.idx!;
+        const idx = this.props.idx!;
 
         name = name.trim();
         if (name.length < 1) {
@@ -1081,9 +1082,9 @@ class ExampleDialog extends React.Component<ExampleDialogProps, ExampleDialogSta
     }
 
     handleAdd = () => {
-        let { command } = this.props;
+        const { command } = this.props;
         let { name, exampleCommands } = this.state;
-        let examples: Example[] = command.examples ?? [];
+        const examples: Example[] = command.examples ?? [];
 
         name = name.trim();
         if (name.length < 1) {
@@ -1134,7 +1135,7 @@ class ExampleDialog extends React.Component<ExampleDialogProps, ExampleDialogSta
 
     onRemoveExampleCommand = (idx: number) => {
         this.setState(preState => {
-            let exampleCommands: string[] = [...preState.exampleCommands.slice(0, idx), ...preState.exampleCommands.slice(idx + 1)];
+            const exampleCommands: string[] = [...preState.exampleCommands.slice(0, idx), ...preState.exampleCommands.slice(idx + 1)];
             if (exampleCommands.length === 0) {
                 exampleCommands.push("");
             }
@@ -1439,7 +1440,7 @@ function AddSubcommandDialog(props: {
             })
             props.onClose(true);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 setInvalidText(`ResponseError: ${data.message!}: ${JSON.stringify(data.details)}`);
@@ -1781,16 +1782,8 @@ const DecodeResponseCommand = (command: ResponseCommand): Command => {
     return cmd;
 }
 
-const DecodeResponseClientConfig = (clientConfig: any): ClientConfig => {
-    if (clientConfig.argGroups === undefined) {
-        return {}
-    }
-    return {
-        args: DecodeArgs(clientConfig.argGroups!).args
-    }
-}
-
 export default WSEditorCommandContent;
 
 export { DecodeResponseCommand };
+
 export type { Plane, Command, Resource, ResponseCommand, ResponseCommands, Example };

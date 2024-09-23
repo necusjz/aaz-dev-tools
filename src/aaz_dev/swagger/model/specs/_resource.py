@@ -36,6 +36,10 @@ class Resource:
     @property
     def version(self):
         return self._version.version
+    
+    @property
+    def rp_name(self):
+        return self.resource_provider.name
 
     def __str__(self):
         return f"{self.path} {self.version}"

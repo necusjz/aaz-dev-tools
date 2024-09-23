@@ -1,0 +1,9 @@
+packages:
+  - src/web/
+  - src/typespec-aaz/
+  - src/typespec/core/  # Install core workspace dependencies too. Needed for prettier plugins
+  - src/typespec/packages/*
+  - src/typespec/core/packages/*
+  - "!src/typespec/core/packages/website"
+  - "!src/typespec/packages/website"
+  - "!src/typespec/core/packages/http-client-csharp/**"

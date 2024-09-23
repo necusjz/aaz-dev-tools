@@ -477,12 +477,12 @@ class CMDBuilder:
             fmt.unique = True
             fmt_assigned = True
 
-        if schema.max_length is not None:
-            fmt.max_length = schema.max_length
+        if schema.max_items is not None:
+            fmt.max_length = schema.max_items
             fmt_assigned = True
 
-        if schema.min_length is not None:
-            fmt.min_length = schema.min_length
+        if schema.min_items is not None:
+            fmt.min_length = schema.min_items
             fmt_assigned = True
 
         if getattr(schema, "collection_format", None) is not None and schema.collection_format != 'csv':

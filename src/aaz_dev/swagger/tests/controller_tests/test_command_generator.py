@@ -1,5 +1,5 @@
 from swagger.tests.common import SwaggerSpecsTestCase
-from swagger.controller.command_generator import CommandGenerator
+from swagger.controller.command_generator import SwaggerCommandGenerator
 from swagger.model.specs._utils import get_url_path_valid_parts
 from swagger.utils import exceptions
 from command.model.configuration import CMDBuildInVariants
@@ -20,7 +20,7 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
         ))
 
         version = "2021-04-01"
-        generator = CommandGenerator()
+        generator = SwaggerCommandGenerator()
 
         resource_map = rp.get_resource_map()
         for r_id, version_map in resource_map.items():
@@ -44,7 +44,7 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
         ))
 
         version = "2018-06-01"
-        generator = CommandGenerator()
+        generator = SwaggerCommandGenerator()
 
         resource_map = rp.get_resource_map()
         for r_id, version_map in resource_map.items():
@@ -68,7 +68,7 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
         ))
 
         version = "2018-06-01"
-        generator = CommandGenerator()
+        generator = SwaggerCommandGenerator()
 
         resource_map = rp.get_resource_map()
         for r_id, version_map in resource_map.items():
@@ -91,7 +91,7 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
             resource_provider_filter=lambda r: r.name == "Microsoft.RecoveryServices"
         ))
 
-        generator = CommandGenerator()
+        generator = SwaggerCommandGenerator()
 
         resource_map = rp.get_resource_map()
         for r_id, version_map in resource_map.items():
@@ -112,7 +112,7 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
             resource_provider_filter=lambda r: r.name == "Microsoft.StorageCache"
         ))
 
-        generator = CommandGenerator()
+        generator = SwaggerCommandGenerator()
 
         resource_map = rp.get_resource_map()
         for r_id, version_map in resource_map.items():
@@ -133,7 +133,7 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
             resource_provider_filter=lambda r: r.name == "Microsoft.DataBox"
         ))
 
-        generator = CommandGenerator()
+        generator = SwaggerCommandGenerator()
 
         resource_map = rp.get_resource_map()
         for r_id, version_map in resource_map.items():
@@ -155,7 +155,7 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
         ))
         print(str(rp))
 
-        generator = CommandGenerator()
+        generator = SwaggerCommandGenerator()
 
         resource_map = rp.get_resource_map()
         for r_id, version_map in resource_map.items():
@@ -183,7 +183,7 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
         ):
             print(str(rp))
 
-            generator = CommandGenerator()
+            generator = SwaggerCommandGenerator()
 
             resource_map = rp.get_resource_map()
             for r_id, version_map in resource_map.items():
@@ -208,7 +208,7 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
         ):
             print(str(rp))
 
-            generator = CommandGenerator()
+            generator = SwaggerCommandGenerator()
 
             resource_map = rp.get_resource_map()
             for r_id, version_map in resource_map.items():
@@ -241,8 +241,8 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
 
                 names = set()
                 for resource in r_version_map.values():
-                    name = CommandGenerator.generate_command_group_name_by_resource(
-                        resource_path=resource.path, rp_name=resource.resource_provider.name)
+                    name = SwaggerCommandGenerator.generate_command_group_name_by_resource(
+                        resource_path=resource.path, rp_name=resource.rp_name)
                     if name and name not in names:
                         names.add(name)
                 if len(names) > 1:
@@ -270,8 +270,8 @@ class CommandGeneratorTestCase(SwaggerSpecsTestCase):
 
                 names = set()
                 for resource in r_version_map.values():
-                    name = CommandGenerator.generate_command_group_name_by_resource(
-                        resource_path=resource.path, rp_name=resource.resource_provider.name)
+                    name = SwaggerCommandGenerator.generate_command_group_name_by_resource(
+                        resource_path=resource.path, rp_name=resource.rp_name)
                     if name and name not in names:
                         names.add(name)
                 if len(names) > 1:

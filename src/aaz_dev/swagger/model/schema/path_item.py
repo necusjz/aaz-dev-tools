@@ -3,7 +3,6 @@ from schematics.types import ModelType, ListType, DictType
 from .operation import Operation
 from .parameter import ParameterField, ParameterBase
 from .reference import Linkable, Reference
-import re
 
 
 class PathItem(Model, Linkable):
