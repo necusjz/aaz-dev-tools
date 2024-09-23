@@ -7,7 +7,6 @@ from datetime import datetime
 from command.model.configuration import CMDHelp, CMDResource, CMDCommandExample, CMDArg, CMDCommand, \
     CMDBuildInVariants, CMDHttpOperation
 from command.model.editor import CMDEditorWorkspace, CMDCommandTreeNode, CMDCommandTreeLeaf
-from swagger.controller.command_generator import CommandGenerator
 from swagger.controller.example_generator import ExampleGenerator
 from swagger.controller.command_generator import SwaggerCommandGenerator, TypespecCommandGenerator
 from swagger.controller.specs_manager import SwaggerSpecsManager
