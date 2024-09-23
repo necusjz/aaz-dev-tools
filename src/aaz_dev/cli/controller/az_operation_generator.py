@@ -934,6 +934,8 @@ def render_schema(schema, cls_map, name):
             # because a secret property will not be returned in response and for `get+put` update command, it's allowed
             # without that property in payload.
             del flags['required']
+    if action := getattr(schema, 'action', None):
+        flags['action'] = action
 
     if flags:
         schema_kwargs['flags'] = flags

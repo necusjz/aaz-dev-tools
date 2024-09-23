@@ -9,7 +9,8 @@ from ._format import CMDFormat
 from ._schema import CMDObjectSchema, CMDSchema, CMDSchemaBase, CMDObjectSchemaBase, CMDObjectSchemaDiscriminator, \
     CMDArraySchemaBase, CMDArraySchema, CMDObjectSchemaAdditionalProperties, CMDResourceIdSchema, \
     CMDResourceLocationSchemaBase, CMDPasswordSchema, CMDBooleanSchemaBase, CMDBooleanSchema
-from ..configuration._schema import CMDIdentityObjectSchema, CMDIdentityObjectSchemaBase, CMDStringSchemaBase
+from ..configuration._schema import CMDIdentityObjectSchema, CMDIdentityObjectSchemaBase, CMDStringSchemaBase, \
+    CMDStringSchema
 
 
 class CMDArgBuilder:
@@ -191,32 +192,41 @@ class CMDArgBuilder:
                 sub_builder = self.get_sub_builder(schema=prop, ref_args=sub_ref_args)
                 sub_args.extend(sub_builder.get_args())
 
-            if isinstance(self.schema, CMDIdentityObjectSchema) and not self._is_update_action:
-                self.add_identity_args(sub_args, sub_ref_args)
+            if isinstance(self.schema, CMDIdentityObjectSchema):
+                if not self._is_update_action:
+                    self.add_identity_args(sub_args, sub_ref_args, is_subresource=False)
+                elif self.schema.action:
+                    self.add_identity_args(sub_args, sub_ref_args, is_subresource=True)
 
         if not sub_args:
             return None
         return sub_args
 
-    def add_identity_args(self, args, ref_args):
+    def add_identity_args(self, args, ref_args, is_subresource):
         if not self.schema.props:
             self.schema.props = []
 
         user_assigned_schema = CMDArraySchema({
-            "name": "miUserAssigned",
+            "name": "userAssigned" if is_subresource else "miUserAssigned",
             "item": CMDStringSchemaBase(),
-            "description": "Set the user managed identities on the media services account."
+            "description": "Set the user managed identities on the media services account.",
+            "action": self.schema.action
         })
         builder = self.get_sub_builder(schema=user_assigned_schema, ref_args=ref_args)
-        args.extend(builder.get_args())
+        user_assigned_arg = builder.get_args()[0]
+        user_assigned_arg.blank = CMDArgBlank({"value": []})
+        args.append(user_assigned_arg)
         self.schema.mi_user_assigned = user_assigned_schema
 
-        system_assigned_schema = CMDBooleanSchema({
-            "name": "miSystemAssigned",
+        system_assigned_schema = CMDStringSchema({
+            "name": "systemAssigned" if is_subresource else "miSystemAssigned",
             "description": "Set the system managed identity on the media services account.",
+            "action": self.schema.action
         })
         builder = self.get_sub_builder(schema=system_assigned_schema, ref_args=ref_args)
-        args.extend(builder.get_args())
+        system_assigned_arg = builder.get_args()[0]
+        system_assigned_arg.blank = CMDArgBlank({"value": "True"})
+        args.append(system_assigned_arg)
         self.schema.mi_system_assigned = system_assigned_schema
 
     def get_sub_item(self):

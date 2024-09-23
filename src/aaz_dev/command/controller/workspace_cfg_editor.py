@@ -932,6 +932,30 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         self.reformat()
         return commands
 
+    def build_identity_subresource(self, command_group):
+        update_cmd = None
+        identity_schema, identity_schema_idx = None, None
+        if command_group.commands:
+            for command in command_group.commands:
+                match = self.find_identity_schema_in_command(command)
+                if match:
+                    update_cmd = command
+                    update_op, _, identity_schema, identity_schema_idx = match
+
+        if update_cmd is None:
+            return
+
+        subresource_idx = self.schema_idx_to_subresource_idx(identity_schema_idx)
+        assert subresource_idx
+
+        sub_commands = self._generate_identity_sub_commands(identity_schema, subresource_idx, update_cmd, update_op)
+
+        cg_names = command_group.name.split(' ') + [identity_schema.name]
+        for sub_command in sub_commands:
+            self._add_command(*cg_names, sub_command.name, command=sub_command)
+
+        self.reformat()
+
     def build_subresource_commands_by_arg_var(self, resource_id, arg_var, cg_names, ref_args_options=None):
         """
 
@@ -981,6 +1005,73 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             self._add_command(*cg_names, sub_command.name, command=sub_command)
 
         self.reformat()
+
+    @classmethod
+    def _generate_identity_sub_commands(cls, schema, subresource_idx, update_cmd, update_op):
+        # find arg
+        if schema.arg:
+            arg_var = schema.arg
+            arg, arg_idx = cls.find_arg_in_command_by_var(update_cmd, arg_var)
+            if not arg or not arg_idx:
+                raise exceptions.InvalidAPIUsage(f"Argument '{arg_var}' not exist in command")
+        else:
+            # schema is flatten
+            arg = None
+
+        # build ref_args
+        ref_args = []
+        update_json = update_op.instance_update.json
+        update_arg_prefix = f"${update_json.schema.name}"
+        if update_cmd.arg_groups:
+            for g in update_cmd.arg_groups:
+                for a in g.args:
+                    if a.var.startswith(update_arg_prefix):
+                        # ignore arguments linked with body
+                        continue
+                    if 'name' in a.options and isinstance(a, CMDStringArgBase):
+                        # remove auto add 'name', 'n' options
+                        a = a.__class__(raw_data=a.to_native())
+                        # a.options = sorted(a.options, key=lambda o: (len(o), o))[-1:]  # use the longest argument
+                    ref_args.append(a)
+
+        if arg:
+            assert isinstance(arg, CMDObjectArg)
+            ref_args.extend(arg.args)
+
+        # assign command
+        assign_command = cls._build_subresource_update_command(
+            update_cmd=update_cmd,
+            subresource_idx=subresource_idx,
+            ref_args=ref_args,
+            ref_options=None,
+            action="assign"
+        )
+        assign_command.description = "Assign identities"
+
+        # remove command
+        remove_command = cls._build_subresource_update_command(
+            update_cmd=update_cmd,
+            subresource_idx=subresource_idx,
+            ref_args=ref_args,
+            ref_options=None,
+            action="remove"
+        )
+        remove_command.description = "Remove identities"
+
+        # show command
+        show_command = cls._build_subresource_list_or_show_command(
+            update_cmd=update_cmd,
+            subresource_idx=subresource_idx,
+            ref_args=ref_args,
+            ref_options=None
+        )
+        show_command.description = "Show identities"
+
+        assign_command.name = 'assign'
+        remove_command.name = 'remove'
+        show_command.name = 'show'
+
+        return [assign_command, remove_command, show_command]
 
     @classmethod
     def _generate_sub_commands(cls, schema, subresource_idx, update_cmd, ref_args_options=None):
@@ -1261,7 +1352,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         return _sub_command
 
     @classmethod
-    def _build_subresource_update_command(cls, update_cmd, subresource_idx, ref_args, ref_options):
+    def _build_subresource_update_command(cls, update_cmd, subresource_idx, ref_args, ref_options, action=None):
         _sub_command, get_op, put_op, update_json = cls._build_sub_command_base(update_cmd, subresource_idx)
 
         _instance_op = CMDInstanceUpdateOperation()
@@ -1281,6 +1372,10 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
                 _instance_op_schema = CMDArraySchema(raw_data=_instance_op_schema.to_native())
             else:
                 raise NotImplementedError()
+
+        if isinstance(_instance_op_schema, CMDIdentityObjectSchemaBase):
+            _instance_op_schema.action = action
+
         # _subresource_idx does not contains update_json.schema.name
         _instance_op_schema.name = cls.idx_to_str([update_json.schema.name, *subresource_idx])
         _instance_op_schema.required = True

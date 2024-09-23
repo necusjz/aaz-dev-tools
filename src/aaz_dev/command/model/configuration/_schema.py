@@ -139,6 +139,8 @@ class CMDSchemaBase(Model):
     default = ModelType(CMDSchemaDefault)
     nullable = CMDBooleanField()  # whether null value is supported
 
+    action = StringType()  # distinguish identity assign and remove
+
     # base types: "array", "boolean", "integer", "float", "object", "string",
 
     class Options:

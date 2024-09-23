@@ -4,7 +4,8 @@ from command.model.configuration import CMDConfiguration, CMDHttpOperation, CMDI
     CMDCommandGroup, CMDArgGroup, CMDObjectArgBase, CMDArrayArgBase, CMDRequestJson, \
     CMDResponseJson, CMDObjectSchemaBase, CMDArraySchemaBase, CMDSchema, CMDHttpRequestJsonBody, \
     CMDJsonInstanceUpdateAction, CMDHttpResponseJsonBody, CMDObjectSchemaDiscriminator, CMDInstanceCreateOperation, \
-    CMDJsonInstanceCreateAction, CMDSchemaBase, CMDArraySchema, CMDObjectSchema, CMDInstanceDeleteOperation
+    CMDJsonInstanceCreateAction, CMDSchemaBase, CMDArraySchema, CMDObjectSchema, CMDInstanceDeleteOperation, \
+    CMDIdentityObjectSchema
 from swagger.utils.tools import swagger_resource_path_to_resource_id
 
 
@@ -742,6 +743,27 @@ class CfgReader:
                 return cls.find_sub_schema(item, remain_idx)
 
         return None
+
+    @classmethod
+    def find_identity_schema_in_command(cls, command):
+        for operation in command.operations:
+            if isinstance(operation, CMDInstanceUpdateOperation):
+                for match in cls.iter_schema_in_update_operation_by_identity(operation):
+                    return operation, *match
+
+    @classmethod
+    def iter_schema_in_update_operation_by_identity(cls, operation):
+        def schema_filter(_parent, _schema, _schema_idx):
+            if isinstance(_schema, CMDIdentityObjectSchema):
+                # find match
+                return (_parent, _schema, _schema_idx), False
+            return None, False
+
+        for parent, schema, schema_idx in cls._iter_schema_in_json(
+                operation.instance_update.json, schema_filter=schema_filter):
+            if schema:
+                schema_idx = [_SchemaIdxEnum.Instance, _SchemaIdxEnum.Update, *schema_idx]
+                yield parent, schema, schema_idx
 
     @classmethod
     def iter_schema_in_command_by_arg_var(cls, command, arg_var):
