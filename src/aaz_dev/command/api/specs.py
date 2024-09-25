@@ -1,4 +1,6 @@
 from flask import Blueprint, jsonify, request
+
+from command.controller.command_tree import to_limited_primitive
 from utils import exceptions
 from utils.plane import PlaneEnum
 from command.controller.specs_manager import AAZSpecsManager
@@ -19,7 +21,12 @@ def command_tree_node(node_names):
     if not node:
         raise exceptions.ResourceNotFind("Command group not exist")
 
-    result = node.to_primitive()
+    # Check for the 'limited' query parameter
+    limited = request.args.get('limited', 'false').lower() == 'true'
+    if limited:
+        result = to_limited_primitive(node)
+    else:
+        result = node.to_primitive()
     return jsonify(result)
 
 

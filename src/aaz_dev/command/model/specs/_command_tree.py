@@ -1,6 +1,7 @@
 from command.model.configuration import CMDStageField, CMDHelp, CMDCommandExample
 from command.model.configuration._fields import CMDCommandNameField, CMDVersionField
 from schematics.models import Model
+from schematics.common import NOT_NONE
 from schematics.types import ModelType, ListType, DictType
 
 from ._resource import CMDSpecsResource
@@ -19,7 +20,11 @@ class CMDSpecsCommandVersion(Model):
 class CMDSpecsCommand(Model):
     names = ListType(field=CMDCommandNameField(), min_size=1, required=True)  # full name of a command
     help = ModelType(CMDHelp, required=True)
-    versions = ListType(ModelType(CMDSpecsCommandVersion), required=True, min_size=1)
+    versions = ListType(  # None only when the command is a partial command
+        ModelType(CMDSpecsCommandVersion),
+        min_size=1,
+        export_level=NOT_NONE,
+    )
 
     class Options:
         serialize_when_none = False
@@ -32,10 +37,12 @@ class CMDSpecsCommandGroup(Model):
     command_groups = DictType(
         field=ModelType("CMDSpecsCommandGroup"),
         serialized_name="commandGroups",
-        deserialize_from="commandGroups"
+        deserialize_from="commandGroups",
+        export_level=NOT_NONE,
     )
     commands = DictType(
-        field=ModelType(CMDSpecsCommand)
+        field=ModelType(CMDSpecsCommand),
+        export_level=NOT_NONE,
     )
 
     class Options:

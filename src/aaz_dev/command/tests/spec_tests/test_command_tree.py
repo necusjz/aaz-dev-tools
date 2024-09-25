@@ -2,7 +2,7 @@ import os
 import unittest
 
 from command.controller.command_tree import CMDSpecsPartialCommand, CMDSpecsPartialCommandGroup, \
-    CMDSpecsPartialCommandTree
+    CMDSpecsPartialCommandTree, to_limited_primitive
 from command.model.configuration import CMDHelp
 
 COMMAND_INFO = """# [Command] _vm deallocate_
@@ -304,3 +304,14 @@ class CommandTreeTest(unittest.TestCase):
         command_tree.patch()
         self.assertNotIn('download', command_tree.find_command_group('acat', 'report', 'snapshot').commands)
         self.assertIn('fake_new_command', command_tree.find_command_group('fake_cg').commands)
+
+    @unittest.skipIf(os.getenv("AAZ_FOLDER") is None, "No AAZ_FOLDER environment variable set")
+    def test_partial_command_group_to_primitive(self):
+        aaz_folder = os.getenv("AAZ_FOLDER")
+        command_tree = CMDSpecsPartialCommandTree(aaz_folder)
+        cg = command_tree.find_command_group('acat')
+        self.assertIsInstance(cg.command_groups.get_raw_item('report'), CMDSpecsPartialCommandGroup)
+        primitive = to_limited_primitive(cg)
+        self.assertListEqual(primitive['names'], cg.names)
+        self.assertEqual(primitive['help']['short'], cg.help.short)
+        self.assertIsInstance(cg.command_groups.get_raw_item('report'), CMDSpecsPartialCommandGroup)
