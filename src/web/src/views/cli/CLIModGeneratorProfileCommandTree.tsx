@@ -250,7 +250,15 @@ interface ProfileCTCommandGroup {
 
     totalCommands: number;
     selectedCommands: number;
+
+    loading: boolean;
+    selected: boolean;
+    expanded: boolean;
 };
+
+function isUnloadedCommandGroup(commandGroup: ProfileCTCommandGroup): boolean {
+    return commandGroup.commands === undefined && commandGroup.loading === false;
+}
 
 interface ProfileCTCommand {
     id: string;
@@ -262,7 +270,14 @@ interface ProfileCTCommand {
     selectedVersion?: string;
     registered?: boolean;
     modified: boolean;
+
+    loading: boolean;
+    selected: boolean;
 };
+
+function isUnloadedCommand(command: ProfileCTCommand): boolean {
+    return command.selectedVersion === undefined && command.loading === false;
+}
 
 interface ProfileCTCommandVersion {
     name: string;
