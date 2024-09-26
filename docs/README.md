@@ -37,13 +37,17 @@ There are two repos to maintain Azure CLI commands：
 - [Azure CLI](https://github.com/Azure/azure-cli)
 - [Azure CLI Extension](https://github.com/Azure/azure-cli-extensions)
 
-### What is Swagger(OpenAPI Specification)?
+### What is REST API Specifications?
 
-Azure uses swagger to define REST API specifications. Most of swagger files are maintained in the following two repos:
+Azure uses swagger(OpenAPI) or TypeSpec to define REST API specifications. Most of files are maintained in the following two repos:
 - [azure-rest-api-specs](https://github.com/Azure/azure-rest-api-specs)
 - [azure-rest-api-specs-pr](https://github.com/Azure/azure-rest-api-specs-pr)
 
-So the definition of API in swagger is required before using AAZDev tool.
+Swagger Specification (or known as OpenAPI Specification) is an API description format for REST APIs. An OpenAPI file, can be written in YAML or json, allows developers to describe the entire API.
+
+TypeSpec (tsp) is a language for defining cloud service APIs and models. It is a highly extensible language with primitives that can describe APIs using REST, gRPC, and other protocols.
+
+The definition of API in swagger or TypeSpec is required before using AAZDev tool.
 
 ### What is Atomic CLI Command?
 
@@ -71,7 +75,7 @@ The SDK packages a batch of APIs, and when one API has new change and is release
 
 AAZDev Tool consists of 4 parts:
 - API Translators:
-  They are responsible for translating the API specification into a command model. We've implemented the swagger 2.0 translator which can support to translate the API specs in [azure-rest-api-specs](https://github.com/Azure/azure-rest-api-specs) repo and [azure-rest-api-specs-pr](https://github.com/Azure/azure-rest-api-specs-pr) repo.
+  They are responsible for translating the API specification into a command model. We've implemented both swagger 2.0 and Typespec translator which can support to translate the API specs in [azure-rest-api-specs](https://github.com/Azure/azure-rest-api-specs) repo and [azure-rest-api-specs-pr](https://github.com/Azure/azure-rest-api-specs-pr) repo.
 - Model Editors:
   They are used to edit command models. Currently, _Workspace Editor_ is implemented. More details are introduced in _Workspace_ paragraph.
 - Command Models:
@@ -164,6 +168,41 @@ methods:
 Translators will automatically merge them into one `list` commands if their response schemas are the same. If their response schemas are different, a special suffix will be added after `list` operation name to distinguish two commands. And the name can be renamed in editor.
 
 The `POST` method is special. If a resource has `POST` method only and the last segment of valid part is not a parameter segment, that segment will be used as operation name, else a temporary name will be generated, which can be renamed in editor later.
+
+## TypeSpec API Translator - `typespec-aaz`
+
+`typespec-aaz`  translates an interface under a specific namespace from typespec specification into a resource url aligned with swagger api, with defined data models translated into the input and output parameters.
+
+| Namespace | Interface | resource url |
+| ---- | ---- | ---- |
+| Microsoft.Community | CommunityTrainings | /subscriptions/{subscriptionId}/providers/**microsoft.community/communitytrainings** |
+
+The data models defined in typespec will be translated into aaz models. For example,
+
+The model value defined as below
+```typespec
+  @doc("The name of the Community Training Resource")
+  @pattern("^[a-zA-Z0-9-]{3,24}$")
+  @key("communityTrainingName")
+  @segment("communityTrainings")
+  @path
+  name: string;
+```
+would be tranlsated into a parameter object below:
+
+```
+{
+  description: "The name of the Community Training Resource",
+  format: {pattern: "^[a-zA-Z0-9-]{3,24}$"},
+  pattern: "^[a-zA-Z0-9-]{3,24}$",
+  name: "communityTrainingName",
+  required: true,
+  type: "string"
+}
+```
+
+`typespec-aaz` translates the typespec api into aaz models and then the following steps keep the same as swagger specifications.
+
 
 ## Workspace
 
