@@ -26,7 +26,7 @@ class ExampleItemSelector extends React.Component<ExampleItemsSelectorProps> {
                 id={name}
                 value={value}
                 options={options}
-                onInputChange={(event, newValue: any) => {
+                onInputChange={(_event, newValue: any) => {
                     this.props.onValueUpdate(newValue);
                 }}
                 getOptionLabel={(option) => {

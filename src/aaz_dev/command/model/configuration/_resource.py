@@ -30,7 +30,7 @@ class CMDResource(Model):
         return self.swagger.split("/ResourceProviders/")[1].split('/')[0]
 
     @property
-    def swagger_path(self):
+    def path(self):
         return b64decode_str(self.swagger.split("/Paths/")[1].split('/')[0])
 
     def diff(self, old, level):
@@ -52,7 +52,7 @@ class CMDResource(Model):
         if level >= CMDDiffLevelEnum.Structure:
             if self.mod_names != old.mod_names:
                 diff["mod_names"] = f"{old.mod_names} != {self.mod_names}"
-            if self.swagger_path != old.swagger_path:
-                diff["swagger_path"] = f"{old.swagger_path} != {self.swagger_path}"
+            if self.path != old.path:
+                diff["path"] = f"{old.path} != {self.path}"
 
         return diff

@@ -17,7 +17,16 @@ When using aaz-dev from scratch, the workspace editor is the starting point. A w
 
 In workspace page, the drop-down menu can select an existing workspace or create a new one.
 
-![create_a_workspace](../../assets/recordings/workspace_editor/create_a_workspace.gif)
+When creating a new workspace, you have to pick the target resource provider.
+
+#### Add a new workspace from swagger specificcations
+
+![create_a_workspace_from_swagger](../../assets/recordings/workspace_editor/create_a_swagger_workspace.gif)
+
+#### Add a new workspace fron TypeSpec specification
+
+![create_a_workspace_from_typespec](../../assets/recordings/workspace_editor/create_a_typespec_workspace.gif)
+
 
 ### Rename a workspace
 
@@ -57,11 +66,11 @@ Here's an example of `Microsoft.Attestation` data-plane client configuration usi
 If you want do some modification in existing client configuration, you can click the `Edit Client Config` button. The change will apply to all the data-plane commands of that resource-provider when you export models from the workspace to aaz.
 ![edit_client_config](../../assets/recordings/workspace_editor/dataplane_edit_client_config.gif)
 
-## Add Swagger Resources
+## Add Swagger/TypeSpec Resources
 
-When an empty workspace is opened, the `Add Swagger Resources` page will be prompted out by default.
+When an empty workspace is opened, the `Add Resources` page will be prompted out by default.
 
-For a workspace contains commands, click the `+` button besides the `command tree`, the `Add Swagger Resources` page will prompted out as well.
+For a workspace contains commands, click the `+` button besides the `command tree`, the `Add Resources` page will prompted out as well.
 
 ![prompt_add_swagger_resources_page](../../assets/recordings/workspace_editor/prompt_add_swagger_resources_page.gif)
 

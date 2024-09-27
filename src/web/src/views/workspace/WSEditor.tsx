@@ -9,6 +9,7 @@ import WSEditorCommandTree, { CommandTreeLeaf, CommandTreeNode } from './WSEdito
 import WSEditorCommandGroupContent, { CommandGroup, DecodeResponseCommandGroup, ResponseCommandGroup, ResponseCommandGroups } from './WSEditorCommandGroupContent';
 import WSEditorCommandContent, { Command, Resource, DecodeResponseCommand, ResponseCommand } from './WSEditorCommandContent';
 import WSEditorClientConfigDialog, { ClientConfig } from './WSEditorClientConfig';
+import { getTypespecRPResourcesOperations } from '../../typespec';
 
 interface CommandGroupMap {
     [id: string]: CommandGroup
@@ -28,6 +29,7 @@ interface WSEditorState {
     name: string
     workspaceUrl: string,
     plane: string,
+    source: string,
     clientConfigurable: boolean,
 
     selected: Command | CommandGroup | null,
@@ -65,6 +67,7 @@ class WSEditor extends React.Component<WSEditorProps, WSEditorState> {
             name: this.props.params.workspaceName,
             workspaceUrl: `/AAZ/Editor/Workspaces/${this.props.params.workspaceName}`,
             plane: "",
+            source: "",
             clientConfigurable: false,
             selected: null,
             reloadTimestamp: null,
@@ -93,7 +96,7 @@ class WSEditor extends React.Component<WSEditorProps, WSEditorState> {
 
         try {
             let res = await axios.get(`/AAZ/Specs/Planes`);
-            let planeNames: String[] = res.data.map((v: any) => {
+            const planeNames: string[] = res.data.map((v: any) => {
                 return v.name
             });
             res = await axios.get(workspaceUrl);
@@ -153,7 +156,7 @@ class WSEditor extends React.Component<WSEditorProps, WSEditorState> {
                 return node;
             };
 
-            let commandTree: CommandTreeNode[] = [];
+            const commandTree: CommandTreeNode[] = [];
 
             if (res.data.commandTree.commandGroups) {
                 const cmdGroups: ResponseCommandGroups = res.data.commandTree.commandGroups;
@@ -220,6 +223,7 @@ class WSEditor extends React.Component<WSEditorProps, WSEditorState> {
                 return {
                     ...preState,
                     plane: res.data.plane,
+                    source: res.data.source,
                     clientConfigurable: clientConfigurable,
                     commandTree: commandTree,
                     selected: selected,
@@ -235,10 +239,10 @@ class WSEditor extends React.Component<WSEditorProps, WSEditorState> {
                 if (expandedId.startsWith('command:')) {
                     expandedId = expandedId.replace('command:', 'group:').split('/').slice(0, -1).join('/')
                 }
-                let expandedIdParts = expandedId.split('/');
+                const expandedIdParts = expandedId.split('/');
                 this.setState(preState => {
                     const newExpanded = new Set(preState.expanded);
-                    expandedIdParts.forEach((value, idx) => {
+                    expandedIdParts.forEach((_value, idx) => {
                         newExpanded.add(expandedIdParts.slice(0, idx + 1).join('/'));
                     })
                     return {
@@ -266,7 +270,7 @@ class WSEditor extends React.Component<WSEditorProps, WSEditorState> {
 
     getWorkspaceClientConfig = async (workspaceUrl: string) => {
         try {
-            let res = await axios.get(`${workspaceUrl}/ClientConfig`);
+            const res = await axios.get(`${workspaceUrl}/ClientConfig`);
             const clientConfig: ClientConfig = {
                 version: res.data.version,
                 endpointTemplates: undefined,
@@ -335,7 +339,7 @@ class WSEditor extends React.Component<WSEditorProps, WSEditorState> {
         })
     }
 
-    handleGenerationClose = (exported: boolean, showClientConfigDialog: boolean) => {
+    handleGenerationClose = (_exported: boolean, showClientConfigDialog: boolean) => {
         this.setState({
             showExportDialog: false
         })
@@ -426,7 +430,7 @@ class WSEditor extends React.Component<WSEditorProps, WSEditorState> {
     }
 
     render() {
-        const { showSwaggerResourcePicker, showSwaggerReloadDialog, showExportDialog, showDeleteDialog, showModifyDialog, plane, name, commandTree, selected, reloadTimestamp, workspaceUrl, expanded, showClientConfigDialog, clientConfigurable } = this.state;
+        const { showSwaggerResourcePicker, showSwaggerReloadDialog, showExportDialog, showDeleteDialog, showModifyDialog, plane, source, name, commandTree, selected, reloadTimestamp, workspaceUrl, expanded, showClientConfigDialog, clientConfigurable } = this.state;
         const expandedIds: string[] = []
         expanded.forEach((expandId) => {
             expandedIds.push(expandId);
@@ -493,7 +497,7 @@ class WSEditor extends React.Component<WSEditorProps, WSEditorState> {
                 {showModifyDialog && <WSRenameDialog workspaceUrl={workspaceUrl} workspaceName={name} open={showModifyDialog} onClose={this.handleModifyClose} />}
                 {showDeleteDialog && <WSEditorDeleteDialog workspaceName={name} open={showDeleteDialog} onClose={this.handleDeleteClose} />}
                 {showExportDialog && <WSEditorExportDialog workspaceUrl={workspaceUrl} open={showExportDialog} clientConfigurable={clientConfigurable} onClose={this.handleGenerationClose} />}
-                {showSwaggerReloadDialog && <WSEditorSwaggerReloadDialog workspaceUrl={workspaceUrl} open={showSwaggerReloadDialog} onClose={this.handleSwaggerReloadDialogClose} />}
+                {showSwaggerReloadDialog && <WSEditorSwaggerReloadDialog workspaceUrl={workspaceUrl} workspaceName={name} source={source} open={showSwaggerReloadDialog} onClose={this.handleSwaggerReloadDialogClose} />}
                 {showClientConfigDialog && <WSEditorClientConfigDialog workspaceUrl={workspaceUrl} open={showClientConfigDialog} onClose={this.handleClientConfigDialogClose} />}
             </React.Fragment>
         )
@@ -549,7 +553,7 @@ class WSEditorExportDialog extends React.Component<WSEditorExportDialogProps, WS
                 });
                 return;
             } else {
-                console.error(err.response)
+                console.error(err)
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     this.setState({
@@ -569,7 +573,7 @@ class WSEditorExportDialog extends React.Component<WSEditorExportDialogProps, WS
             this.setState({ clientConfigOOD: false, updating: false });
             this.props.onClose(false, true);
         } catch (err: any) {
-            console.error(err.response)
+            console.error(err)
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -589,7 +593,7 @@ class WSEditorExportDialog extends React.Component<WSEditorExportDialogProps, WS
             this.setState({ updating: false });
             this.props.onClose(false, false);
         } catch (err: any) {
-            console.error(err.response)
+            console.error(err)
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -645,7 +649,7 @@ function WSEditorDeleteDialog(props: {
         setUpdating(true);
         const nodeUrl = `/AAZ/Editor/Workspaces/` + props.workspaceName;
         axios.delete(nodeUrl)
-            .then((res) => {
+            .then(() => {
                 setUpdating(false);
                 props.onClose(true);
             })
@@ -700,8 +704,10 @@ function WSEditorDeleteDialog(props: {
 }
 
 interface WSEditorSwaggerReloadDialogProps {
+    workspaceName: string,
     workspaceUrl: string,
     open: boolean,
+    source: string,
     onClose: (exported: boolean) => void,
 }
 
@@ -742,7 +748,7 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
                 selectedResources: new Set(resources.map(resource => resource.id)),
             })
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -770,20 +776,55 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
                 })
         }
 
-        const url = `${this.props.workspaceUrl}/Resources/ReloadSwagger`;
+        if (data.resources.length === 0) {
+            this.props.onClose(false);
+            return;
+        }
+
         this.setState({
             invalidText: undefined,
             updating: true,
         })
 
+        const reloadUrl = this.props.source.toLowerCase() === "typespec" ? `${this.props.workspaceUrl}/Resources/ReloadTypespec` :  `${this.props.workspaceUrl}/Resources/ReloadSwagger`;
+
         try {
-            await axios.post(url, data);
+            if (this.props.source.toLowerCase() === "typespec") {
+                const res = await axios.get(`/AAZ/Editor/Workspaces/${this.props.workspaceName}/SwaggerDefault`);
+                const { modNames, rpName, source } = res.data;
+                if (!modNames || modNames.length === 0 || !rpName || !source || source.toLowerCase() !== "typespec") {
+                    this.setState({
+                        invalidText: "Invalid workspace info",
+                        updating: false,
+                    })
+                    return;
+                }
+                const resourceProviderUrl = '/Swagger/Specs/' + res.data.plane + '/' + res.data.modNames.join('/') + `/ResourceProviders/${res.data.rpName}/TypeSpec`;
+                const requestBody = {
+                    version: resourceOptions[0].version,
+                    resources: data.resources,
+                    resourceProviderUrl: resourceProviderUrl
+                }
+                console.log("request emitter data: ", requestBody)
+                const emitterOptionRes = await getTypespecRPResourcesOperations(requestBody)
+                console.log("emitterResourceOptionRes: ", emitterOptionRes);
+                if (emitterOptionRes.length === 0) {
+                    this.setState({
+                        invalidText: "Invalid resource operation emitter info",
+                        updating: false,
+                    })
+                    return;
+                }
+                data.resources = emitterOptionRes;
+                // console.log("reload typespec data: ", data);
+            }
+            await axios.post(reloadUrl, data);
             this.setState({
                 updating: false,
             })
             this.props.onClose(true);
         } catch (err: any) {
-            console.error(err.response);
+            console.error(err);
             if (err.response?.data?.message) {
                 const data = err.response!.data!;
                 this.setState({
@@ -830,7 +871,7 @@ class WSEditorSwaggerReloadDialog extends React.Component<WSEditorSwaggerReloadD
                 fullWidth={true}
                 maxWidth="xl"
             >
-                <DialogTitle>Reload Swagger Resources</DialogTitle>
+                <DialogTitle>Reload {this.props.source.toLowerCase() === "typespec" ? "TypeSpec": "Swagger"} Resources</DialogTitle>
                 <DialogContent>
                     {invalidText && <Alert variant="filled" severity='error'> {invalidText} </Alert>}
                     <List
@@ -951,11 +992,11 @@ class WSRenameDialog extends React.Component<WSRenameDialogProps, WSRenameDialog
         }
     }
 
-    handleModify = (event: any) => {
-        let { newWSName } = this.state;
-        let { workspaceUrl, workspaceName } = this.props;
+    handleModify = () => {
+        const { newWSName } = this.state;
+        const { workspaceUrl, workspaceName } = this.props;
 
-        let nName = newWSName.trim();
+        const nName = newWSName.trim();
         if (nName.length < 1) {
             this.setState({
                 invalidText: `Field 'Name' is required.`

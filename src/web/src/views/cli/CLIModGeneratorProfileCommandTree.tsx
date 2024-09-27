@@ -31,10 +31,10 @@ const SelectionTypography = styled(Typography)<TypographyProps>(({ theme }) => (
     fontWeight: 400,
 }))
 
-const RegisteredTypography = styled(SelectionTypography)<TypographyProps>(({ theme }) => ({
+const RegisteredTypography = styled(SelectionTypography)<TypographyProps>(() => ({
 }))
 
-const UnregisteredTypography = styled(SelectionTypography)<TypographyProps>(({ theme }) => ({
+const UnregisteredTypography = styled(SelectionTypography)<TypographyProps>(() => ({
     color: '#d9c136',
 }))
 
@@ -329,16 +329,16 @@ const CLIModGeneratorProfileCommandTree: React.FC<CLIModGeneratorProfileCommandT
                 return [...prev, commandGroup!.id];
             }
         });
-    
+
         if (!expanded.includes(commandGroup!.id)) {
-            onChange((profileCommandTree) => 
+            onChange((profileCommandTree) =>
                 genericUpdateCommandGroup(profileCommandTree, names, (commandGroup) => {
                     return loadCommandGroup(commandGroup, onLoadCommandGroup, onLoadedCommandGroup);
                 }) ?? profileCommandTree
             );
         }
     };
-    
+
 
     return (
         <React.Fragment>
@@ -362,12 +362,12 @@ const CLIModGeneratorProfileCommandTree: React.FC<CLIModGeneratorProfileCommandT
             </TreeView>
         </React.Fragment>
     );
-};
+}
 
 interface ProfileCommandTree {
     name: string;
     commandGroups: ProfileCTCommandGroups;
-};
+}
 
 interface ProfileCTCommandGroups {
     [name: string]: ProfileCTCommandGroup;
@@ -388,7 +388,7 @@ interface ProfileCTCommandGroup {
 
     loading: boolean;
     selected?: boolean;
-};
+}
 
 function isUnloadedCommandGroup(commandGroup: ProfileCTCommandGroup): boolean {
     return commandGroup.commands === undefined && commandGroup.loading === false;
@@ -407,7 +407,7 @@ interface ProfileCTCommand {
 
     loading: boolean;
     selected: boolean;
-};
+}
 
 function isUnloadedCommand(command: ProfileCTCommand): boolean {
     return command.selectedVersion === undefined && command.loading === false;
@@ -416,7 +416,7 @@ function isUnloadedCommand(command: ProfileCTCommand): boolean {
 interface ProfileCTCommandVersion {
     name: string;
     stage: string;
-};
+}
 
 function decodeProfileCTCommandVersion(response: any): ProfileCTCommandVersion {
     return {
@@ -477,13 +477,13 @@ function BuildProfileCommandTree(profileName: string, response: CLISpecsCommandG
 }
 
 function getDefaultExpandedOfCommandGroup(commandGroup: ProfileCTCommandGroup): string[] {
-    let expandedIds = commandGroup.commandGroups ? Object.values(commandGroup.commandGroups).flatMap(value => value.selected !== false ? [value.id, ...getDefaultExpandedOfCommandGroup(value)] : []) : [];
+    const expandedIds = commandGroup.commandGroups ? Object.values(commandGroup.commandGroups).flatMap(value => value.selected !== false ? [value.id, ...getDefaultExpandedOfCommandGroup(value)] : []) : [];
     return expandedIds;
 }
 
 function GetDefaultExpanded(tree: ProfileCommandTree): string[] {
     return Object.values(tree.commandGroups).flatMap(value => {
-        let ids = getDefaultExpandedOfCommandGroup(value);
+        const ids = getDefaultExpandedOfCommandGroup(value);
         if (value.selected !== false) {
             ids.push(value.id);
         }
@@ -710,7 +710,6 @@ function updateCommandGroup(commandGroup: ProfileCTCommandGroup, names: string[]
             throw new Error("Invalid names: " + names.join(' '));
         }
     }
-    
 }
 
 function updateProfileCommandTree(tree: ProfileCommandTree, names: string[], selected: boolean, version: string | undefined = undefined, registered: boolean | undefined = undefined): ProfileCommandTree {
@@ -744,7 +743,7 @@ function updateCommandGroupByModView(commandGroup: ProfileCTCommandGroup, view: 
     }
     let commands = commandGroup.commands;
     if (view.commands !== undefined) {
-        let keys = new Set(Object.keys(view.commands));
+        const keys = new Set(Object.keys(view.commands));
         commands = commandGroup.commands ? Object.fromEntries(Object.entries(commandGroup.commands).map(([key, value]) => {
             if (keys.has(key)) {
                 keys.delete(key);
@@ -754,7 +753,7 @@ function updateCommandGroupByModView(commandGroup: ProfileCTCommandGroup, view: 
             }
         })) : undefined;
         if (keys.size > 0) {
-            let commandNames: string[] = [];
+            const commandNames: string[] = [];
             keys.forEach(key => {
                 commandNames.push('`az ' + view.commands![key].names.join(" ") + '`')
             })
@@ -764,7 +763,7 @@ function updateCommandGroupByModView(commandGroup: ProfileCTCommandGroup, view: 
 
     let commandGroups = commandGroup.commandGroups;
     if (view.commandGroups !== undefined) {
-        let keys = new Set(Object.keys(view.commandGroups));
+        const keys = new Set(Object.keys(view.commandGroups));
         commandGroups = commandGroup.commandGroups ? Object.fromEntries(Object.entries(commandGroup.commandGroups).map(([key, subCg]) => {
             if (keys.has(key)) {
                 keys.delete(key);
@@ -774,7 +773,7 @@ function updateCommandGroupByModView(commandGroup: ProfileCTCommandGroup, view: 
             }
         })) : undefined;
         if (keys.size > 0) {
-            let commandGroupNames: string[] = [];
+            const commandGroupNames: string[] = [];
             keys.forEach(key => {
                 commandGroupNames.push('`az ' + view.commandGroups![key].names.join(" ") + '`')
             })
@@ -794,7 +793,7 @@ function updateCommandGroupByModView(commandGroup: ProfileCTCommandGroup, view: 
 function UpdateProfileCommandTreeByModView(tree: ProfileCommandTree, view: CLIModViewProfile): ProfileCommandTree {
     let commandGroups = tree.commandGroups;
     if (view.commandGroups !== undefined) {
-        let keys = new Set(Object.keys(view.commandGroups));
+        const keys = new Set(Object.keys(view.commandGroups));
         commandGroups = Object.fromEntries(Object.entries(tree.commandGroups).map(([key, value]) => {
             if (keys.has(key)) {
                 keys.delete(key);
@@ -804,7 +803,7 @@ function UpdateProfileCommandTreeByModView(tree: ProfileCommandTree, view: CLIMo
             }
         }));
         if (keys.size > 0) {
-            let commandGroupNames: string[] = [];
+            const commandGroupNames: string[] = [];
             keys.forEach(key => {
                 commandGroupNames.push('`az ' + view.commandGroups![key].names.join(" ") + '`')
             })
@@ -901,7 +900,7 @@ function ExportModViewCommandGroup(commandGroup: ProfileCTCommandGroup): CLIModV
         commands = {}
 
         Object.values(commandGroup.commands!).forEach(value => {
-            let view = ExportModViewCommand(value);
+            const view = ExportModViewCommand(value);
             if (view !== undefined) {
                 commands![value.names[value.names.length - 1]] = view;
             }
@@ -913,7 +912,7 @@ function ExportModViewCommandGroup(commandGroup: ProfileCTCommandGroup): CLIModV
         commandGroups = {}
 
         Object.values(commandGroup.commandGroups!).forEach(value => {
-            let view = ExportModViewCommandGroup(value);
+            const view = ExportModViewCommandGroup(value);
             if (view !== undefined) {
                 commandGroups![value.names[value.names.length - 1]] = view;
             }
@@ -929,10 +928,10 @@ function ExportModViewCommandGroup(commandGroup: ProfileCTCommandGroup): CLIModV
 
 
 function ExportModViewProfile(tree: ProfileCommandTree): CLIModViewProfile {
-    let commandGroups: CLIModViewCommandGroups = {};
+    const commandGroups: CLIModViewCommandGroups = {};
 
     Object.values(tree.commandGroups).forEach(value => {
-        let view = ExportModViewCommandGroup(value);
+        const view = ExportModViewCommandGroup(value);
         if (view !== undefined) {
             commandGroups[value.names[value.names.length - 1]] = view;
         }

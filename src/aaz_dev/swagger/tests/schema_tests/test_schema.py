@@ -230,7 +230,7 @@ class SchemaTest(SwaggerSpecsTestCase):
 
     def test_lro_final_state_schema(self):
         from functools import reduce
-        from swagger.controller.command_generator import CommandGenerator
+        from swagger.controller.command_generator import SwaggerCommandGenerator
         from command.model.configuration import CMDBuildInVariants
 
         rp = next(self.get_mgmt_plane_resource_providers(
@@ -243,7 +243,7 @@ class SchemaTest(SwaggerSpecsTestCase):
         resource_map = rp.get_resource_map()
         resource = resource_map[r_id][version]
 
-        generator = CommandGenerator()
+        generator = SwaggerCommandGenerator()
         generator.load_resources([resource])
         command_group = generator.create_draft_command_group(
             resource, instance_var=CMDBuildInVariants.Instance, methods={"put"})  # only modify PUT operation

@@ -172,7 +172,7 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
         setShowGenerateDialog(true);
     };
 
-    const handleGenerationClose = (generated: boolean) => {
+    const handleGenerationClose = () => {
         setShowGenerateDialog(false);
     };
 
@@ -181,7 +181,7 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
     };
 
     const onSelectedProfileTreeUpdate = (updater: ((newTree: ProfileCommandTree) => ProfileCommandTree) | ProfileCommandTree) => {
-        setCommandTrees((commandTrees) => { 
+        setCommandTrees((commandTrees) => {
             const selectedCommandTree = commandTrees[selectedProfile!];
             const newTree = typeof updater === 'function' ? updater(selectedCommandTree!) : updater;
             return { ...commandTrees, [selectedProfile!]: newTree }
@@ -307,7 +307,7 @@ function GenerateDialog(props: {
                 props.onClose(true);
             })
             .catch((err) => {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     setInvalidText(
@@ -339,7 +339,7 @@ function GenerateDialog(props: {
                 props.onClose(true);
             })
             .catch((err) => {
-                console.error(err.response);
+                console.error(err);
                 if (err.response?.data?.message) {
                     const data = err.response!.data!;
                     setInvalidText(

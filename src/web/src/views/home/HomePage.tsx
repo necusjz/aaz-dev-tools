@@ -7,7 +7,7 @@ import { AppAppBar } from '../../components/AppAppBar';
 import PageLayout from '../../components/PageLayout';
 
 
-const MiddlePadding = styled(Box)(({ theme }) => ({
+const MiddlePadding = styled(Box)(() => ({
     height: '6vh'
 }));
 
@@ -103,11 +103,11 @@ function HomePage() {
                                     </Step>
                                     <Step>
                                         <StepButton color="inherit" onClick={handleStep(1)}>
-                                            {"Prepare Swagger"}
+                                            {"Prepare Swagger/TypeSpec"}
                                         </StepButton>
                                         <StepContent>
                                             <StepContentTypography>
-                                                {"The definition of API in swagger is required before using AAZDev tool."}
+                                                {"The definition of API in swagger/TypeSpec is required before using AAZDev tool."}
                                             </StepContentTypography>
                                             <StepContentTypography>
                                                 {"Please make sure the API specs has been defined in "}
@@ -139,7 +139,7 @@ function HomePage() {
                                                 {"Model editors can help you build command models."}
                                             </StepContentTypography>
                                             <StepContentTypography>
-                                                {"To build command models from swagger,"}
+                                                {"To build command models from swagger/TypeSpec,"}
                                             </StepContentTypography>
                                             <StepContentTypography>
                                                 {"please use "}
