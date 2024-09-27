@@ -51,8 +51,16 @@ jobs:
             task:
               name: Build
               run: |
+                set -x
+                pip list
+                pip install twine
+                # update setup related tools
+                pip install --upgrade setuptools wheel
+                pip list
                 python setup.py check
                 python setup.py bdist_wheel sdist
+                # check package metadata
+                twine check ./dist/*
 
 #          - python: '3.10'
 #            task:
