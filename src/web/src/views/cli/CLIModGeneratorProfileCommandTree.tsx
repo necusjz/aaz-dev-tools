@@ -90,7 +90,7 @@ const CommandItem: React.FC<CommandItemProps> = ({
                         justifyContent: "center",
                     }}>
                         {!command.modified && command.selectedVersion !== undefined && <IconButton
-                            onClick={(event) => {
+                            onClick={(_event) => {
                                 onSelectCommand(command.names, true);
                             }}
                         >
@@ -503,24 +503,6 @@ function findCommandGroup(tree: ProfileCommandTree, names: string[]): ProfileCTC
         cg = cg.commandGroups[name];
     }
     return cg as ProfileCTCommandGroup;
-}
-
-function findCommand(tree: ProfileCommandTree, names: string[]): ProfileCTCommand | undefined {
-    if (names.length === 0) {
-        return undefined;
-    }
-    let cg: ProfileCTCommandGroup | ProfileCommandTree = tree;
-    for (const name of names.slice(0, -1)) {
-        if (cg.commandGroups === undefined) {
-            return undefined;
-        }
-        cg = cg.commandGroups[name] as ProfileCTCommandGroup;
-    }
-    cg = cg as ProfileCTCommandGroup;
-    if (cg.commands === undefined) {
-        return undefined;
-    }
-    return cg.commands[names[names.length - 1]];
 }
 
 function loadCommand(command: ProfileCTCommand, fetchCommand: (names: string[]) => Promise<CLISpecsCommand>, onLoadedCommand: (command: CLISpecsCommand) => void): ProfileCTCommand | undefined {

@@ -23,7 +23,7 @@ class CLIModGeneratorProfileTabs extends React.Component<CLIModGeneratorProfileT
                 aria-label="Vertical tabs example"
                 sx={{ borderRight: 1, borderColor: "divider" }}
             >
-                {profiles.map((profile, idx) => {
+                {profiles.map((profile, _idx) => {
                     return <Tab key={profile} label={profile} id={`vertical-tab-${profile}`}
                         aria-controls={`vertical-tabpanel-${profile}`} value={profile} />;
                 })}

@@ -51,10 +51,6 @@ interface CLISpecsCommand {
     versions?: CLISpecsCommandVersion[],
 }
 
-function isCLISpecsPartialCommand(obj: CLISpecsCommand) {
-    return obj.versions === undefined;
-}
-
 interface CLISpecsCommandGroup {
     names: string[],
     help?: CLISpecsHelp,
@@ -118,7 +114,6 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
     const [commandTrees, setCommandTrees] = React.useState<ProfileCommandTrees>({});
     const [selectedProfile, setSelectedProfile] = React.useState<string | undefined>(undefined);
     const [showGenerateDialog, setShowGenerateDialog] = React.useState(false);
-    const [modView, setModView] = React.useState<CLIModView | undefined>(undefined);
 
     const [fetchCommandGroup, fetchCommand] = useSpecsCommandTree();
 
@@ -145,7 +140,6 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
             })));
 
             const selectedProfile = profiles.length > 0 ? profiles[0] : undefined;
-            setModView(modView);
             setProfiles(profiles);
             setCommandTrees(commandTrees);
             setSelectedProfile(selectedProfile);
