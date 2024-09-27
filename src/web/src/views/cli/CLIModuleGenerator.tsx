@@ -16,7 +16,7 @@ import {
 import { useParams } from "react-router";
 import axios from "axios";
 import CLIModGeneratorToolBar from "./CLIModGeneratorToolBar";
-import CLIModGeneratorProfileCommandTree, { BuildProfileCommandTree, ExportModViewProfile, ProfileCommandTree, UpdateProfileCommandTreeByModView } from "./CLIModGeneratorProfileCommandTree";
+import CLIModGeneratorProfileCommandTree, { ExportModViewProfile, InitializeCommandTreeByModView, ProfileCommandTree } from "./CLIModGeneratorProfileCommandTree";
 import CLIModGeneratorProfileTabs from "./CLIModGeneratorProfileTabs";
 import { CLIModView, CLIModViewProfiles } from "./CLIModuleCommon";
 
@@ -62,66 +62,47 @@ interface CLISpecsCommandGroup {
     commandGroups?: CLISpecsCommandGroups,
 }
 
-function isCLISpecsPartialCommandGroup(obj: CLISpecsCommandGroup) {
-    return obj.commands === undefined || obj.commandGroups === undefined;
-}
-
 interface CLISpecsCommandGroups {
-    [name: string]: Promise<CLISpecsCommandGroup>|CLISpecsCommandGroup,
+    [name: string]: CLISpecsCommandGroup,
 }
 
 interface CLISpecsCommands {
-    [name: string]: Promise<CLISpecsCommand>|CLISpecsCommand,
+    [name: string]: CLISpecsCommand,
 }
 
-const useSpecsCommandTree = () => {
-    const root: Promise<CLISpecsCommandGroup> = axios.get('/AAZ/Specs/CommandTree/Nodes/aaz').then(res => res.data);
-    const commandTree = React.useRef({root: root});
-
-    const ensuredCgOf = async (commandGroups: CLISpecsCommandGroups, name: string) => {
-        let cg = commandGroups[name];
-        if (cg instanceof Promise) {
-            return await cg;
-        } else if (isCLISpecsPartialCommandGroup(cg)) {
-            let cg_promise = axios.get(`/AAZ/Specs/CommandTree/Nodes/aaz/${cg.names.join('/')}?limited=true`).then(res => res.data);
-            commandGroups[name] = cg_promise;
-            return await cg_promise;
-        } else {
-            return cg;
-        }
-    }
-
-    const ensuredCommandOf = async (commands: CLISpecsCommands, name: string) => {
-        let command = commands[name];
-        if (command instanceof Promise) {
-            return await command;
-        } else if (isCLISpecsPartialCommand(command)) {
-            let cg_names = command.names.slice(0, -1);
-            let command_name = command.names[command.names.length - 1];
-            let command_promise = axios.get(`/AAZ/Specs/CommandTree/Nodes/aaz/${cg_names.join('/')}/Leaves/${command_name}`).then(res => res.data);
-            commands[name] = command_promise;
-            return await command_promise
-        } else {
-            return command;
-        }
-    }
+const useSpecsCommandTree: () => [(names: string[]) => Promise<CLISpecsCommandGroup>, (names: string[]) => Promise<CLISpecsCommand>] = () => {
+    const commandCache = React.useRef(new Map<string, Promise<CLISpecsCommand>>());
+    const cgCache = React.useRef(new Map<string, Promise<CLISpecsCommandGroup>>());
 
     const fetchCommandGroup = async (names: string[]) => {
-        let node = await commandTree.current.root;
-        for (const name of names) {
-            node = await ensuredCgOf(node.commandGroups!, name);
+        const cachedPromise = cgCache.current.get(names.join('/'));
+        const fullNames = ['aaz', ...names];
+        const cgPromise: Promise<CLISpecsCommandGroup> = cachedPromise ?? axios.get(`/AAZ/Specs/CommandTree/Nodes/${fullNames.join('/')}?limited=true`).then(res => res.data);
+        if (!cachedPromise) {
+            cgCache.current.set(names.join('/'), cgPromise);
         }
-        return node;
+        return await cgPromise;
     }
 
     const fetchCommand = async (names: string[]) => {
-        let parent_cg = await fetchCommandGroup(names.slice(0, -1));
-        return ensuredCommandOf(parent_cg.commands!, names[names.length - 1]);
+        const cachedPromise = commandCache.current.get(names.join('/'));
+        const fullNames = ['aaz', ...names];
+        const cgNames = fullNames.slice(0, -1);
+        const commandName = fullNames[fullNames.length - 1];
+        const commandPromise: Promise<CLISpecsCommand> = cachedPromise ?? axios.get(`/AAZ/Specs/CommandTree/Nodes/${cgNames.join('/')}/Leaves/${commandName}`).then(res => res.data);
+        if (!cachedPromise) {
+            commandCache.current.set(names.join('/'), commandPromise);
+        }
+        return await commandPromise;
     }
 
     return [fetchCommandGroup, fetchCommand];
 }
 
+
+interface ProfileCommandTrees {
+    [name: string]: ProfileCommandTree,
+}
 
 interface CLIModuleGeneratorProps {
     params: {
@@ -134,9 +115,10 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
     const [loading, setLoading] = React.useState(false);
     const [invalidText, setInvalidText] = React.useState<string | undefined>(undefined);
     const [profiles, setProfiles] = React.useState<string[]>([]);
-    const [commandTrees, setCommandTrees] = React.useState<ProfileCommandTree[]>([]);
-    const [selectedProfileIdx, setSelectedProfileIdx] = React.useState<number | undefined>(undefined);
+    const [commandTrees, setCommandTrees] = React.useState<ProfileCommandTrees>({});
+    const [selectedProfile, setSelectedProfile] = React.useState<string | undefined>(undefined);
     const [showGenerateDialog, setShowGenerateDialog] = React.useState(false);
+    const [modView, setModView] = React.useState<CLIModView | undefined>(undefined);
 
     const [fetchCommandGroup, fetchCommand] = useSpecsCommandTree();
 
@@ -147,27 +129,26 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
     const loadModule = async () => {
         try {
             setLoading(true);
-            let res = await axios.get(`/CLI/Az/Profiles`);
-            let profiles: string[] = res.data;
+            const profiles: string[] = await axios.get(`/CLI/Az/Profiles`).then(res => res.data);
 
-            res = await axios.get(`/AAZ/Specs/CommandTree/Nodes/aaz`);
-            let commandTrees: ProfileCommandTree[] = profiles.map((profileName) => BuildProfileCommandTree(profileName, res.data));
+            const modView: CLIModView = await axios.get(`/CLI/Az/${params.repoName}/Modules/${params.moduleName}`).then(res => res.data);
 
-            res = await axios.get(`/CLI/Az/${params.repoName}/Modules/${params.moduleName}`);
-            let modView: CLIModView = res.data;
-
-            Object.keys(modView.profiles).forEach((profile) => {
+            Object.keys(modView!.profiles).forEach((profile) => {
                 let idx = profiles.findIndex(v => v === profile);
                 if (idx === -1) {
                     throw new Error(`Invalid profile ${profile}`);
                 }
-                commandTrees[idx] = UpdateProfileCommandTreeByModView(commandTrees[idx], modView.profiles[profile]);
             });
 
-            let selectedProfileIdx = profiles.length > 0 ? 0 : undefined;
+            const commandTrees = Object.fromEntries(await Promise.all(profiles.map(async (profile) => {
+                return InitializeCommandTreeByModView(profile, modView!.profiles[profile] ?? null, fetchCommandGroup, fetchCommand).then(tree => [profile, tree] as [string, ProfileCommandTree]);
+            })));
+
+            const selectedProfile = profiles.length > 0 ? profiles[0] : undefined;
+            setModView(modView);
             setProfiles(profiles);
             setCommandTrees(commandTrees);
-            setSelectedProfileIdx(selectedProfileIdx);
+            setSelectedProfile(selectedProfile);
             setLoading(false);
         } catch (err: any) {
             console.error(err);
@@ -181,7 +162,7 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
         }
     };
 
-    const selectedCommandTree = selectedProfileIdx ? commandTrees[selectedProfileIdx] : undefined;
+    const selectedCommandTree = selectedProfile ? commandTrees[selectedProfile] : undefined;
 
     const handleBackToHomepage = () => {
         window.open('/?#/cli', "_blank");
@@ -195,12 +176,16 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
         setShowGenerateDialog(false);
     };
 
-    const onProfileChange = (selectedIdx: number) => {
-        setSelectedProfileIdx(selectedIdx);
+    const onProfileChange = (selectedProfile: string) => {
+        setSelectedProfile(selectedProfile);
     };
 
-    const onSelectedProfileTreeUpdate = (newTree: ProfileCommandTree) => {
-        setCommandTrees(commandTrees.map((value, idx) => (idx === selectedProfileIdx ? newTree : value)));
+    const onSelectedProfileTreeUpdate = (updater: ((newTree: ProfileCommandTree) => ProfileCommandTree) | ProfileCommandTree) => {
+        setCommandTrees((commandTrees) => { 
+            const selectedCommandTree = commandTrees[selectedProfile!];
+            const newTree = typeof updater === 'function' ? updater(selectedCommandTree!) : updater;
+            return { ...commandTrees, [selectedProfile!]: newTree }
+        });
     };
 
     return (
@@ -220,9 +205,9 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
                     }}
                 >
                     <Toolbar />
-                    {selectedProfileIdx !== undefined && (
+                    {selectedProfile !== undefined && (
                         <CLIModGeneratorProfileTabs
-                            value={selectedProfileIdx}
+                            value={selectedProfile}
                             profiles={profiles}
                             onChange={onProfileChange}
                         />
@@ -240,6 +225,8 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
                         <CLIModGeneratorProfileCommandTree
                             profileCommandTree={selectedCommandTree}
                             onChange={onSelectedProfileTreeUpdate}
+                            onLoadCommand={fetchCommand}
+                            onLoadCommandGroup={fetchCommandGroup}
                         />
                     )}
                 </Box>
@@ -286,7 +273,7 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
 function GenerateDialog(props: {
     repoName: string;
     moduleName: string;
-    profileCommandTrees: ProfileCommandTree[];
+    profileCommandTrees: ProfileCommandTrees;
     open: boolean;
     onClose: (generated: boolean) => void;
 }) {
@@ -301,7 +288,7 @@ function GenerateDialog(props: {
 
     const handleGenerateAll = () => {
         const profiles: CLIModViewProfiles = {};
-        props.profileCommandTrees.forEach(tree => {
+        Object.values(props.profileCommandTrees).forEach(tree => {
             profiles[tree.name] = ExportModViewProfile(tree);
         })
         const data = {
@@ -333,7 +320,7 @@ function GenerateDialog(props: {
 
     const handleGenerateModified = () => {
         const profiles: CLIModViewProfiles = {};
-        props.profileCommandTrees.forEach(tree => {
+        Object.values(props.profileCommandTrees).forEach(tree => {
             profiles[tree.name] = ExportModViewProfile(tree);
         })
         const data = {
@@ -391,4 +378,5 @@ const CLIModuleGeneratorWrapper = (props: any) => {
     return <CLIModuleGenerator params={params} {...props} />
 }
 
+export type { CLISpecsCommandGroup, CLISpecsCommand };
 export { CLIModuleGeneratorWrapper as CLIModuleGenerator };

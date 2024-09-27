@@ -41,7 +41,6 @@ class AAZSpecsManager:
 
     @property
     def tree(self):
-        logger.info("Get Command Tree")
         return self._tree
     
     @tree.setter
