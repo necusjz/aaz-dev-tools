@@ -212,7 +212,7 @@ Workspaces are like containers, they are isolated so that changes in one do not 
 It's possible to add resources from different resource providers, but they should be in the same plane. Currently, we only support Management plane.
 Another note is that a workspace don't allow to add a resource multiple times in different versions. For example, if virtual network resource('/subscriptions/{}/resourcegroups/{}/providers/microsoft.network/virtualnetworks/{}') of version 2021-05-01 is added in a workspace, it's not allowed to add other versions of this resource in this workspace.
 
-Please jump to [Workspace Editor](pages/usage/workspace_editor_usage.md) for more details.
+Please jump to [Workspace Editor](pages/usage/workspace_editor.md) for more details.
 
 ## AAZ Repo
 
