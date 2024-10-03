@@ -19,11 +19,11 @@ In workspace page, the drop-down menu can select an existing workspace or create
 
 When creating a new workspace, you have to pick the target resource provider.
 
-#### Add a new workspace from swagger specificcations
+#### Add a new workspace from swagger specifications
 
 ![create_a_workspace_from_swagger](../../assets/recordings/workspace_editor/create_a_swagger_workspace.gif)
 
-#### Add a new workspace fron TypeSpec specification
+#### Add a new workspace from TypeSpec specification
 
 ![create_a_workspace_from_typespec](../../assets/recordings/workspace_editor/create_a_typespec_workspace.gif)
 
