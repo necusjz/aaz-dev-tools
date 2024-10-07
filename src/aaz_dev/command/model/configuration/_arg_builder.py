@@ -181,7 +181,12 @@ class CMDArgBuilder:
                     discriminator_mapping[disc.property][disc.value] = results[0].var
 
         if self.schema.props:
+            removed = []  # remove useless schema
             for prop in self.schema.props:
+                if self.schema.action in ['assign', 'remove'] and prop.name in ['type', 'userAssignedIdentities']:
+                    removed.append(prop)
+                    continue
+
                 if prop.name in discriminator_mapping:
                     # If discriminators are not flattened then prop value can be associate with discriminator arguments
                     assert hasattr(prop, 'enum')
@@ -192,42 +197,42 @@ class CMDArgBuilder:
                 sub_builder = self.get_sub_builder(schema=prop, ref_args=sub_ref_args)
                 sub_args.extend(sub_builder.get_args())
 
-            if isinstance(self.schema, CMDIdentityObjectSchema):
-                if not self._is_update_action:
-                    self.add_identity_args(sub_args, sub_ref_args, is_subresource=False)
-                elif self.schema.action:
-                    self.add_identity_args(sub_args, sub_ref_args, is_subresource=True)
+            self.schema.props = [prop for prop in self.schema.props if prop not in removed]
+            if isinstance(self.schema, CMDIdentityObjectSchema) and (not self._is_update_action or self.schema.action):
+                self.add_identity_args(sub_args, sub_ref_args)
 
         if not sub_args:
             return None
         return sub_args
 
-    def add_identity_args(self, args, ref_args, is_subresource):
+    def add_identity_args(self, args, ref_args):
         if not self.schema.props:
             self.schema.props = []
 
+        action = self.schema.action or "create"
+
         user_assigned_schema = CMDArraySchema({
-            "name": "userAssigned" if is_subresource else "miUserAssigned",
-            "item": CMDStringSchemaBase(),
+            "name": "userAssigned",
+            "item": CMDStringSchemaBase({"action": action}),
             "description": "Set the user managed identities.",
-            "action": self.schema.action
+            "action": action,
         })
         builder = self.get_sub_builder(schema=user_assigned_schema, ref_args=ref_args)
         user_assigned_arg = builder.get_args()[0]
-        user_assigned_arg.blank = CMDArgBlank({"value": []})
+        user_assigned_arg.blank = CMDArgBlank({"value": []})  # set blank to []
         args.append(user_assigned_arg)
-        self.schema.mi_user_assigned = user_assigned_schema
+        self.schema.user_assigned = user_assigned_schema
 
         system_assigned_schema = CMDStringSchema({
-            "name": "systemAssigned" if is_subresource else "miSystemAssigned",
+            "name": "systemAssigned",
             "description": "Set the system managed identity.",
-            "action": self.schema.action
+            "action": action,
         })
         builder = self.get_sub_builder(schema=system_assigned_schema, ref_args=ref_args)
         system_assigned_arg = builder.get_args()[0]
-        system_assigned_arg.blank = CMDArgBlank({"value": "True"})
+        system_assigned_arg.blank = CMDArgBlank({"value": "True"})  # set blank to "True"
         args.append(system_assigned_arg)
-        self.schema.mi_system_assigned = system_assigned_schema
+        self.schema.system_assigned = system_assigned_schema
 
     def get_sub_item(self):
         if hasattr(self.schema, "item") and self.schema.item:
@@ -259,6 +264,9 @@ class CMDArgBuilder:
     def get_nullable(self):
         if isinstance(self.schema, CMDSchemaBase) and self.schema.nullable:
             return True
+
+        if self.schema.action in ['assign', 'remove']:  # identity parameters cannot be set to null
+            return False
 
         if isinstance(self.schema, CMDSchema):
             # when updated and schema is not required then nullable is true.
@@ -367,6 +375,9 @@ class CMDArgBuilder:
                 name = prefix + name[2:]
             name = name.replace('.', '-')
             opt_name = self._build_option_name(name)  # some schema name may contain $
+
+            if self.schema.action is not None and self.schema.name in ["userAssigned", "systemAssigned"]:
+                return [opt_name, "mi-" + opt_name]
         else:
             raise NotImplementedError()
         return [opt_name, ]

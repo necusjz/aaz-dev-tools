@@ -972,13 +972,13 @@ class CMDIdentityObjectSchemaBase(CMDObjectSchemaBase):
     TYPE_VALUE = "IdentityObject"
     ARG_TYPE = CMDObjectArgBase
 
-    mi_user_assigned = CMDSchemaField(
-        serialized_name="miUserAssigned",
-        deserialize_from="miUserAssigned"
+    user_assigned = CMDSchemaField(
+        serialized_name="userAssigned",
+        deserialize_from="userAssigned"
     )
-    mi_system_assigned = CMDSchemaField(
-        serialized_name="miSystemAssigned",
-        deserialize_from="miSystemAssigned"
+    system_assigned = CMDSchemaField(
+        serialized_name="systemAssigned",
+        deserialize_from="systemAssigned"
     )
 
 

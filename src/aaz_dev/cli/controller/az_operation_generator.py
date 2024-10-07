@@ -650,11 +650,11 @@ def _iter_request_scopes_by_schema_base(schema, name, scope_define, arg_key, cmd
         if schema.discriminators:
             discriminators.extend(schema.discriminators)
 
-        if schema.props:
-            props = schema.props
-            if isinstance(schema, CMDIdentityObjectSchemaBase) and schema.mi_user_assigned and schema.mi_system_assigned:
-                props += [schema.mi_user_assigned, schema.mi_system_assigned]
+        props = schema.props or []
+        if isinstance(schema, CMDIdentityObjectSchemaBase) and schema.user_assigned and schema.system_assigned:
+            props += [schema.user_assigned, schema.system_assigned]
 
+        if props:
             for s in props:
                 s_name = s.name
                 s_typ, s_typ_kwargs, cls_builder_name = render_schema(s, cmd_ctx.update_clses, s_name)
