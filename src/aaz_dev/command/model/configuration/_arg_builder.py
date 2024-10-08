@@ -183,7 +183,8 @@ class CMDArgBuilder:
         if self.schema.props:
             removed = []  # remove useless schema
             for prop in self.schema.props:
-                if self.schema.action in ['assign', 'remove'] and prop.name in ['type', 'userAssignedIdentities']:
+                if hasattr(self.schema, "action") and self.schema.action in ['assign', 'remove'] and \
+                        prop.name in ['type', 'userAssignedIdentities']:
                     removed.append(prop)
                     continue
 
@@ -265,7 +266,7 @@ class CMDArgBuilder:
         if isinstance(self.schema, CMDSchemaBase) and self.schema.nullable:
             return True
 
-        if self.schema.action in ['assign', 'remove']:  # identity parameters cannot be set to null
+        if hasattr(self.schema, "action") and self.schema.action in ['assign', 'remove']:  # identity parameters cannot be set to null
             return False
 
         if isinstance(self.schema, CMDSchema):
