@@ -186,6 +186,10 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         command_group.commands.append(command)
 
     def merge(self, plus_cfg_editor):
+        """
+        create conditions according to the path
+        expand all http-operations with merged path in the main cfg using condition for switching
+        """
         if not self._can_merge(plus_cfg_editor):
             return None
 
@@ -506,65 +510,123 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         return required_args, optional_args
 
     def _can_merge(self, plus_cfg_editor):
-        if len([*plus_cfg_editor.iter_commands()]) != 1:
+        """
+        check all basic commands can be merged or not, whose commands should be comes from the a single http operation
+        such as get, put, post, delete, patch, without sub resources or generic update commands.
+        """
+        for method in ['get', 'put', 'post', 'delete', 'patch']:
+            if self._can_merge_method(plus_cfg_editor, method) is False:
+                return False
+        return True
+
+    def _can_merge_method(self, plus_cfg_editor, method):
+        # check the single operation command without sub resources.
+        plus_commands = [command for _, command in plus_cfg_editor.iter_commands_by_operations(method) if not command.subresource_selector]
+        main_commands = [command for _, command in self.iter_commands_by_operations(method) if not command.subresource_selector]
+        if not plus_commands and not main_commands:
+            return None
+        elif not plus_commands or not main_commands:
             return False
-        plus_commands = [command for _, command in plus_cfg_editor.iter_commands_by_operations('get')]
+
         if len(plus_commands) != 1:
             return False
         plus_command = plus_commands[0]
         if len(plus_command.resources) != len(plus_cfg_editor.resources):
             return False
 
-        main_get_commands = [command for _, command in self.iter_commands_by_operations('get')]
-        if len(main_get_commands) == 0:
+        if len(main_commands) != 1:
             return False
-        for command in main_get_commands:
-            if len(command.resources) != len(self.resources):
-                return False
-
-        plus_200_response = None
-        for http_op in plus_command.operations:
-            if not isinstance(http_op, CMDHttpOperation):
-                continue
-            assert http_op.http.request.method == 'get'
-            for response in http_op.http.responses:
-                if response.is_error:
-                    continue
-                if 200 in response.status_codes:
-                    plus_200_response = response
-                    break
-            if plus_200_response:
-                break
-        if not plus_200_response:
+        main_command = main_commands[0]
+        if len(main_command.resources) != len(self.resources):
+            return False
+        
+        if not self._can_merge_in_request(main_command, plus_command, method=method):
             return False
 
-        main_200_response = None
-        for command in main_get_commands:
-            for http_op in command.operations:
-                if not isinstance(http_op, CMDHttpOperation):
-                    continue
-                assert http_op.http.request.method == 'get'
-                for response in http_op.http.responses:
-                    if response.is_error:
-                        continue
-                    if 200 in response.status_codes:
-                        if plus_200_response.diff(response, CMDDiffLevelEnum.Structure):
-                            return False
-                        main_200_response = response
-        if not main_200_response:
+        if not self._can_merge_in_response(main_command, plus_command, method=method):
             return False
 
         plus_op_required_args, plus_op_optional_args = self._parse_command_http_op_url_args(plus_command)
-        for main_command in main_get_commands:
-            main_op_required_args, main_op_optional_args = self._parse_command_http_op_url_args(main_command)
-            for main_op_id, main_required_args in main_op_required_args.items():
-                if main_op_id in plus_op_required_args:
-                    # the operation id should be different with plus's
+        main_op_required_args, main_op_optional_args = self._parse_command_http_op_url_args(main_command)
+        for main_op_id, main_required_args in main_op_required_args.items():
+            if main_op_id in plus_op_required_args:
+                # the operation id should be different with plus's
+                return False
+            for plus_required_args in plus_op_required_args.values():
+                if plus_required_args == main_required_args:
+                    # the required arguments should be different
                     return False
-                for plus_required_args in plus_op_required_args.values():
-                    if plus_required_args == main_required_args:
-                        # the required arguments should be different
-                        return False
+        return True
+    
+    @staticmethod
+    def _can_merge_in_response(main_command, plus_command, method):
+        plus_responses = {}
+        for http_op in plus_command.operations:
+            if not isinstance(http_op, CMDHttpOperation):
+                continue
+            for response in http_op.http.responses:
+                if response.is_error:
+                    continue
+                for status_code in response.status_codes:
+                    if status_code not in plus_responses:
+                        plus_responses[status_code] = response
+        if not plus_responses:
+            return False
+
+        main_responses = {}
+        for http_op in main_command.operations:
+            if not isinstance(http_op, CMDHttpOperation):
+                continue
+            for response in http_op.http.responses:
+                if response.is_error:
+                    continue
+                for status_code in response.status_codes:
+                    if status_code not in main_responses:
+                        plus_response = plus_responses.get(status_code)
+                        if not plus_response:
+                            return False
+                        if plus_response.diff(response, CMDDiffLevelEnum.Structure):
+                            return False
+                        main_responses[status_code] = response
+
+        if set(main_responses.keys()) != set(plus_responses.keys()):
+            return False
+        return True
+
+    @staticmethod
+    def _can_merge_in_request(main_command, plus_command, method):
+        plus_request = None
+        for http_op in plus_command.operations:
+            if not isinstance(http_op, CMDHttpOperation):
+                continue
+            if http_op.http.request.method.lower() != method:
+                continue
+            plus_request = http_op.http.request
+            break
+
+        main_request = None
+        for http_op in main_command.operations:
+            if not isinstance(http_op, CMDHttpOperation):
+                continue
+            if http_op.http.request.method.lower() != method:
+                continue
+            main_request = http_op.http.request
+            break
+        
+        if not plus_request and not main_request:
+            return True
+
+        if not plus_request or not main_request:
+            return False
+        
+        diff = plus_request.diff(main_request, CMDDiffLevelEnum.Structure)
+        if diff:
+            if 'path' in diff:
+                del diff['path']
+            if 'query' in diff:
+                del diff['query']
+        if diff:
+            return False
         return True
 
     def _filter_args_in_arg_group(self, arg_group, arg_vars, copy=True):
