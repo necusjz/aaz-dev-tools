@@ -193,48 +193,98 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         if not self._can_merge(plus_cfg_editor):
             return None
 
-        _, plus_command = [*plus_cfg_editor.iter_commands_by_operations('get')][0]
-        plus_op_required_args, plus_op_optional_args = plus_cfg_editor._parse_command_http_op_url_args(plus_command)
+        plus_operations_by_method = {}
+        plus_ops_required_args = {}
+        plus_resources_arg_groups = []
+        for method in ['get', 'put', 'post', 'delete', 'patch']:
+            for _, command in plus_cfg_editor.iter_commands_by_operations(method):
+                if command.subresource_selector:
+                    continue
+                if method not in plus_operations_by_method:
+                    plus_operations_by_method[method] = {}
+                for operation in command.operations:
+                    if isinstance(operation, CMDHttpOperation) and operation.http.request.method.lower() == method:
+                        plus_operations_by_method[method][operation.operation_id] = operation
+                plus_op_required_args, plus_op_optional_args = self._parse_command_http_op_url_args(command)
+                plus_ops_required_args.update(plus_op_required_args)
+                if not plus_resources_arg_groups:
+                    # merge args
+                    new_args = set()
+                    for args in plus_op_required_args.values():
+                        new_args.update(args)
+                    for args in plus_op_optional_args.values():
+                        new_args.update(args)
+                    for arg_group in command.arg_groups:
+                        arg_group = plus_cfg_editor._filter_args_in_arg_group(arg_group, new_args, copy=True)
+                        if arg_group:
+                            plus_resources_arg_groups.append(arg_group)
+                    
+
+            if method in plus_operations_by_method:
+                assert len(plus_operations_by_method[method]) == len(plus_cfg_editor.resources)
 
         main_editor = WorkspaceCfgEditor(self.cfg.__class__(self.cfg.to_primitive()))  # generate a copy of main cfg
-        main_commands = [command for _, command in main_editor.iter_commands_by_operations('get')]
-        for main_command in main_commands:
-            # merge args
-            new_args = set()
-            for args in plus_op_required_args.values():
-                new_args.update(args)
-            for args in plus_op_optional_args.values():
-                new_args.update(args)
+        for _, main_command in main_editor.iter_commands():
+            # create plus http operations by replace the path and query args
+            merged_operations = []
+            plus_operations = []
+            plus_op_required_args = {}
+            for operation in main_command.operations:
+                if not isinstance(operation, CMDHttpOperation):
+                    if plus_operations:
+                        merged_operations.extend(plus_operations)
+                        plus_operations = []
+                    merged_operations.append(operation)
+                    continue
+                if plus_operations and operation.http.request.method.lower() == plus_operations[0].http.request.method.lower():
+                    merged_operations.append(operation)
+                    continue
+                if plus_operations:
+                    merged_operations.extend(plus_operations)
+                    plus_operations = []
+                merged_operations.append(operation)
+                for operation_id, plus_operation in plus_operations_by_method[operation.http.request.method.lower()].items():
+                    plus_operation = plus_operation.__class__(plus_operation.to_primitive())
+                    plus_operation.http.request.header = operation.http.request.header
+                    plus_operation.http.request.body = operation.http.request.body
+                    plus_operation.http.responses = operation.http.responses
+                    plus_operation = plus_operation.__class__(plus_operation.to_primitive())
+                    plus_operations.append(plus_operation)
+                    if operation_id not in plus_op_required_args:
+                        plus_op_required_args[operation_id] = plus_ops_required_args[operation_id]
+            if plus_operations:
+                merged_operations.extend(plus_operations)
+                plus_operations = []
 
-            for arg_group in plus_command.arg_groups:
-                arg_group = plus_cfg_editor._filter_args_in_arg_group(arg_group, new_args, copy=True)
-                if arg_group:
-                    try:
-                        main_editor._command_merge_arg_group(main_command, arg_group)
-                    except exceptions.InvalidAPIUsage as ex:
-                        logger.error(ex)
-                        return None
+            # merge args
+            for arg_group in plus_resources_arg_groups:
+                try:
+                    main_editor._command_merge_arg_group(main_command, arg_group)
+                except exceptions.InvalidAPIUsage as ex:
+                    logger.error(ex)
+                    return None
 
             # create conditions
             main_op_required_args, _ = main_editor._parse_command_http_op_url_args(main_command)
-            plus_operations = []
-            for operation in plus_command.operations:
-                plus_operations.append(operation.__class__(operation.to_primitive()))
+
             op_required_args = {**plus_op_required_args, **main_op_required_args}
-            common_required_args, main_command.conditions, main_command.operations = main_editor._merge_command_operations(
+            merged_required_args, merged_optional_args, main_command.conditions, main_command.operations = main_editor._merge_command_operations(
                 op_required_args,
-                *plus_operations, *main_command.operations
+                *merged_operations
             )
 
             # update arg required of command
             for arg_group in main_command.arg_groups:
                 for arg in arg_group.args:
-                    arg.required = arg.var in common_required_args
+                    if arg.var in merged_required_args:
+                        arg.required = True
+                    elif arg.var in merged_optional_args:
+                        arg.required = False
 
-            for resource in plus_command.resources:
-                main_command.resources.append(
-                    resource.__class__(resource.to_primitive())
-                )
+            for resource in plus_cfg_editor.resources:
+                resource = resource.__class__(resource.to_primitive())
+                resource.subresource = main_command.resources[0].subresource # follow the main command's subresource
+                main_command.resources.append(resource)
 
             # relink main_command
             main_command.link()
@@ -476,13 +526,14 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
     def reformat(self):
         self.cfg.reformat()
 
-    def _parse_command_http_op_url_args(self, command):
+    @classmethod
+    def _parse_command_http_op_url_args(cls, command):
         operation_required_args = {}
         operation_optional_args = {}
         for http_op in command.operations:
             if not isinstance(http_op, CMDHttpOperation):
                 continue
-            required_args, optional_args = self.parse_http_operation_url_args(http_op)
+            required_args, optional_args = cls.parse_http_operation_url_args(http_op)
             operation_required_args[http_op.operation_id] = required_args
             operation_optional_args[http_op.operation_id] = optional_args
         return operation_required_args, operation_optional_args
@@ -737,12 +788,15 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         return arg
 
     def _merge_command_operations(self, op_required_args, *operations):
-        common_required_args = None
+        merged_required_args = None
+        merged_optional_args = set()
         for required_args in op_required_args.values():
-            if common_required_args is None:
-                common_required_args = {*required_args}
+            merged_optional_args.update(required_args)
+            if merged_required_args is None:
+                merged_required_args = {*required_args}
             else:
-                common_required_args.intersection_update(required_args)
+                merged_required_args.intersection_update(required_args)
+        merged_optional_args.difference_update(merged_required_args)
 
         arg_ops_map = {}
         for op_id, required_args in op_required_args.items():
@@ -753,6 +807,9 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         conditions = []
         new_operations = []
         for operation in operations:
+            if not isinstance(operation, CMDHttpOperation):
+                new_operations.append(operation)
+                continue
             assert operation.operation_id in op_required_args
             op_id = operation.operation_id
 
@@ -790,7 +847,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             operation.when = [condition.var]
             new_operations.append(operation)
 
-        return common_required_args, conditions, new_operations
+        return merged_required_args, merged_optional_args, conditions, new_operations
 
     def inherit_modification(self, ref_cfg: CfgReader):
         command_rename_list = []
