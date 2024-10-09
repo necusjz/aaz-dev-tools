@@ -148,7 +148,7 @@ class {{ leaf.cls_name }}(
     def {{ arg_cls.builder_name }}(cls, _schema):
         if cls.{{ arg_cls.args_schema_name }} is not None:
             {%- for prop_name in arg_cls.props %}
-            _schema.{{ prop_name }} = cls.{{ arg_cls.args_schema_name }}.{{ prop_name }}
+            _schema.{{ prop_name|avoid_conflict }} = cls.{{ arg_cls.args_schema_name }}.{{ prop_name|avoid_conflict }}
             {%- endfor %}
             return
 
@@ -198,7 +198,7 @@ class {{ leaf.cls_name }}(
         {%- endfor %}
         {{- "\n" }}
         {%- for prop_name in arg_cls.props %}
-        _schema.{{ prop_name }} = cls.{{ arg_cls.args_schema_name }}.{{ prop_name }}
+        _schema.{{ prop_name|avoid_conflict }} = cls.{{ arg_cls.args_schema_name }}.{{ prop_name|avoid_conflict }}
         {%- endfor %}
 
     {%- endfor %}
