@@ -5,31 +5,6 @@ permalink: /pages/usage/setup-and-run/
 weight: 100
 ---
 
-## Code repos setup
-
-### Fork and clone repos
-
-`aaz-dev-tools` relies on the following repos, Please `Fork` these repos in your GitHub account and `Clone` them in your local disk. After clone, you can add `upstream` for every repo in your local clone by using `git remote add upstream`.
-
-- Azure CLI code repos:
-    - [Azure CLI](https://github.com/Azure/azure-cli): Before start to the development task, you should always sync the code in the `dev` branch of `upstream`(Azure/Azure-cli). If your commands will be generated to azure-cli repo, you should checkout a new branch with `feature-` prefix.
-
-    - [Azure CLI Extension](https://github.com/Azure/azure-cli-extensions): If your commands will be generated to azure-cli-extension repo, you should sync the code in the `main` branch of `upstream`(Azure/Azure-cli-extensions), and checkout a new branch with `feature-` prefix.
-
-- AAZ command models repo:
-    - [AAZ](https://github.com/Azure/aaz): This repo is used to upload the command models generated. Before start to the development task, you should always sync the change in the `main` branch of `upstream`, and checkout a new branch with `feature-` prefix.
-
-- Azure OpenAPI Specs repos:
-    - [azure-rest-api-specs](https://github.com/Azure/azure-rest-api-specs)
-    - [azure-rest-api-specs-pr](https://github.com/Azure/azure-rest-api-specs-pr)
-
-### Use **azdev setup** to setup azure-cli development environment
-
-You should __always__ run the following command every time you sync `azure-cli` code of `upstream`.
-```bash
-azdev setup --cli {path to azure-cli} --repo {path to azure-cli-extensions}
-```
-
 ## Setup python
 
 ### Setup build env
@@ -98,21 +73,36 @@ You should __always__ activate the virtual environment for azure-cli development
 
 ### Install tools for azure-cli development
 
-Install [azure-cli-dev-tools](https://github.com/Azure/azure-cli-dev-tools):
-
-```bash
-pip install azdev
-```
-
 Install [aaz-dev-tools](https://github.com/Azure/aaz-dev-tools)
 
 ```bash
 pip install aaz-dev
 ```
 
-### python-levenshtein installation issues
+## Code repos setup
 
-- For Windows users, dependency python-levenshtein installation might run into trouble. developers might need to download [.whl](https://www.lfd.uci.edu/~gohlke/pythonlibs/#python-levenshtein) file and install it manually (reference to [link](https://stackoverflow.com/questions/37676623/cant-install-levenshtein-distance-package-on-windows-python-3-5/46414982))
+### Fork and clone repos
+
+`aaz-dev-tools` relies on the following repos, Please `Fork` these repos in your GitHub account and `Clone` them in your local disk. After clone, you can add `upstream` for every repo in your local clone by using `git remote add upstream`.
+
+- Azure CLI code repos:
+    - [Azure CLI](https://github.com/Azure/azure-cli): Before start to the development task, you should always sync the code in the `dev` branch of `upstream`(Azure/Azure-cli). If your commands will be generated to azure-cli repo, you should checkout a new branch with `feature-` prefix.
+
+    - [Azure CLI Extension](https://github.com/Azure/azure-cli-extensions): If your commands will be generated to azure-cli-extension repo, you should sync the code in the `main` branch of `upstream`(Azure/Azure-cli-extensions), and checkout a new branch with `feature-` prefix.
+
+- AAZ command models repo:
+    - [AAZ](https://github.com/Azure/aaz): This repo is used to upload the command models generated. Before start to the development task, you should always sync the change in the `main` branch of `upstream`, and checkout a new branch with `feature-` prefix.
+
+- Azure OpenAPI Specs repos:
+    - [azure-rest-api-specs](https://github.com/Azure/azure-rest-api-specs)
+    - [azure-rest-api-specs-pr](https://github.com/Azure/azure-rest-api-specs-pr)
+
+### Use **azdev setup** to setup azure-cli development environment
+
+You should __always__ run the following command every time you sync `azure-cli` code of `upstream`.
+```bash
+azdev setup --cli {path to azure-cli} --repo {path to azure-cli-extensions}
+```
 
 ## Run **aaz-dev-tools**
 
