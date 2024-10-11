@@ -610,14 +610,18 @@ class AzResponseClsGenerator:
         self.props = []
         self.discriminators = []
         if isinstance(schema, CMDObjectSchemaBase):
-            if schema.props and schema.additional_props:
-                raise NotImplementedError()
             if schema.discriminators:
+                if schema.additional_props:
+                    raise NotImplementedError()
                 for disc in schema.discriminators:
                     disc_key = to_snake_case(disc.property)
                     disc_value = disc.value
                     self.discriminators.append((disc_key, disc_value))
-            if schema.props:
+
+            if schema.props and schema.additional_props:
+                # treat it as AAZFreeFormDictType
+                pass
+            elif schema.props:
                 for s in schema.props:
                     s_name = to_snake_case(s.name)
                     self.props.append(s_name)
@@ -643,18 +647,27 @@ def _iter_request_scopes_by_schema_base(schema, name, scope_define, arg_key, cmd
     search_schemas = {}
     discriminators = []
     if isinstance(schema, CMDObjectSchemaBase):
-        if schema.props and schema.additional_props:
-            # not support for both props and additional props
-            raise NotImplementedError()
-
         if schema.discriminators:
+            if schema.additional_props:
+                raise NotImplementedError()
             discriminators.extend(schema.discriminators)
 
         props = schema.props or []
         if isinstance(schema, CMDIdentityObjectSchemaBase) and schema.user_assigned and schema.system_assigned:
             props += [schema.user_assigned, schema.system_assigned]
 
-        if props:
+        if props and schema.additional_props:
+            # treat it as AAZFreeFormDictType
+            s_name = '{}'
+            r_key = '.'  # if element exist, always fill it
+
+            is_const = False
+            const_value = None
+            rendered_schemas.append(
+                (s_name, None, is_const, const_value, r_key, None, None)
+            )
+
+        elif props:
             for s in props:
                 s_name = s.name
                 s_typ, s_typ_kwargs, cls_builder_name = render_schema(s, cmd_ctx.update_clses, s_name)
@@ -837,14 +850,16 @@ def _iter_response_scopes_by_schema_base(schema, name, scope_define, cmd_ctx):
     search_schemas = {}
     discriminators = []
     if isinstance(schema, CMDObjectSchemaBase):
-        if schema.props and schema.additional_props:
-            # not support to parse schema with both props and additional_props
-            raise NotImplementedError()
 
         if schema.discriminators:
+            if schema.additional_props:
+                raise NotImplementedError()
             discriminators.extend(schema.discriminators)
 
-        if schema.props:
+        if schema.props and schema.additional_props:
+            # treat it as AAZFreeFormDictType
+            pass
+        elif schema.props:
             for s in schema.props:
                 s_name = to_snake_case(s.name)
                 s_typ, s_typ_kwargs, cls_builder_name = render_schema(s, cmd_ctx.response_clses, s_name)
@@ -978,7 +993,8 @@ def render_schema_base(schema, cls_map, schema_kwargs=None):
         if schema.props or schema.discriminators:
             schema_type = "AAZObjectType"
             if schema.additional_props:
-                raise NotImplementedError()
+                # treat it as AAZFreeFormDictType
+                schema_type = "AAZFreeFormDictType"
         elif schema.additional_props:
             if schema.additional_props.any_type is True:
                 schema_type = "AAZFreeFormDictType"

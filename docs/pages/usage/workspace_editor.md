@@ -17,7 +17,16 @@ When using aaz-dev from scratch, the workspace editor is the starting point. A w
 
 In workspace page, the drop-down menu can select an existing workspace or create a new one.
 
-![create_a_workspace](../../assets/recordings/workspace_editor/create_a_workspace.gif)
+When creating a new workspace, you have to pick the target resource provider.
+
+#### Add a new workspace from swagger specifications
+
+![create_a_workspace_from_swagger](../../assets/recordings/workspace_editor/create_a_swagger_workspace.gif)
+
+#### Add a new workspace from TypeSpec specification
+
+![create_a_workspace_from_typespec](../../assets/recordings/workspace_editor/create_a_typespec_workspace.gif)
+
 
 ### Rename a workspace
 

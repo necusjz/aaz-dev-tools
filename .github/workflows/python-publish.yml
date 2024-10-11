@@ -51,8 +51,16 @@ jobs:
             task:
               name: Build
               run: |
+                set -x
+                pip list
+                pip install twine
+                # update setup related tools
+                pip install --upgrade setuptools wheel
+                pip list
                 python setup.py check
                 python setup.py bdist_wheel sdist
+                # check package metadata
+                twine check ./dist/*
 
 #          - python: '3.10'
 #            task:
@@ -66,11 +74,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18.x'
+          node-version: '20.x'
 
       - name: Setup Python
         uses: actions/setup-python@v3
@@ -80,6 +90,8 @@ jobs:
       - name: Install prerequisites
         run: |
           pip install --upgrade pip setuptools wheel virtualenv
+          npm install -g pnpm
+          pnpm install
 
       - name: Set build variables
         shell: bash
@@ -96,10 +108,9 @@ jobs:
         with:
           path: |
             .venv
-            src/web/node_modules
-          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}-${{ env.NODE_VERSION }}-${{ hashFiles('src/web/package-lock.json') }}
+          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ env.NODE_VERSION }}
+            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}
 
       - name: Setup virtual environment (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
@@ -107,8 +118,6 @@ jobs:
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
           . .venv/bin/activate
           pip install -e .[dev]
-          cd src/web
-          npm install
 
       - name: Install editable (cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit == 'true'
@@ -124,11 +133,14 @@ jobs:
           pip freeze
           which node
           node --version
+          npm --version
+          pnpm --version
 
       - name: Build Web
         run: |
-          cd src/web
-          npm run build
+          pnpm build:typespec
+          pnpm build:web
+          pnpm bundle
         env:
           CI: false
 
@@ -139,7 +151,7 @@ jobs:
 
       - name: Upload package distribution files
         if: matrix.task.name == 'Build'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: package
           path: dist
@@ -174,7 +186,7 @@ jobs:
           echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
       - name: Download package distribution files
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: package
           path: dist

@@ -73,21 +73,11 @@ You should __always__ activate the virtual environment for azure-cli development
 
 ### Install tools for azure-cli development
 
-Install [azure-cli-dev-tools](https://github.com/Azure/azure-cli-dev-tools):
-
-```bash
-pip install azdev
-```
-
 Install [aaz-dev-tools](https://github.com/Azure/aaz-dev-tools)
 
 ```bash
 pip install aaz-dev
 ```
-
-### python-levenshtein installation issues
-
-- For Windows users, dependency python-levenshtein installation might run into trouble. developers might need to download [.whl](https://www.lfd.uci.edu/~gohlke/pythonlibs/#python-levenshtein) file and install it manually (reference to [link](https://stackoverflow.com/questions/37676623/cant-install-levenshtein-distance-package-on-windows-python-3-5/46414982))
 
 ## Code repos setup
 
