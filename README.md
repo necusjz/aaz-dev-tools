@@ -80,13 +80,7 @@ python --version
 
 ### 4 Install tools for azure-cli development
 
-#### 4.1 Install [azure-cli-dev-tools](https://github.com/Azure/azure-cli-dev-tools)
-Both for windows and linux
-```
-pip install azdev
-```
-
-#### 4.2 Install aaz-dev-tools
+#### 4.1 Install aaz-dev-tools
 
 - For Windows
     - Powershell
@@ -101,14 +95,13 @@ pip install azdev
     ```bash
     pip install aaz-dev
     ```
-#### 4.3 Set up build env
+
+#### 4.2 Set up build env
 - For linux users, set up python3 build tools would avoid other unseen installation issues
   ```
   Ubuntu: apt-get install python3-dev build-essential
   Centos: yum install python3-devel
   ```
-#### 4.4 Possible problems
-- For windows users, dependency python-levenshtein installation might run into trouble. developers might need to download [.whl](https://www.lfd.uci.edu/~gohlke/pythonlibs/#python-levenshtein) file and install it manually (reference to [link](https://stackoverflow.com/questions/37676623/cant-install-levenshtein-distance-package-on-windows-python-3-5/46414982))
 
 ### 5. Code repos setup
 
