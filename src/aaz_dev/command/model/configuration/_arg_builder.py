@@ -7,8 +7,10 @@ from ._arg import CMDArg, CMDArgBase, CMDArgumentHelp, CMDArgEnum, CMDArgDefault
     CMDArgBlank, CMDObjectArgAdditionalProperties, CMDResourceLocationArgBase, CMDClsArgBase, CMDPasswordArgPromptInput
 from ._format import CMDFormat
 from ._schema import CMDObjectSchema, CMDSchema, CMDSchemaBase, CMDObjectSchemaBase, CMDObjectSchemaDiscriminator, \
-    CMDArraySchemaBase, CMDObjectSchemaAdditionalProperties, CMDResourceIdSchema, CMDBooleanSchemaBase, \
-    CMDResourceLocationSchemaBase, CMDPasswordSchema
+    CMDArraySchemaBase, CMDArraySchema, CMDObjectSchemaAdditionalProperties, CMDResourceIdSchema, \
+    CMDResourceLocationSchemaBase, CMDPasswordSchema, CMDBooleanSchemaBase, CMDBooleanSchema
+from ..configuration._schema import CMDIdentityObjectSchema, CMDIdentityObjectSchemaBase, CMDStringSchemaBase, \
+    CMDStringSchema
 
 
 class CMDArgBuilder:
@@ -120,6 +122,8 @@ class CMDArgBuilder:
             if self.schema.name == "properties" and self.schema.props:
                 # flatten 'properties' property by default if it has props
                 return True
+            if isinstance(self.schema, CMDIdentityObjectSchema):
+                return True
         if isinstance(self.schema, CMDObjectSchemaDiscriminator):
             return self._parent._flatten_discriminators
         return False
@@ -177,7 +181,13 @@ class CMDArgBuilder:
                     discriminator_mapping[disc.property][disc.value] = results[0].var
 
         if self.schema.props:
+            removed = []  # remove useless schema
             for prop in self.schema.props:
+                if hasattr(self.schema, "action") and self.schema.action in ['assign', 'remove'] and \
+                        prop.name in ['type', 'userAssignedIdentities']:
+                    removed.append(prop)
+                    continue
+
                 if prop.name in discriminator_mapping:
                     # If discriminators are not flattened then prop value can be associate with discriminator arguments
                     assert hasattr(prop, 'enum')
@@ -188,9 +198,42 @@ class CMDArgBuilder:
                 sub_builder = self.get_sub_builder(schema=prop, ref_args=sub_ref_args)
                 sub_args.extend(sub_builder.get_args())
 
+            self.schema.props = [prop for prop in self.schema.props if prop not in removed]
+            if isinstance(self.schema, CMDIdentityObjectSchema) and (not self._is_update_action or self.schema.action):
+                self.add_identity_args(sub_args, sub_ref_args)
+
         if not sub_args:
             return None
         return sub_args
+
+    def add_identity_args(self, args, ref_args):
+        if not self.schema.props:
+            self.schema.props = []
+
+        action = self.schema.action or "create"
+
+        user_assigned_schema = CMDArraySchema({
+            "name": "userAssigned",
+            "item": CMDStringSchemaBase({"action": action}),
+            "description": "Set the user managed identities.",
+            "action": action,
+        })
+        builder = self.get_sub_builder(schema=user_assigned_schema, ref_args=ref_args)
+        user_assigned_arg = builder.get_args()[0]
+        user_assigned_arg.blank = CMDArgBlank({"value": []})  # set blank to []
+        args.append(user_assigned_arg)
+        self.schema.user_assigned = user_assigned_schema
+
+        system_assigned_schema = CMDStringSchema({
+            "name": "systemAssigned",
+            "description": "Set the system managed identity.",
+            "action": action,
+        })
+        builder = self.get_sub_builder(schema=system_assigned_schema, ref_args=ref_args)
+        system_assigned_arg = builder.get_args()[0]
+        system_assigned_arg.blank = CMDArgBlank({"value": "True"})  # set blank to "True"
+        args.append(system_assigned_arg)
+        self.schema.system_assigned = system_assigned_schema
 
     def get_sub_item(self):
         if hasattr(self.schema, "item") and self.schema.item:
@@ -222,6 +265,9 @@ class CMDArgBuilder:
     def get_nullable(self):
         if isinstance(self.schema, CMDSchemaBase) and self.schema.nullable:
             return True
+
+        if hasattr(self.schema, "action") and self.schema.action in ['assign', 'remove']:  # identity parameters cannot be set to null
+            return False
 
         if isinstance(self.schema, CMDSchema):
             # when updated and schema is not required then nullable is true.
@@ -290,6 +336,11 @@ class CMDArgBuilder:
                 for prop in self._parent.schema.props:
                     if prop.name == 'name':
                         return True
+
+        if getattr(self.schema, 'name', None) in ['userAssignedIdentities', 'type'] and self._parent and \
+                isinstance(self._parent.schema, CMDIdentityObjectSchema):
+            return True
+
         return False
 
     def get_var(self):
@@ -325,6 +376,9 @@ class CMDArgBuilder:
                 name = prefix + name[2:]
             name = name.replace('.', '-')
             opt_name = self._build_option_name(name)  # some schema name may contain $
+
+            if self.schema.action is not None and self.schema.name in ["userAssigned", "systemAssigned"]:
+                return [opt_name, "mi-" + opt_name]
         else:
             raise NotImplementedError()
         return [opt_name, ]

@@ -3,7 +3,7 @@ from command.model.configuration import (
     CMDHttpResponseJsonBody, CMDObjectSchema, CMDSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, CMDFloatSchemaBase,
     CMDBooleanSchemaBase, CMDObjectSchemaBase, CMDArraySchemaBase, CMDClsSchemaBase, CMDJsonInstanceUpdateAction,
     CMDObjectSchemaDiscriminator, CMDSchemaEnum, CMDJsonInstanceCreateAction, CMDJsonInstanceDeleteAction,
-    CMDInstanceCreateOperation, CMDInstanceDeleteOperation, CMDClientEndpointsByTemplate)
+    CMDInstanceCreateOperation, CMDInstanceDeleteOperation, CMDClientEndpointsByTemplate, CMDIdentityObjectSchemaBase)
 from utils import exceptions
 from utils.case import to_snake_case
 from utils.error_format import AAZErrorFormatEnum
@@ -652,7 +652,11 @@ def _iter_request_scopes_by_schema_base(schema, name, scope_define, arg_key, cmd
                 raise NotImplementedError()
             discriminators.extend(schema.discriminators)
 
-        if schema.props and schema.additional_props:
+        props = schema.props or []
+        if isinstance(schema, CMDIdentityObjectSchemaBase) and schema.user_assigned and schema.system_assigned:
+            props += [schema.user_assigned, schema.system_assigned]
+
+        if props and schema.additional_props:
             # treat it as AAZFreeFormDictType
             s_name = '{}'
             r_key = '.'  # if element exist, always fill it
@@ -663,8 +667,8 @@ def _iter_request_scopes_by_schema_base(schema, name, scope_define, arg_key, cmd
                 (s_name, None, is_const, const_value, r_key, None, None)
             )
 
-        elif schema.props:
-            for s in schema.props:
+        elif props:
+            for s in props:
                 s_name = s.name
                 s_typ, s_typ_kwargs, cls_builder_name = render_schema(s, cmd_ctx.update_clses, s_name)
                 if s.arg:
@@ -945,6 +949,8 @@ def render_schema(schema, cls_map, name):
             # because a secret property will not be returned in response and for `get+put` update command, it's allowed
             # without that property in payload.
             del flags['required']
+    if action := getattr(schema, 'action', None):
+        flags['action'] = action
 
     if flags:
         schema_kwargs['flags'] = flags
@@ -981,6 +987,8 @@ def render_schema_base(schema, cls_map, schema_kwargs=None):
         schema_type = "AAZBoolType"
     elif isinstance(schema, CMDFloatSchemaBase):
         schema_type = "AAZFloatType"
+    elif isinstance(schema, CMDIdentityObjectSchemaBase):
+        schema_type = "AAZIdentityObjectType"
     elif isinstance(schema, CMDObjectSchemaBase):
         if schema.props or schema.discriminators:
             schema_type = "AAZObjectType"

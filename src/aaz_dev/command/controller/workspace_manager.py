@@ -688,7 +688,10 @@ class WorkspaceManager:
                 cfg_editor.inherit_modification(aaz_cfg_reader)
                 for cmd_names, _ in cfg_editor.iter_commands():
                     aaz_ref[' '.join(cmd_names)] = aaz_version
+
+            cfg_editor.build_identity_subresource(command_group)
             cfg_editors.append(cfg_editor)
+
         # add cfg_editors
         self._add_cfg_editors(cfg_editors, aaz_ref=aaz_ref)
 
@@ -760,6 +763,7 @@ class WorkspaceManager:
                 # not support multiple resource version for the same command
                 raise exceptions.InvalidAPIUsage(
                     f"Please select the same resource version for command: '{' '.join(leaf.names)}'")
+
         swagger_resources = []
         for resource_id, reload_resource in reload_resource_map.items():
             resource = reload_resource.get('resource', None)
