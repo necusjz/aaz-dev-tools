@@ -869,6 +869,10 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         for cmd_names, ref_cmd_names in command_rename_list:
             self.rename_command(*cmd_names, new_cmd_names=ref_cmd_names)
 
+        # generate identity subcommand
+        for command_group in self.cfg.command_groups:
+            self.build_identity_subresource(command_group)
+
         # inherit sub command
         sub_resources = set()
         array_sub_resources = set()
@@ -936,6 +940,10 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
                         for ref_arg in ref_arg_group.args:
                             ref_args_options[ref_arg.var] = [*ref_arg.options]
             assert cg_names is not None
+
+            # skip inherit identity subcommands
+            if isinstance(schema, CMDIdentityObjectSchemaBase):
+                continue
 
             # generate sub commands
             sub_commands = self._generate_sub_commands(schema, subresource_idx, update_cmd, ref_args_options)
