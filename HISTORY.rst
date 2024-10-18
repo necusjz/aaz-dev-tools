@@ -2,6 +2,15 @@
 
 Release History
 ===============
+3.1.0
++++++
+* Support managed identity sub commands (#403)
+* Support to merge crud operations for the same resource (#415)
+* Support to generate object with props and additional properties as FreeFormDictType in CLI (#415)
+* Fix cli generation with build-in keywords (#416)
+* Drop the `msrestazure` dependence (#418)
+* Disable AazResourceLocationArg  auto fill from the value from resource group when it's `nullable`. (#421)
+
 3.0.0
 ++++++
 * Support swagger `base_path` (#400)
