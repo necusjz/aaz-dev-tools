@@ -334,7 +334,7 @@ def render_arg_base(arg, cmd_ctx, arg_kwargs=None):
             if 'options' in arg_kwargs and set(arg_kwargs['options']) == {'--location', '-l'}:
                 # it's default value
                 del arg_kwargs['options']
-            if not arg.no_rg_default and cmd_ctx.rg_arg_var:
+            if not arg.nullable and not arg.no_rg_default and cmd_ctx.rg_arg_var:
                 resource_group_arg, hide = cmd_ctx.get_argument(cmd_ctx.rg_arg_var)
                 if not hide:
                     resource_group_arg = resource_group_arg.replace('self.ctx.args.', '')
