@@ -1,0 +1,15 @@
+{
+  "name": "Easy Setup",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "./setup.sh",
+  "portsAttributes": {
+    "5000": {
+      "label": "codegen tool",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "forwardPorts": [5000],
+  "settings": {},
+  "runArgs": [],
+  "mounts": []
+}
