@@ -1,15 +1,12 @@
 {
-  "name": "Easy Setup",
+  "name": "Python Codespace",
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
-  "postCreateCommand": "./setup.sh",
+  "postCreateCommand": "git clone https://github.com/Azure/azure-cli.git && git clone https://github.com/Azure/azure-cli-extensions.git && git clone https://github.com/Azure/azure-rest-api-specs.git && git clone https://github.com/Azure/aaz.git && pip install aaz-dev && aaz-dev run -c azure-cli -e azure-cli-extensions -s azure-rest-api-specs -a aaz -p 5004",
   "portsAttributes": {
-    "5000": {
-      "label": "codegen tool",
+    "5004": {
+      "label": "Web Server",
       "onAutoForward": "openBrowser"
     }
   },
-  "forwardPorts": [5000],
-  "settings": {},
-  "runArgs": [],
-  "mounts": []
+  "forwardPorts": [5004]
 }
