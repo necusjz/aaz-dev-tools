@@ -6,9 +6,53 @@ import re
 from command.model.configuration import CMDHelp, CMDCommandExample
 from command.model.specs import CMDSpecsCommandGroup, CMDSpecsCommand, CMDSpecsResource, CMDSpecsCommandVersion, \
     CMDSpecsCommandTree
+from command.model.specs._command_tree import CMDSpecsSimpleCommand, CMDSpecsSimpleCommandGroup, \
+    CMDSpecsSimpleCommandTree
 from utils import exceptions
 
 logger = logging.getLogger(__name__)
+
+
+def _build_simple_command(names):
+    # uri = '/Commands/' + '/'.join(names[:-1]) + f'/_{names[-1]}.md'
+    command = CMDSpecsSimpleCommand()
+    command.names = names
+    return command
+
+
+def _build_simple_command_group(names, aaz_path):
+    """
+    Build Simple Command Group from directory
+    """
+    rel_names = names
+    if len(names) == 1 and names[0] == 'aaz':
+        rel_names = []
+    # uri = '/Commands/' + '/'.join(rel_names) + f'/readme.md'
+    full_path = os.path.join(aaz_path, 'Commands', *rel_names)
+    commands = {}
+    command_groups = {}
+    for dir in os.listdir(full_path):
+        if os.path.isfile(os.path.join(full_path, dir)):
+            if dir == 'readme.md' or dir == 'tree.json':
+                continue
+            command_name = dir[1:-3]
+            commands[command_name] = _build_simple_command(rel_names + [command_name])
+        else:
+            cg_name = dir
+            command_groups[cg_name] = _build_simple_command_group(rel_names + [cg_name], aaz_path)
+    cg = CMDSpecsSimpleCommandGroup()
+    cg.names = names
+    cg.commands = commands
+    cg.command_groups = command_groups
+    return cg
+
+
+def build_simple_command_tree(aaz_path):
+    root = _build_simple_command_group(['aaz'], aaz_path)
+    tree = CMDSpecsSimpleCommandTree()
+    tree.root = root
+    tree.validate()
+    return tree
 
 
 class CMDSpecsPartialCommandGroup:
@@ -265,6 +309,13 @@ class CMDSpecsPartialCommandTree:
         if isinstance(self._root, CMDSpecsPartialCommandGroup):
             self._root = self._root.load()
         return self._root
+
+    @property
+    def simple_tree(self):
+        """
+        Build and Return a Simple Command Tree from Folder Structure
+        """
+        return build_simple_command_tree(self.aaz_path)
 
     def find_command_group(self, *cg_names):
         """

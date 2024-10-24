@@ -10,6 +10,16 @@ bp = Blueprint('specs', __name__, url_prefix='/AAZ/Specs')
 
 
 # modules
+@bp.route("/CommandTree/Simple", methods=("GET",))
+def command_tree_node():
+    manager = AAZSpecsManager()
+    tree = manager.tree.simple_tree
+    if not tree:
+        raise exceptions.ResourceNotFind("Command group not exist")
+    return jsonify(tree)
+
+
+# modules
 @bp.route("/CommandTree/Nodes/<names_path:node_names>", methods=("GET",))
 def command_tree_node(node_names):
     if node_names[0] != AAZSpecsManager.COMMAND_TREE_ROOT_NAME:

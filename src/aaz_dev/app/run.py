@@ -3,7 +3,7 @@ import webbrowser
 
 import click
 from flask.cli import pass_script_info, show_server_banner, SeparatedPathType
-from flask.helpers import get_debug_flag
+from flask.helpers import get_debug_flag, get_env
 from utils.config import Config
 
 
@@ -147,7 +147,7 @@ def run_command(
     if debugger is None:
         debugger = debug
 
-    show_server_banner(debug, info.app_import_path)
+    show_server_banner(get_env(), debug, info.app_import_path, None)
     app = info.load_app()
 
     if is_port_in_use(host, port):
