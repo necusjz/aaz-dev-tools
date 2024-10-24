@@ -186,51 +186,105 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         command_group.commands.append(command)
 
     def merge(self, plus_cfg_editor):
+        """
+        create conditions according to the path
+        expand all http-operations with merged path in the main cfg using condition for switching
+        """
         if not self._can_merge(plus_cfg_editor):
             return None
 
-        _, plus_command = [*plus_cfg_editor.iter_commands_by_operations('get')][0]
-        plus_op_required_args, plus_op_optional_args = plus_cfg_editor._parse_command_http_op_url_args(plus_command)
+        plus_operations_by_method = {}
+        plus_ops_required_args = {}
+        plus_resources_arg_groups = []
+        for method in ['get', 'put', 'post', 'delete', 'patch']:
+            for _, command in plus_cfg_editor.iter_commands_by_operations(method):
+                if command.subresource_selector:
+                    continue
+                if method not in plus_operations_by_method:
+                    plus_operations_by_method[method] = {}
+                for operation in command.operations:
+                    if isinstance(operation, CMDHttpOperation) and operation.http.request.method.lower() == method:
+                        plus_operations_by_method[method][operation.operation_id] = operation
+                plus_op_required_args, plus_op_optional_args = self._parse_command_http_op_url_args(command)
+                plus_ops_required_args.update(plus_op_required_args)
+                if not plus_resources_arg_groups:
+                    # merge args
+                    new_args = set()
+                    for args in plus_op_required_args.values():
+                        new_args.update(args)
+                    for args in plus_op_optional_args.values():
+                        new_args.update(args)
+                    for arg_group in command.arg_groups:
+                        arg_group = plus_cfg_editor._filter_args_in_arg_group(arg_group, new_args, copy=True)
+                        if arg_group:
+                            plus_resources_arg_groups.append(arg_group)
+                    
+
+            if method in plus_operations_by_method:
+                assert len(plus_operations_by_method[method]) == len(plus_cfg_editor.resources)
 
         main_editor = WorkspaceCfgEditor(self.cfg.__class__(self.cfg.to_primitive()))  # generate a copy of main cfg
-        main_commands = [command for _, command in main_editor.iter_commands_by_operations('get')]
-        for main_command in main_commands:
-            # merge args
-            new_args = set()
-            for args in plus_op_required_args.values():
-                new_args.update(args)
-            for args in plus_op_optional_args.values():
-                new_args.update(args)
+        for _, main_command in main_editor.iter_commands():
+            # create plus http operations by replace the path and query args
+            merged_operations = []
+            plus_operations = []
+            plus_op_required_args = {}
+            for operation in main_command.operations:
+                if not isinstance(operation, CMDHttpOperation):
+                    if plus_operations:
+                        merged_operations.extend(plus_operations)
+                        plus_operations = []
+                    merged_operations.append(operation)
+                    continue
+                if plus_operations and operation.http.request.method.lower() == plus_operations[0].http.request.method.lower():
+                    merged_operations.append(operation)
+                    continue
+                if plus_operations:
+                    merged_operations.extend(plus_operations)
+                    plus_operations = []
+                merged_operations.append(operation)
+                for operation_id, plus_operation in plus_operations_by_method[operation.http.request.method.lower()].items():
+                    plus_operation = plus_operation.__class__(plus_operation.to_primitive())
+                    plus_operation.http.request.header = operation.http.request.header
+                    plus_operation.http.request.body = operation.http.request.body
+                    plus_operation.http.responses = operation.http.responses
+                    plus_operation = plus_operation.__class__(plus_operation.to_primitive())
+                    plus_operations.append(plus_operation)
+                    if operation_id not in plus_op_required_args:
+                        plus_op_required_args[operation_id] = plus_ops_required_args[operation_id]
+            if plus_operations:
+                merged_operations.extend(plus_operations)
+                plus_operations = []
 
-            for arg_group in plus_command.arg_groups:
-                arg_group = plus_cfg_editor._filter_args_in_arg_group(arg_group, new_args, copy=True)
-                if arg_group:
-                    try:
-                        main_editor._command_merge_arg_group(main_command, arg_group)
-                    except exceptions.InvalidAPIUsage as ex:
-                        logger.error(ex)
-                        return None
+            # merge args
+            for arg_group in plus_resources_arg_groups:
+                try:
+                    main_editor._command_merge_arg_group(main_command, arg_group)
+                except exceptions.InvalidAPIUsage as ex:
+                    logger.error(ex)
+                    return None
 
             # create conditions
             main_op_required_args, _ = main_editor._parse_command_http_op_url_args(main_command)
-            plus_operations = []
-            for operation in plus_command.operations:
-                plus_operations.append(operation.__class__(operation.to_primitive()))
+
             op_required_args = {**plus_op_required_args, **main_op_required_args}
-            common_required_args, main_command.conditions, main_command.operations = main_editor._merge_command_operations(
+            merged_required_args, merged_optional_args, main_command.conditions, main_command.operations = main_editor._merge_command_operations(
                 op_required_args,
-                *plus_operations, *main_command.operations
+                *merged_operations
             )
 
             # update arg required of command
             for arg_group in main_command.arg_groups:
                 for arg in arg_group.args:
-                    arg.required = arg.var in common_required_args
+                    if arg.var in merged_required_args:
+                        arg.required = True
+                    elif arg.var in merged_optional_args:
+                        arg.required = False
 
-            for resource in plus_command.resources:
-                main_command.resources.append(
-                    resource.__class__(resource.to_primitive())
-                )
+            for resource in plus_cfg_editor.resources:
+                resource = resource.__class__(resource.to_primitive())
+                resource.subresource = main_command.resources[0].subresource # follow the main command's subresource
+                main_command.resources.append(resource)
 
             # relink main_command
             main_command.link()
@@ -472,13 +526,14 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
     def reformat(self):
         self.cfg.reformat()
 
-    def _parse_command_http_op_url_args(self, command):
+    @classmethod
+    def _parse_command_http_op_url_args(cls, command):
         operation_required_args = {}
         operation_optional_args = {}
         for http_op in command.operations:
             if not isinstance(http_op, CMDHttpOperation):
                 continue
-            required_args, optional_args = self.parse_http_operation_url_args(http_op)
+            required_args, optional_args = cls.parse_http_operation_url_args(http_op)
             operation_required_args[http_op.operation_id] = required_args
             operation_optional_args[http_op.operation_id] = optional_args
         return operation_required_args, operation_optional_args
@@ -506,65 +561,123 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         return required_args, optional_args
 
     def _can_merge(self, plus_cfg_editor):
-        if len([*plus_cfg_editor.iter_commands()]) != 1:
+        """
+        check all basic commands can be merged or not, whose commands should be comes from the a single http operation
+        such as get, put, post, delete, patch, without sub resources or generic update commands.
+        """
+        for method in ['get', 'put', 'post', 'delete', 'patch']:
+            if self._can_merge_method(plus_cfg_editor, method) is False:
+                return False
+        return True
+
+    def _can_merge_method(self, plus_cfg_editor, method):
+        # check the single operation command without sub resources.
+        plus_commands = [command for _, command in plus_cfg_editor.iter_commands_by_operations(method) if not command.subresource_selector]
+        main_commands = [command for _, command in self.iter_commands_by_operations(method) if not command.subresource_selector]
+        if not plus_commands and not main_commands:
+            return None
+        elif not plus_commands or not main_commands:
             return False
-        plus_commands = [command for _, command in plus_cfg_editor.iter_commands_by_operations('get')]
+
         if len(plus_commands) != 1:
             return False
         plus_command = plus_commands[0]
         if len(plus_command.resources) != len(plus_cfg_editor.resources):
             return False
 
-        main_get_commands = [command for _, command in self.iter_commands_by_operations('get')]
-        if len(main_get_commands) == 0:
+        if len(main_commands) != 1:
             return False
-        for command in main_get_commands:
-            if len(command.resources) != len(self.resources):
-                return False
-
-        plus_200_response = None
-        for http_op in plus_command.operations:
-            if not isinstance(http_op, CMDHttpOperation):
-                continue
-            assert http_op.http.request.method == 'get'
-            for response in http_op.http.responses:
-                if response.is_error:
-                    continue
-                if 200 in response.status_codes:
-                    plus_200_response = response
-                    break
-            if plus_200_response:
-                break
-        if not plus_200_response:
+        main_command = main_commands[0]
+        if len(main_command.resources) != len(self.resources):
+            return False
+        
+        if not self._can_merge_in_request(main_command, plus_command, method=method):
             return False
 
-        main_200_response = None
-        for command in main_get_commands:
-            for http_op in command.operations:
-                if not isinstance(http_op, CMDHttpOperation):
-                    continue
-                assert http_op.http.request.method == 'get'
-                for response in http_op.http.responses:
-                    if response.is_error:
-                        continue
-                    if 200 in response.status_codes:
-                        if plus_200_response.diff(response, CMDDiffLevelEnum.Structure):
-                            return False
-                        main_200_response = response
-        if not main_200_response:
+        if not self._can_merge_in_response(main_command, plus_command, method=method):
             return False
 
         plus_op_required_args, plus_op_optional_args = self._parse_command_http_op_url_args(plus_command)
-        for main_command in main_get_commands:
-            main_op_required_args, main_op_optional_args = self._parse_command_http_op_url_args(main_command)
-            for main_op_id, main_required_args in main_op_required_args.items():
-                if main_op_id in plus_op_required_args:
-                    # the operation id should be different with plus's
+        main_op_required_args, main_op_optional_args = self._parse_command_http_op_url_args(main_command)
+        for main_op_id, main_required_args in main_op_required_args.items():
+            if main_op_id in plus_op_required_args:
+                # the operation id should be different with plus's
+                return False
+            for plus_required_args in plus_op_required_args.values():
+                if plus_required_args == main_required_args:
+                    # the required arguments should be different
                     return False
-                for plus_required_args in plus_op_required_args.values():
-                    if plus_required_args == main_required_args:
-                        # the required arguments should be different
-                        return False
+        return True
+    
+    @staticmethod
+    def _can_merge_in_response(main_command, plus_command, method):
+        plus_responses = {}
+        for http_op in plus_command.operations:
+            if not isinstance(http_op, CMDHttpOperation):
+                continue
+            for response in http_op.http.responses:
+                if response.is_error:
+                    continue
+                for status_code in response.status_codes:
+                    if status_code not in plus_responses:
+                        plus_responses[status_code] = response
+        if not plus_responses:
+            return False
+
+        main_responses = {}
+        for http_op in main_command.operations:
+            if not isinstance(http_op, CMDHttpOperation):
+                continue
+            for response in http_op.http.responses:
+                if response.is_error:
+                    continue
+                for status_code in response.status_codes:
+                    if status_code not in main_responses:
+                        plus_response = plus_responses.get(status_code)
+                        if not plus_response:
+                            return False
+                        if plus_response.diff(response, CMDDiffLevelEnum.Structure):
+                            return False
+                        main_responses[status_code] = response
+
+        if set(main_responses.keys()) != set(plus_responses.keys()):
+            return False
+        return True
+
+    @staticmethod
+    def _can_merge_in_request(main_command, plus_command, method):
+        plus_request = None
+        for http_op in plus_command.operations:
+            if not isinstance(http_op, CMDHttpOperation):
+                continue
+            if http_op.http.request.method.lower() != method:
+                continue
+            plus_request = http_op.http.request
+            break
+
+        main_request = None
+        for http_op in main_command.operations:
+            if not isinstance(http_op, CMDHttpOperation):
+                continue
+            if http_op.http.request.method.lower() != method:
+                continue
+            main_request = http_op.http.request
+            break
+        
+        if not plus_request and not main_request:
+            return True
+
+        if not plus_request or not main_request:
+            return False
+        
+        diff = plus_request.diff(main_request, CMDDiffLevelEnum.Structure)
+        if diff:
+            if 'path' in diff:
+                del diff['path']
+            if 'query' in diff:
+                del diff['query']
+        if diff:
+            return False
         return True
 
     def _filter_args_in_arg_group(self, arg_group, arg_vars, copy=True):
@@ -675,12 +788,15 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         return arg
 
     def _merge_command_operations(self, op_required_args, *operations):
-        common_required_args = None
+        merged_required_args = None
+        merged_optional_args = set()
         for required_args in op_required_args.values():
-            if common_required_args is None:
-                common_required_args = {*required_args}
+            merged_optional_args.update(required_args)
+            if merged_required_args is None:
+                merged_required_args = {*required_args}
             else:
-                common_required_args.intersection_update(required_args)
+                merged_required_args.intersection_update(required_args)
+        merged_optional_args.difference_update(merged_required_args)
 
         arg_ops_map = {}
         for op_id, required_args in op_required_args.items():
@@ -691,6 +807,9 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         conditions = []
         new_operations = []
         for operation in operations:
+            if not isinstance(operation, CMDHttpOperation):
+                new_operations.append(operation)
+                continue
             assert operation.operation_id in op_required_args
             op_id = operation.operation_id
 
@@ -728,7 +847,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             operation.when = [condition.var]
             new_operations.append(operation)
 
-        return common_required_args, conditions, new_operations
+        return merged_required_args, merged_optional_args, conditions, new_operations
 
     def inherit_modification(self, ref_cfg: CfgReader):
         command_rename_list = []
@@ -749,6 +868,10 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         # rename commands
         for cmd_names, ref_cmd_names in command_rename_list:
             self.rename_command(*cmd_names, new_cmd_names=ref_cmd_names)
+
+        # generate identity subcommand
+        for command_group in self.cfg.command_groups:
+            self.build_identity_subresource(command_group)
 
         # inherit sub command
         sub_resources = set()
@@ -817,6 +940,10 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
                         for ref_arg in ref_arg_group.args:
                             ref_args_options[ref_arg.var] = [*ref_arg.options]
             assert cg_names is not None
+
+            # skip inherit identity subcommands
+            if isinstance(schema, CMDIdentityObjectSchemaBase):
+                continue
 
             # generate sub commands
             sub_commands = self._generate_sub_commands(schema, subresource_idx, update_cmd, ref_args_options)
@@ -932,6 +1059,30 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         self.reformat()
         return commands
 
+    def build_identity_subresource(self, command_group):
+        update_cmd = None
+        identity_schema, identity_schema_idx = None, None
+        if command_group.commands:
+            for command in command_group.commands:
+                match = self.find_identity_schema_in_command(command)
+                if match:
+                    update_cmd = command
+                    update_op, _, identity_schema, identity_schema_idx = match
+
+        if update_cmd is None:
+            return
+
+        subresource_idx = self.schema_idx_to_subresource_idx(identity_schema_idx)
+        assert subresource_idx
+
+        sub_commands = self._generate_identity_sub_commands(identity_schema, subresource_idx, update_cmd, update_op)
+
+        cg_names = command_group.name.split(' ') + [identity_schema.name]
+        for sub_command in sub_commands:
+            self._add_command(*cg_names, sub_command.name, command=sub_command)
+
+        self.reformat()
+
     def build_subresource_commands_by_arg_var(self, resource_id, arg_var, cg_names, ref_args_options=None):
         """
 
@@ -981,6 +1132,73 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             self._add_command(*cg_names, sub_command.name, command=sub_command)
 
         self.reformat()
+
+    @classmethod
+    def _generate_identity_sub_commands(cls, schema, subresource_idx, update_cmd, update_op):
+        # find arg
+        if schema.arg:
+            arg_var = schema.arg
+            arg, arg_idx = cls.find_arg_in_command_by_var(update_cmd, arg_var)
+            if not arg or not arg_idx:
+                raise exceptions.InvalidAPIUsage(f"Argument '{arg_var}' not exist in command")
+        else:
+            # schema is flatten
+            arg = None
+
+        # build ref_args
+        ref_args = []
+        update_json = update_op.instance_update.json
+        update_arg_prefix = f"${update_json.schema.name}"
+        if update_cmd.arg_groups:
+            for g in update_cmd.arg_groups:
+                for a in g.args:
+                    if a.var.startswith(update_arg_prefix):
+                        # ignore arguments linked with body
+                        continue
+                    if 'name' in a.options and isinstance(a, CMDStringArgBase):
+                        # remove auto add 'name', 'n' options
+                        a = a.__class__(raw_data=a.to_native())
+                        # a.options = sorted(a.options, key=lambda o: (len(o), o))[-1:]  # use the longest argument
+                    ref_args.append(a)
+
+        if arg:
+            assert isinstance(arg, CMDObjectArg)
+            ref_args.extend(arg.args)
+
+        # assign command
+        assign_command = cls._build_subresource_update_command(
+            update_cmd=update_cmd,
+            subresource_idx=subresource_idx,
+            ref_args=ref_args,
+            ref_options=None,
+            action="assign"
+        )
+        assign_command.description = "Assign the user or system managed identities."
+
+        # remove command
+        remove_command = cls._build_subresource_update_command(
+            update_cmd=update_cmd,
+            subresource_idx=subresource_idx,
+            ref_args=ref_args,
+            ref_options=None,
+            action="remove"
+        )
+        remove_command.description = "Remove the user or system managed identities."
+
+        # show command
+        show_command = cls._build_subresource_list_or_show_command(
+            update_cmd=update_cmd,
+            subresource_idx=subresource_idx,
+            ref_args=ref_args,
+            ref_options=None
+        )
+        show_command.description = "Show the details of managed identities."
+
+        assign_command.name = 'assign'
+        remove_command.name = 'remove'
+        show_command.name = 'show'
+
+        return [assign_command, remove_command, show_command]
 
     @classmethod
     def _generate_sub_commands(cls, schema, subresource_idx, update_cmd, ref_args_options=None):
@@ -1261,7 +1479,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         return _sub_command
 
     @classmethod
-    def _build_subresource_update_command(cls, update_cmd, subresource_idx, ref_args, ref_options):
+    def _build_subresource_update_command(cls, update_cmd, subresource_idx, ref_args, ref_options, action=None):
         _sub_command, get_op, put_op, update_json = cls._build_sub_command_base(update_cmd, subresource_idx)
 
         _instance_op = CMDInstanceUpdateOperation()
@@ -1281,6 +1499,10 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
                 _instance_op_schema = CMDArraySchema(raw_data=_instance_op_schema.to_native())
             else:
                 raise NotImplementedError()
+
+        if isinstance(_instance_op_schema, CMDIdentityObjectSchemaBase):
+            _instance_op_schema.action = action
+
         # _subresource_idx does not contains update_json.schema.name
         _instance_op_schema.name = cls.idx_to_str([update_json.schema.name, *subresource_idx])
         _instance_op_schema.required = True

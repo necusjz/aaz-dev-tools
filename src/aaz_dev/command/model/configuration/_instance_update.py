@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 from schematics.models import Model
-from schematics.types import ModelType
+from schematics.types import ModelType, StringType
 
 from ._content import CMDRequestJson
 from ._fields import CMDVariantField

@@ -3,7 +3,7 @@ from command.model.configuration import (
     CMDHttpResponseJsonBody, CMDObjectSchema, CMDSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, CMDFloatSchemaBase,
     CMDBooleanSchemaBase, CMDObjectSchemaBase, CMDArraySchemaBase, CMDClsSchemaBase, CMDJsonInstanceUpdateAction,
     CMDObjectSchemaDiscriminator, CMDSchemaEnum, CMDJsonInstanceCreateAction, CMDJsonInstanceDeleteAction,
-    CMDInstanceCreateOperation, CMDInstanceDeleteOperation, CMDClientEndpointsByTemplate)
+    CMDInstanceCreateOperation, CMDInstanceDeleteOperation, CMDClientEndpointsByTemplate, CMDIdentityObjectSchemaBase)
 from utils import exceptions
 from utils.case import to_snake_case
 from utils.error_format import AAZErrorFormatEnum
@@ -610,14 +610,18 @@ class AzResponseClsGenerator:
         self.props = []
         self.discriminators = []
         if isinstance(schema, CMDObjectSchemaBase):
-            if schema.props and schema.additional_props:
-                raise NotImplementedError()
             if schema.discriminators:
+                if schema.additional_props:
+                    raise NotImplementedError()
                 for disc in schema.discriminators:
                     disc_key = to_snake_case(disc.property)
                     disc_value = disc.value
                     self.discriminators.append((disc_key, disc_value))
-            if schema.props:
+
+            if schema.props and schema.additional_props:
+                # treat it as AAZFreeFormDictType
+                pass
+            elif schema.props:
                 for s in schema.props:
                     s_name = to_snake_case(s.name)
                     self.props.append(s_name)
@@ -643,15 +647,28 @@ def _iter_request_scopes_by_schema_base(schema, name, scope_define, arg_key, cmd
     search_schemas = {}
     discriminators = []
     if isinstance(schema, CMDObjectSchemaBase):
-        if schema.props and schema.additional_props:
-            # not support for both props and additional props
-            raise NotImplementedError()
-
         if schema.discriminators:
+            if schema.additional_props:
+                raise NotImplementedError()
             discriminators.extend(schema.discriminators)
 
-        if schema.props:
-            for s in schema.props:
+        props = schema.props or []
+        if isinstance(schema, CMDIdentityObjectSchemaBase) and schema.user_assigned and schema.system_assigned:
+            props += [schema.user_assigned, schema.system_assigned]
+
+        if props and schema.additional_props:
+            # treat it as AAZFreeFormDictType
+            s_name = '{}'
+            r_key = '.'  # if element exist, always fill it
+
+            is_const = False
+            const_value = None
+            rendered_schemas.append(
+                (s_name, None, is_const, const_value, r_key, None, None)
+            )
+
+        elif props:
+            for s in props:
                 s_name = s.name
                 s_typ, s_typ_kwargs, cls_builder_name = render_schema(s, cmd_ctx.update_clses, s_name)
                 if s.arg:
@@ -833,14 +850,16 @@ def _iter_response_scopes_by_schema_base(schema, name, scope_define, cmd_ctx):
     search_schemas = {}
     discriminators = []
     if isinstance(schema, CMDObjectSchemaBase):
-        if schema.props and schema.additional_props:
-            # not support to parse schema with both props and additional_props
-            raise NotImplementedError()
 
         if schema.discriminators:
+            if schema.additional_props:
+                raise NotImplementedError()
             discriminators.extend(schema.discriminators)
 
-        if schema.props:
+        if schema.props and schema.additional_props:
+            # treat it as AAZFreeFormDictType
+            pass
+        elif schema.props:
             for s in schema.props:
                 s_name = to_snake_case(s.name)
                 s_typ, s_typ_kwargs, cls_builder_name = render_schema(s, cmd_ctx.response_clses, s_name)
@@ -930,6 +949,8 @@ def render_schema(schema, cls_map, name):
             # because a secret property will not be returned in response and for `get+put` update command, it's allowed
             # without that property in payload.
             del flags['required']
+    if action := getattr(schema, 'action', None):
+        flags['action'] = action
 
     if flags:
         schema_kwargs['flags'] = flags
@@ -966,11 +987,14 @@ def render_schema_base(schema, cls_map, schema_kwargs=None):
         schema_type = "AAZBoolType"
     elif isinstance(schema, CMDFloatSchemaBase):
         schema_type = "AAZFloatType"
+    elif isinstance(schema, CMDIdentityObjectSchemaBase):
+        schema_type = "AAZIdentityObjectType"
     elif isinstance(schema, CMDObjectSchemaBase):
         if schema.props or schema.discriminators:
             schema_type = "AAZObjectType"
             if schema.additional_props:
-                raise NotImplementedError()
+                # treat it as AAZFreeFormDictType
+                schema_type = "AAZFreeFormDictType"
         elif schema.additional_props:
             if schema.additional_props.any_type is True:
                 schema_type = "AAZFreeFormDictType"

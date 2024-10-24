@@ -12,7 +12,7 @@ from ._schema import CMDSchemaField, _diff_props
 from ._arg_builder import CMDArgBuilder
 from ._arg import CMDResourceGroupNameArg, CMDSubscriptionIdArg, CMDResourceLocationArg
 from ._utils import CMDDiffLevelEnum
-from msrestazure.tools import parse_resource_id, resource_id
+from azure.mgmt.core.tools import parse_resource_id, resource_id
 from ._utils import CMDArgBuildPrefix
 
 
