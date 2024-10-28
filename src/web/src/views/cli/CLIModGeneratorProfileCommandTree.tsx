@@ -8,7 +8,7 @@ import FolderIcon from "@mui/icons-material/Folder";
 import EditIcon from '@mui/icons-material/Edit';
 import { Box, Checkbox, FormControl, Typography, Select, MenuItem, styled, TypographyProps, InputLabel, IconButton } from "@mui/material";
 import { CLIModViewCommand, CLIModViewCommandGroup, CLIModViewCommandGroups, CLIModViewCommands, CLIModViewProfile } from "./CLIModuleCommon";
-import { CLISpecsCommand, CLISpecsCommandGroup } from "./CLIModuleGenerator";
+import { CLISpecsCommand, CLISpecsCommandGroup, CLISpecsSimpleCommand, CLISpecsSimpleCommandGroup, CLISpecsSimpleCommandTree } from "./CLIModuleGenerator";
 
 const CommandGroupTypography = styled(Typography)<TypographyProps>(({ theme }) => ({
     color: theme.palette.primary.main,
@@ -39,20 +39,78 @@ const UnregisteredTypography = styled(SelectionTypography)<TypographyProps>(() =
 }))
 
 
-interface CommandItemProps {
-    command: ProfileCTCommand,
-    onSelectCommand: (names: string[], selected: boolean) => void,
-    onSelectCommandVersion: (names: string[], version: string) => void,
-    onSelectCommandRegistered: (names: string[], registered: boolean) => void,
+function useBatchedUpdate<T>(batchedUpdater: (states: T[]) => void, delay: number) {
+    const [states, setStates] = React.useState<T[]>([]);
+    const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    const batchedCallback = React.useCallback((state: T) => {
+        setStates((prev) => [...prev, state]);
+    }, []);
+
+    React.useEffect(() => {
+        if (states.length > 0) {
+            timeoutRef.current = setTimeout(() => {
+                batchedUpdater(states);
+                setStates([]);
+            }, delay);
+        }
+
+        return () => {
+            if (timeoutRef.current !== null) {
+                clearTimeout(timeoutRef.current);
+            }
+        }
+    }, [states, batchedUpdater, delay]);
+
+    return batchedCallback;
 }
 
-const CommandItem: React.FC<CommandItemProps> = ({
+
+interface CommandItemProps {
+    command: ProfileCTCommand,
+    onUpdateCommand: (name: string, updater: (oldCommand: ProfileCTCommand) => ProfileCTCommand) => void,
+}
+
+const CommandItem: React.FC<CommandItemProps> = React.memo(({
     command,
-    onSelectCommand,
-    onSelectCommandVersion,
-    onSelectCommandRegistered,
+    onUpdateCommand,
 }) => {
     const leafName = command.names[command.names.length - 1];
+
+    React.useEffect(() =>{if (command.selected === true && command.versions === undefined && command.loading === false) {
+    }}, [])
+
+    const selectCommand = React.useCallback((selected: boolean) => {
+        onUpdateCommand(leafName, (oldCommand) => {
+            return {
+                ...oldCommand,
+                selected: selected,
+                selectedVersion: selected ? (oldCommand.selectedVersion ? oldCommand.selectedVersion : (oldCommand.versions ? oldCommand.versions[0].name : undefined)) : oldCommand.selectedVersion,
+                modified: true,
+            }
+        });
+    }, []);
+
+    const selectVersion = React.useCallback((version: string) => {
+        onUpdateCommand(leafName, (oldCommand) => {
+            return {
+                ...oldCommand,
+                selectedVersion: version,
+                modified: true,
+            }
+        });
+    }, []);
+
+    const selectRegistered = React.useCallback((registered: boolean) => {
+        onUpdateCommand(leafName, (oldCommand) => {
+            return {
+                ...oldCommand,
+                registered: registered,
+                modified: true,
+            }
+        });
+    }, []);
+
     return (
         <TreeItem sx={{ marginLeft: 2 }} key={command.id} nodeId={command.id} color='inherit' label={
             <Box sx={{
@@ -67,7 +125,7 @@ const CommandItem: React.FC<CommandItemProps> = ({
                     disableRipple
                     checked={command.selected}
                     onClick={(event) => {
-                        onSelectCommand(command.names, !command.selected);
+                        selectCommand(!command.selected);
                         event.stopPropagation();
                         event.preventDefault();
                     }}
@@ -91,7 +149,7 @@ const CommandItem: React.FC<CommandItemProps> = ({
                     }}>
                         {!command.modified && command.selectedVersion !== undefined && <IconButton
                             onClick={(_event) => {
-                                onSelectCommand(command.names, true);
+                                selectCommand(true);
                             }}
                         >
                             <EditIcon fontSize="small" color="disabled" />
@@ -99,7 +157,7 @@ const CommandItem: React.FC<CommandItemProps> = ({
                         {command.modified && <EditIcon fontSize="small" color="secondary" />}
                     </Box>
                 </Box>
-                {command.selectedVersion !== undefined && <Box sx={{
+                {command.versions !== undefined && <Box sx={{
                     marginLeft: 1,
                     display: "flex",
                     flexDirection: "row",
@@ -115,7 +173,7 @@ const CommandItem: React.FC<CommandItemProps> = ({
                             id={`${command.id}-version-select`}
                             value={command.selectedVersion}
                             onChange={(event) => {
-                                onSelectCommandVersion(command.names, event.target.value);
+                                selectVersion(event.target.value);
                             }}
                             size="small"
                         >
@@ -135,7 +193,7 @@ const CommandItem: React.FC<CommandItemProps> = ({
                             id={`${command.id}-register-select`}
                             value={command.registered ? 1 : 0}
                             onChange={(event) => {
-                                onSelectCommandRegistered(command.names, event.target.value === 1);
+                                selectRegistered(event.target.value === 1);
                             }}
                             size="small"
                         >
@@ -164,27 +222,85 @@ const CommandItem: React.FC<CommandItemProps> = ({
             }}
         />
     );
-};
+});
 
 interface CommandGroupItemProps {
     commandGroup: ProfileCTCommandGroup,
-    onSelectCommandGroup: (names: string[], selected: boolean) => void,
-    onToggleCommandGroupExpanded: (cnames: string[]) => void,
-    onSelectCommand: (names: string[], selected: boolean) => void,
-    onSelectCommandVersion: (names: string[], version: string) => void,
-    onSelectCommandRegistered: (names: string[], registered: boolean) => void,
+    onUpdateCommandGroup: (name: string, updater: (oldCommandGroup: ProfileCTCommandGroup) => ProfileCTCommandGroup) => void,
 }
 
-const CommandGroupItem: React.FC<CommandGroupItemProps> = ({
+const CommandGroupItem: React.FC<CommandGroupItemProps> = React.memo(({
     commandGroup,
-    onSelectCommandGroup,
-    onToggleCommandGroupExpanded,
-    onSelectCommand,
-    onSelectCommandVersion,
-    onSelectCommandRegistered,
+    onUpdateCommandGroup,
 }) => {
     const nodeName = commandGroup.names[commandGroup.names.length - 1];
     const selected = commandGroup.selected ?? false;
+
+    console.log("Rendering Command Group: ", commandGroup.id);
+
+    const onUpdateCommand = React.useCallback((name: string, updater: (oldCommand: ProfileCTCommand) => ProfileCTCommand) => {
+        onUpdateCommandGroup(nodeName, (oldCommandGroup) => {
+            const commands = {
+                ...oldCommandGroup.commands,
+                [name]: updater(oldCommandGroup.commands![name]),
+            };
+            const selected = calculateSelected(commands, oldCommandGroup.commandGroups ?? {});
+            return {
+                ...oldCommandGroup,
+                commands: commands,
+                selected: selected,
+            }
+        });
+    }, []);
+
+    const onUpdateSubCommandGroup = React.useCallback((name: string, updater: (oldCommandGroup: ProfileCTCommandGroup) => ProfileCTCommandGroup) => {
+        onUpdateCommandGroup(nodeName, (oldCommandGroup) => {
+            const commandGroups = {
+                ...oldCommandGroup.commandGroups,
+                [name]: updater(oldCommandGroup.commandGroups![name]),
+            }
+            const commands = oldCommandGroup.commands;
+            const selected = calculateSelected(commands ?? {}, commandGroups);
+            return {
+                ...oldCommandGroup,
+                commandGroups: commandGroups,
+                selected: selected,
+            };
+        });
+    }, []);
+
+    const updateCommandSelected = (command: ProfileCTCommand, selected: boolean): ProfileCTCommand => {
+        if (selected === command.selected) {
+            return command;
+        }
+        return {
+            ...command,
+            selected: selected,
+            selectedVersion: selected ? (command.selectedVersion ? command.selectedVersion : (command.versions ? command.versions[0].name : undefined)) : command.selectedVersion,
+            modified: true,
+        }
+    };
+
+    const updateGroupSelected = (group: ProfileCTCommandGroup, selected: boolean): ProfileCTCommandGroup => {
+        if (selected === group.selected) {
+            return group;
+        }
+        const commands = group.commands ? Object.fromEntries(Object.entries(group.commands).map(([key, value]) => [key, updateCommandSelected(value, selected)]) ) : undefined;
+        const commandGroups = group.commandGroups ? Object.fromEntries(Object.entries(group.commandGroups).map(([key, value]) => [key, updateGroupSelected(value, selected)]) ) : undefined;
+        return {
+            ...group,
+            commands: commands,
+            commandGroups: commandGroups,
+            selected: selected,
+        }
+    }
+
+    const selectCommandGroup = React.useCallback((names: string[], selected: boolean) => {
+        onUpdateCommandGroup(nodeName, (oldCommandGroup) => {
+            return updateGroupSelected(oldCommandGroup, selected);
+        });
+    }, []);
+
     return (
         <TreeItem sx={{ marginLeft: 2, marginTop: 0.5 }} key={commandGroup.id} nodeId={commandGroup.id} color='inherit' label={
             <Box sx={{
@@ -198,7 +314,7 @@ const CommandGroupItem: React.FC<CommandGroupItemProps> = ({
                     checked={commandGroup.selected !== false}
                     indeterminate={commandGroup.selected === undefined}
                     onClick={(event) => {
-                        onSelectCommandGroup(commandGroup.names, !selected);
+                        selectCommandGroup(commandGroup.names, !selected);
                         event.stopPropagation();
                         event.preventDefault();
                     }}
@@ -206,94 +322,61 @@ const CommandGroupItem: React.FC<CommandGroupItemProps> = ({
                 <FolderIcon />
                 <CommandGroupTypography sx={{ marginLeft: 1 }}>{nodeName}</CommandGroupTypography>
             </Box>}
-            onClick={(event) => {
-                onToggleCommandGroupExpanded(commandGroup.names);
-                event.stopPropagation();
-                event.preventDefault();
-            }}
         >
             {commandGroup.commands !== undefined && Object.values(commandGroup.commands).map((command) => (
                 <CommandItem
                     key={command.id}
                     command={command}
-                    onSelectCommand={onSelectCommand}
-                    onSelectCommandVersion={onSelectCommandVersion}
-                    onSelectCommandRegistered={onSelectCommandRegistered}
+                    onUpdateCommand={onUpdateCommand}
                 />
             ))}
             {commandGroup.commandGroups !== undefined && Object.values(commandGroup.commandGroups).map((group) => (
                 <CommandGroupItem
                     key={group.id}
                     commandGroup={group}
-                    onSelectCommandGroup={onSelectCommandGroup}
-                    onToggleCommandGroupExpanded={onToggleCommandGroupExpanded}
-                    onSelectCommand={onSelectCommand}
-                    onSelectCommandVersion={onSelectCommandVersion}
-                    onSelectCommandRegistered={onSelectCommandRegistered}
+                    onUpdateCommandGroup={onUpdateSubCommandGroup}
                 />
             ))}
-            {commandGroup.loading === true && <LoadingItem name={nodeName} />}
         </TreeItem>
     );
-};
-
-const LoadingItem: React.FC<{ name: string }> = ({ name }) => {
-    return (<TreeItem sx={{ marginLeft: 2 }} nodeId="loading" color='inherit' label={<Box sx={{
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "flex-start",
-    }}>
-        <Typography>
-            Loading {name}...
-        </Typography>
-    </Box>} />)
-}
+});
 
 interface CLIModGeneratorProfileCommandTreeProps {
+    profile?: string,
     profileCommandTree: ProfileCommandTree,
-    onChange: (updater: ((newProfileCommandTree: ProfileCommandTree) => ProfileCommandTree) | ProfileCommandTree) => void,
+    onChange: (updater: ((oldProfileCommandTree: ProfileCommandTree) => ProfileCommandTree) | ProfileCommandTree) => void,
     onLoadCommandGroup: (names: string[]) => Promise<CLISpecsCommandGroup>,
     onLoadCommand: (names: string[]) => Promise<CLISpecsCommand>,
 }
 
 const CLIModGeneratorProfileCommandTree: React.FC<CLIModGeneratorProfileCommandTreeProps> = ({
+    profile,
     profileCommandTree,
     onChange,
     onLoadCommandGroup,
     onLoadCommand,
 }) => {
     const [expanded, setExpanded] = React.useState<string[]>([]);
-    console.log("Rerender using ProfileCommandTree: ", profileCommandTree);
-    console.log("Rerender using Expanded State: ", expanded);
 
     React.useEffect(() => {
         setExpanded(GetDefaultExpanded(profileCommandTree));
+    }, [profile]);
+
+    const handleToggle = (_event: React.ChangeEvent<{}>, nodeIds: string[]) => {
+        setExpanded(nodeIds);
+    };
+
+    const onUpdateCommandGroup = React.useCallback((name: string, updater: (oldCommandGroup: ProfileCTCommandGroup) => ProfileCTCommandGroup) => {
+        onChange((profileCommandTree) => {
+            return {
+                ...profileCommandTree,
+                commandGroups: {
+                    ...profileCommandTree.commandGroups,
+                    [name]: updater(profileCommandTree.commandGroups[name]),
+                }
+            }
+        });
     }, []);
-
-    const onSelectCommandGroup =  (names: string[], selected: boolean) => {
-        onChange((profileCommandTree) => {
-            const newTree = updateProfileCommandTree(profileCommandTree, names, selected)
-            return genericUpdateCommandGroup(newTree, names, (commandGroup) => {
-                return loadAllNextLevel(commandGroup, onLoadCommand, onLoadCommandGroup, onLoadedCommand, onLoadedCommandGroup);
-            }) ?? newTree;
-        });
-    };
-
-    const onSelectCommand = (names: string[], selected: boolean) => {
-        onChange((profileCommandTree) => {
-            const newTree = updateProfileCommandTree(profileCommandTree, names, selected);
-            return genericUpdateCommand(newTree, names, (command) => loadCommand(command, onLoadCommand, onLoadedCommand)) ?? newTree;
-        });
-    };
-
-    const onSelectCommandVersion = (names: string[], version: string) => {
-        onChange((profileCommandTree) => updateProfileCommandTree(profileCommandTree, names, true, version));
-    };
-
-    const onSelectCommandRegistered = (names: string[], registered: boolean) => {
-        onChange((profileCommandTree) => updateProfileCommandTree(profileCommandTree, names, true, undefined, registered));
-    };
 
     const onLoadedCommandGroup = React.useCallback((commandGroup: CLISpecsCommandGroup) => {
         const names = commandGroup.names;
@@ -301,6 +384,7 @@ const CLIModGeneratorProfileCommandTree: React.FC<CLIModGeneratorProfileCommandT
             return genericUpdateCommandGroup(profileCommandTree, names, (unloadedCommandGroup) => {
                 const newCommandGroup = decodeProfileCTCommandGroup(commandGroup, unloadedCommandGroup.selected)
                 if (newCommandGroup.selected) {
+                    // TODO: 
                     return loadAllNextLevel(newCommandGroup, onLoadCommand, onLoadCommandGroup, onLoadedCommand, onLoadedCommandGroup);
                 }
                 return newCommandGroup
@@ -308,43 +392,25 @@ const CLIModGeneratorProfileCommandTree: React.FC<CLIModGeneratorProfileCommandT
         });
     }, [onChange]);
 
-    const onLoadedCommand = React.useCallback((command: CLISpecsCommand) => {
-        const names = command.names;
+    const handleBatchedLoadedCommand = React.useCallback((commands: CLISpecsCommand[]) => {
         onChange((profileCommandTree) => {
-            return genericUpdateCommand(profileCommandTree, names, (unloadedCommand) => {
-                return decodeProfileCTCommand(command, unloadedCommand.selected, unloadedCommand.modified);
-            })!;
-        });
-    }, [onChange]);
+            return commands.reduce((tree, command) => {
+                return genericUpdateCommand(tree, command.names, (unloadedCommand) => {
+                    return decodeProfileCTCommand(command, unloadedCommand.selected, unloadedCommand.modified);
+                }) ?? tree;
+            }, profileCommandTree);
+        })
+    }, []);
 
-    const onToggleCommandGroupExpanded = (names: string[]) => {
-        console.log("onToggleCommandGroupExpanded", names);
-        const commandGroup = findCommandGroup(profileCommandTree, names);
-        setExpanded((prev) => {
-            console.log("Change Expaned of ", commandGroup);
-            console.log("Prev Expanded", prev);
-            if (prev.includes(commandGroup!.id)) {
-                return prev.filter((value) => value !== commandGroup!.id);
-            } else {
-                return [...prev, commandGroup!.id];
-            }
-        });
-
-        if (!expanded.includes(commandGroup!.id)) {
-            onChange((profileCommandTree) =>
-                genericUpdateCommandGroup(profileCommandTree, names, (commandGroup) => {
-                    return loadCommandGroup(commandGroup, onLoadCommandGroup, onLoadedCommandGroup);
-                }) ?? profileCommandTree
-            );
-        }
-    };
-
+    const onLoadedCommand = useBatchedUpdate(handleBatchedLoadedCommand, 100);
 
     return (
         <React.Fragment>
             <TreeView
                 disableSelection={true}
                 expanded={expanded}
+                onNodeToggle={handleToggle}
+                // defaultExpanded={GetDefaultExpanded(profileCommandTree)}
                 defaultCollapseIcon={<ArrowDropDownIcon />}
                 defaultExpandIcon={<ArrowRightIcon />}
             >
@@ -352,11 +418,7 @@ const CLIModGeneratorProfileCommandTree: React.FC<CLIModGeneratorProfileCommandT
                     <CommandGroupItem
                         key={commandGroup.id}
                         commandGroup={commandGroup}
-                        onSelectCommandGroup={onSelectCommandGroup}
-                        onToggleCommandGroupExpanded={onToggleCommandGroupExpanded}
-                        onSelectCommand={onSelectCommand}
-                        onSelectCommandVersion={onSelectCommandVersion}
-                        onSelectCommandRegistered={onSelectCommandRegistered}
+                        onUpdateCommandGroup={onUpdateCommandGroup}
                     />
                 ))}
             </TreeView>
@@ -380,7 +442,9 @@ interface ProfileCTCommands {
 interface ProfileCTCommandGroup {
     id: string;
     names: string[];
-    help: string;
+    // We use simple command tree now.
+    // `help` is not used.
+    // help: string;
 
     commandGroups?: ProfileCTCommandGroups;
     commands?: ProfileCTCommands;
@@ -397,7 +461,7 @@ function isUnloadedCommandGroup(commandGroup: ProfileCTCommandGroup): boolean {
 interface ProfileCTCommand {
     id: string;
     names: string[];
-    help: string;
+    // help: string;
 
     versions?: ProfileCTCommandVersion[];
 
@@ -431,7 +495,7 @@ function decodeProfileCTCommand(response: CLISpecsCommand, selected: boolean = f
     const command = {
         id: response.names.join('/'),
         names: [...response.names],
-        help: response.help.short,
+        // help: response.help.short,
         versions: versions,
         modified: modified,
         loading: false,
@@ -458,7 +522,7 @@ function decodeProfileCTCommandGroup(response: CLISpecsCommandGroup, selected: b
     return {
         id: response.names.join('/'),
         names: [...response.names],
-        help: response.help?.short ?? '',
+        // help: response.help?.short ?? '',
         commandGroups: commandGroups,
         commands: commands,
         loading: false,
@@ -707,155 +771,41 @@ function updateProfileCommandTree(tree: ProfileCommandTree, names: string[], sel
     }
 }
 
-function updateCommandByModView(command: ProfileCTCommand, view: CLIModViewCommand): ProfileCTCommand {
-    if (command.id !== view.names.join('/')) {
-        throw new Error("Invalid command names: " + view.names.join(' '))
-    }
+function initializeCommandByModView(view: CLIModViewCommand | undefined, simpleCommand: CLISpecsSimpleCommand): ProfileCTCommand {
     return {
-        ...command,
-        selectedVersion: view.version,
-        registered: view.registered,
-        selected: view.version !== undefined,
+        id: simpleCommand.names.join('/'),
+        names: simpleCommand.names,
+        modified: false,
+        loading: true,
+        selected: view !== undefined && view.version !== undefined,
+        selectedVersion: view !== undefined ? view.version : undefined,
+        registered: view !== undefined ? view.registered : undefined,
     }
 }
 
-function updateCommandGroupByModView(commandGroup: ProfileCTCommandGroup, view: CLIModViewCommandGroup): ProfileCTCommandGroup {
-    if (commandGroup.id !== view.names.join('/')) {
-        throw new Error("Invalid command group names: " + view.names.join(' '))
+function initializeCommandGroupByModView(view: CLIModViewCommandGroup | undefined, simpleCommandGroup: CLISpecsSimpleCommandGroup): ProfileCTCommandGroup {
+    if (simpleCommandGroup.names === undefined) {
+        console.log("simpleCommandGroup", simpleCommandGroup);
     }
-    let commands = commandGroup.commands;
-    if (view.commands !== undefined) {
-        const keys = new Set(Object.keys(view.commands));
-        commands = commandGroup.commands ? Object.fromEntries(Object.entries(commandGroup.commands).map(([key, value]) => {
-            if (keys.has(key)) {
-                keys.delete(key);
-                return [key, updateCommandByModView(value, view.commands![key])];
-            } else {
-                return [key, value];
-            }
-        })) : undefined;
-        if (keys.size > 0) {
-            const commandNames: string[] = [];
-            keys.forEach(key => {
-                commandNames.push('`az ' + view.commands![key].names.join(" ") + '`')
-            })
-            throw new Error("Miss commands in aaz: " + commandNames.join(', '))
-        }
-    }
-
-    let commandGroups = commandGroup.commandGroups;
-    if (view.commandGroups !== undefined) {
-        const keys = new Set(Object.keys(view.commandGroups));
-        commandGroups = commandGroup.commandGroups ? Object.fromEntries(Object.entries(commandGroup.commandGroups).map(([key, subCg]) => {
-            if (keys.has(key)) {
-                keys.delete(key);
-                return [key, updateCommandGroupByModView(subCg, view.commandGroups![subCg.names[subCg.names.length - 1]])];
-            } else {
-                return [key, subCg];
-            }
-        })) : undefined;
-        if (keys.size > 0) {
-            const commandGroupNames: string[] = [];
-            keys.forEach(key => {
-                commandGroupNames.push('`az ' + view.commandGroups![key].names.join(" ") + '`')
-            })
-            throw new Error("Miss command groups in aaz: " + commandGroupNames.join(', '))
-        }
-    }
-
+    const commands = simpleCommandGroup.commands !== undefined ? Object.fromEntries(Object.entries(simpleCommandGroup.commands).map(([key, value]) => [key, initializeCommandByModView(view?.commands?.[key], value)]) ) : undefined;
+    const commandGroups = simpleCommandGroup.commandGroups !== undefined ? Object.fromEntries(Object.entries(simpleCommandGroup.commandGroups).map(([key, value]) => [key, initializeCommandGroupByModView(view?.commandGroups?.[key], value)]) ) : undefined;
+    const selected = calculateSelected(commands ?? {}, commandGroups ?? {});
     return {
-        ...commandGroup,
+        id: simpleCommandGroup.names.join('/'),
+        names: simpleCommandGroup.names,
         commands: commands,
         commandGroups: commandGroups,
-        waitCommand: view.waitCommand,
-        selected: calculateSelected(commands ?? {}, commandGroups ?? {}),
+        waitCommand: view?.waitCommand,
+        loading: false,
+        selected: selected,
     }
 }
 
-function UpdateProfileCommandTreeByModView(tree: ProfileCommandTree, view: CLIModViewProfile): ProfileCommandTree {
-    let commandGroups = tree.commandGroups;
-    if (view.commandGroups !== undefined) {
-        const keys = new Set(Object.keys(view.commandGroups));
-        commandGroups = Object.fromEntries(Object.entries(tree.commandGroups).map(([key, value]) => {
-            if (keys.has(key)) {
-                keys.delete(key);
-                return [key, updateCommandGroupByModView(value, view.commandGroups![value.names[value.names.length - 1]])];
-            } else {
-                return [key, value];
-            }
-        }));
-        if (keys.size > 0) {
-            const commandGroupNames: string[] = [];
-            keys.forEach(key => {
-                commandGroupNames.push('`az ' + view.commandGroups![key].names.join(" ") + '`')
-            })
-            throw new Error("Miss command groups in aaz: " + commandGroupNames.join(', '))
-        }
-    }
-
+function InitializeCommandTreeByModView(profileName: string, view: CLIModViewProfile | null, simpleTree: CLISpecsSimpleCommandTree): ProfileCommandTree {
+    const commandGroups = Object.fromEntries(Object.entries(simpleTree.root.commandGroups).map(([key, value]) => [key, initializeCommandGroupByModView(view?.commandGroups?.[key], value)]));
     return {
-        ...tree,
-        commandGroups: commandGroups
-    }
-}
-
-async function initializeCommandGroupByModView(view: CLIModViewCommandGroup, fetchCommandGroup: (names: string[]) => Promise<CLISpecsCommandGroup>, fetchCommand: (names: string[]) => Promise<CLISpecsCommand>): Promise<ProfileCTCommandGroup> {
-    let commandGroupPromise = fetchCommandGroup(view.names).then((value) => {return decodeProfileCTCommandGroup(value)});
-    let viewSubGroupsPromise = Promise.all(Object.keys(view.commandGroups ?? {}).map(async (key) => {
-        return initializeCommandGroupByModView(view.commandGroups![key], fetchCommandGroup, fetchCommand);
-    }));
-    let viewCommandsPromise = Promise.all(Object.keys(view.commands ?? {}).map(async (key) => {
-        return updateCommandByModView(await fetchCommand(view.commands![key].names).then((value) => decodeProfileCTCommand(value)), view.commands![key]);
-    }));
-    let commandGroup = await commandGroupPromise;
-    let viewSubGroups = await viewSubGroupsPromise;
-    let subGroups = Object.fromEntries(Object.entries(commandGroup.commandGroups ?? {}).map(([key, value]) => {
-        let group = viewSubGroups.find((v) => v.id === value.id);
-        if (group !== undefined) {
-            return [key, group];
-        } else {
-            return [key, value];
-        }
-    }));
-    let viewCommands = await viewCommandsPromise;
-    let commands = Object.fromEntries(Object.entries(commandGroup.commands ?? {}).map(([key, value]) => {
-        let command = viewCommands.find((v) => v.id === value.id);
-        if (command !== undefined) {
-            return [key, command];
-        } else {
-            return [key, value];
-        }
-    }));
-    return {
-        ...(await commandGroupPromise),
-        commandGroups: subGroups,
-        commands: commands,
-    }
-}
-
-async function InitializeCommandTreeByModView(profileName: string, view: CLIModViewProfile|null, fetchCommandGroup: (names: string[]) => Promise<CLISpecsCommandGroup>, fetchCommand: (names: string[]) => Promise<CLISpecsCommand>): Promise<ProfileCommandTree> {
-    let ctPromise = fetchCommandGroup([]).then((value) => {return BuildProfileCommandTree(profileName, value)});
-    if (view && view.commandGroups !== undefined) {
-        let commandGroupsOnView = await Promise.all(Object.keys(view.commandGroups).map(async (key) => {
-            const value = await initializeCommandGroupByModView(view.commandGroups![key], fetchCommandGroup, fetchCommand);
-            return value;
-        }));
-        let commandTree = await ctPromise;
-        let commandGroups = Object.fromEntries(Object.entries(commandTree.commandGroups).map(([key, value]) => {
-            let group = commandGroupsOnView.find((v) => v.id === value.id);
-            if (group !== undefined) {
-                return [key, group];
-            } else {
-                return [key, value];
-            }
-        }));
-        commandTree = {
-            ...commandTree,
-            commandGroups: commandGroups ?? {},
-        }
-        return UpdateProfileCommandTreeByModView(commandTree, view);
-    } else {
-        return await ctPromise;
+        name: profileName,
+        commandGroups: commandGroups,
     }
 }
 
@@ -929,4 +879,4 @@ export default CLIModGeneratorProfileCommandTree;
 
 export type { ProfileCommandTree, }
 
-export { InitializeCommandTreeByModView, BuildProfileCommandTree, UpdateProfileCommandTreeByModView, ExportModViewProfile }
+export { InitializeCommandTreeByModView, BuildProfileCommandTree, ExportModViewProfile }

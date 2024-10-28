@@ -20,6 +20,27 @@ import CLIModGeneratorProfileCommandTree, { ExportModViewProfile, InitializeComm
 import CLIModGeneratorProfileTabs from "./CLIModGeneratorProfileTabs";
 import { CLIModView, CLIModViewProfiles } from "./CLIModuleCommon";
 
+interface CLISpecsSimpleCommand {
+    names: string[],
+}
+
+interface CLISpecsSimpleCommands {
+    [name: string]: CLISpecsSimpleCommand,
+}
+
+interface CLISpecsSimpleCommandGroups {
+    [name: string]: CLISpecsSimpleCommandGroup,
+}
+
+interface CLISpecsSimpleCommandGroup {
+    names: string[],
+    commands: CLISpecsSimpleCommands,
+    commandGroups: CLISpecsSimpleCommandGroups,
+}
+
+interface CLISpecsSimpleCommandTree {
+    root: CLISpecsSimpleCommandGroup,
+}
 
 interface CLISpecsHelp {
     short: string,
@@ -70,7 +91,7 @@ const useSpecsCommandTree: () => [(names: string[]) => Promise<CLISpecsCommandGr
     const commandCache = React.useRef(new Map<string, Promise<CLISpecsCommand>>());
     const cgCache = React.useRef(new Map<string, Promise<CLISpecsCommandGroup>>());
 
-    const fetchCommandGroup = async (names: string[]) => {
+    const fetchCommandGroup = React.useCallback(async (names: string[]) => {
         const cachedPromise = cgCache.current.get(names.join('/'));
         const fullNames = ['aaz', ...names];
         const cgPromise: Promise<CLISpecsCommandGroup> = cachedPromise ?? axios.get(`/AAZ/Specs/CommandTree/Nodes/${fullNames.join('/')}?limited=true`).then(res => res.data);
@@ -78,9 +99,9 @@ const useSpecsCommandTree: () => [(names: string[]) => Promise<CLISpecsCommandGr
             cgCache.current.set(names.join('/'), cgPromise);
         }
         return await cgPromise;
-    }
+    }, [commandCache, cgCache]);
 
-    const fetchCommand = async (names: string[]) => {
+    const fetchCommand = React.useCallback(async (names: string[]) => {
         const cachedPromise = commandCache.current.get(names.join('/'));
         const fullNames = ['aaz', ...names];
         const cgNames = fullNames.slice(0, -1);
@@ -90,7 +111,7 @@ const useSpecsCommandTree: () => [(names: string[]) => Promise<CLISpecsCommandGr
             commandCache.current.set(names.join('/'), commandPromise);
         }
         return await commandPromise;
-    }
+    }, [commandCache]);
 
     return [fetchCommandGroup, fetchCommand];
 }
@@ -128,6 +149,8 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
 
             const modView: CLIModView = await axios.get(`/CLI/Az/${params.repoName}/Modules/${params.moduleName}`).then(res => res.data);
 
+            const simpleTree: CLISpecsSimpleCommandTree = await axios.get(`/AAZ/Specs/CommandTree/Simple`).then(res => res.data);
+
             Object.keys(modView!.profiles).forEach((profile) => {
                 let idx = profiles.findIndex(v => v === profile);
                 if (idx === -1) {
@@ -135,9 +158,9 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
                 }
             });
 
-            const commandTrees = Object.fromEntries(await Promise.all(profiles.map(async (profile) => {
-                return InitializeCommandTreeByModView(profile, modView!.profiles[profile] ?? null, fetchCommandGroup, fetchCommand).then(tree => [profile, tree] as [string, ProfileCommandTree]);
-            })));
+            const commandTrees = Object.fromEntries(profiles.map((profile) => {
+                return [profile, InitializeCommandTreeByModView(profile, modView!.profiles[profile] ?? null, simpleTree)];
+            }));
 
             const selectedProfile = profiles.length > 0 ? profiles[0] : undefined;
             setProfiles(profiles);
@@ -170,17 +193,17 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
         setShowGenerateDialog(false);
     };
 
-    const onProfileChange = (selectedProfile: string) => {
+    const onProfileChange = React.useCallback((selectedProfile: string) => {
         setSelectedProfile(selectedProfile);
-    };
+    }, []);
 
-    const onSelectedProfileTreeUpdate = (updater: ((newTree: ProfileCommandTree) => ProfileCommandTree) | ProfileCommandTree) => {
+    const onSelectedProfileTreeUpdate = React.useCallback((updater: ((oldTree: ProfileCommandTree) => ProfileCommandTree) | ProfileCommandTree) => {
         setCommandTrees((commandTrees) => {
             const selectedCommandTree = commandTrees[selectedProfile!];
             const newTree = typeof updater === 'function' ? updater(selectedCommandTree!) : updater;
             return { ...commandTrees, [selectedProfile!]: newTree }
         });
-    };
+    }, [selectedProfile]);
 
     return (
         <React.Fragment>
@@ -217,6 +240,7 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
                     <Toolbar sx={{ flexShrink: 0 }} />
                     {selectedCommandTree !== undefined && (
                         <CLIModGeneratorProfileCommandTree
+                            profile={selectedProfile}
                             profileCommandTree={selectedCommandTree}
                             onChange={onSelectedProfileTreeUpdate}
                             onLoadCommand={fetchCommand}
@@ -372,5 +396,5 @@ const CLIModuleGeneratorWrapper = (props: any) => {
     return <CLIModuleGenerator params={params} {...props} />
 }
 
-export type { CLISpecsCommandGroup, CLISpecsCommand };
+export type { CLISpecsCommandGroup, CLISpecsCommand, CLISpecsSimpleCommandTree, CLISpecsSimpleCommandGroup, CLISpecsSimpleCommand };
 export { CLIModuleGeneratorWrapper as CLIModuleGenerator };
