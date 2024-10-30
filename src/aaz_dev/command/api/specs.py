@@ -13,7 +13,7 @@ bp = Blueprint('specs', __name__, url_prefix='/AAZ/Specs')
 @bp.route("/CommandTree/Simple", methods=("GET",))
 def simple_command_tree():
     manager = AAZSpecsManager()
-    tree = manager.tree.simple_tree
+    tree = manager.simple_tree
     if not tree:
         raise exceptions.ResourceNotFind("Command group not exist")
     tree = tree.to_primitive()
@@ -28,7 +28,7 @@ def command_tree_node(node_names):
     node_names = node_names[1:]
 
     manager = AAZSpecsManager()
-    node = manager.tree.find_command_group(*node_names)
+    node = manager.find_command_group(*node_names)
     if not node:
         raise exceptions.ResourceNotFind("Command group not exist")
 
@@ -48,7 +48,7 @@ def command_tree_leaf(node_names, leaf_name):
     node_names = node_names[1:]
 
     manager = AAZSpecsManager()
-    leaf = manager.tree.find_command(*node_names, leaf_name)
+    leaf = manager.find_command(*node_names, leaf_name)
     if not leaf:
         raise exceptions.ResourceNotFind("Command not exist")
 
@@ -66,7 +66,7 @@ def command_tree_leaves():
         if command_names[0] != AAZSpecsManager.COMMAND_TREE_ROOT_NAME:
             raise exceptions.ResourceNotFind(f"Command not exist: {' '.join(command_names)}")
         command_names = command_names[1:]
-        leaf = manager.tree.find_command(*command_names)
+        leaf = manager.find_command(*command_names)
         if not leaf:
             raise exceptions.ResourceNotFind(f"Command not exist: {' '.join(command_names)}")
         result.append(leaf.to_primitive())
@@ -80,7 +80,7 @@ def aaz_command_in_version(node_names, leaf_name, version_name):
     node_names = node_names[1:]
 
     manager = AAZSpecsManager()
-    leaf = manager.tree.find_command(*node_names, leaf_name)
+    leaf = manager.find_command(*node_names, leaf_name)
     if not leaf:
         raise exceptions.ResourceNotFind("Command not exist")
 

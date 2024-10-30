@@ -361,7 +361,7 @@ class PortalCliGenerator:
             node_names = cmd_name_version[:-2]
             leaf_name = cmd_name_version[-2]
             registered_version = cmd_name_version[-1]
-            leaf = aaz_spec_manager.tree.find_command(*node_names, leaf_name)
+            leaf = aaz_spec_manager.find_command(*node_names, leaf_name)
             if not leaf or not leaf.versions:
                 logging.warning("Command group: " + " ".join(node_names) + " not exist")
                 continue

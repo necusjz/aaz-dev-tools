@@ -114,6 +114,23 @@ class AAZSpecsManager:
             elif file_name.endswith('.md'):
                 versions.add(file_name[:-3])
         return sorted(versions, reverse=True)
+    
+    # Command Tree
+    @property
+    def simple_tree(self):
+        return self.tree.simple_tree
+
+    def find_command_group(self, *cg_names):
+        return self.tree.find_command_group(*cg_names)
+
+    def find_command(self, *cmd_names):
+        return self.tree.find_command(*cmd_names)
+
+    def iter_command_groups(self, *root_cg_names):
+        yield from self.tree.iter_command_groups(*root_cg_names)
+
+    def iter_commands(self, *root_node_names):
+        yield from self.tree.iter_commands(*root_node_names)
 
     def load_resource_cfg_reader(self, plane, resource_id, version):
         key = (plane, resource_id, version)
@@ -178,6 +195,31 @@ class AAZSpecsManager:
         resource = version.resources[0]
         return self.load_resource_cfg_reader(resource.plane, resource.id, resource.version)
 
+    # command tree
+    def create_command_group(self, *cg_names):
+        return self.tree.create_command_group(*cg_names)
+
+    def update_command_group_by_ws(self, ws_node):
+        return self.tree.update_command_group_by_ws(ws_node)
+
+    def delete_command_group(self, *cg_names):
+        return self.tree.delete_command_group(*cg_names)
+    
+    def create_command(self, *cmd_names):
+        return self.tree.create_command(*cmd_names)
+    
+    def delete_command(self, *cmd_names):
+        return self.tree.delete_command(*cmd_names)
+    
+    def delete_command_version(self, *cmd_names, version):
+        return self.tree.delete_command_version(*cmd_names, version=version)
+    
+    def update_command_version(self, *cmd_names, plane, cfg_cmd):
+        return self.tree.update_command_version(*cmd_names, plane=plane, cfg_cmd=cfg_cmd)
+    
+    def verify_command_tree(self):
+        return self.tree.verify_command_tree()
+
     def _remove_cfg(self, cfg):
         cfg_reader = CfgReader(cfg)
 
@@ -188,7 +230,7 @@ class AAZSpecsManager:
 
         # update command tree
         for cmd_names, cmd in cfg_reader.iter_commands():
-            self.tree.delete_command_version(*cmd_names, version=cmd.version)
+            self.delete_command_version(*cmd_names, version=cmd.version)
 
     def update_resource_cfg(self, cfg):
         cfg_reader = CfgReader(cfg=cfg)
@@ -205,7 +247,7 @@ class AAZSpecsManager:
 
         # add new command version
         for cmd_names, cmd in cfg_reader.iter_commands():
-            self.tree.update_command_version(*cmd_names, plane=cfg.plane, cfg_cmd=cmd)
+            self.update_command_version(*cmd_names, plane=cfg.plane, cfg_cmd=cmd)
 
         for resource in cfg_reader.resources:
             key = (cfg.plane, resource.id, resource.version)
@@ -260,7 +302,7 @@ class AAZSpecsManager:
         self._modified_resource_client_cfgs[key] = cfg
 
     def save(self):
-        self.tree.verify_command_tree()
+        self.verify_command_tree()
 
         remove_files = []
         remove_folders = []
@@ -272,7 +314,7 @@ class AAZSpecsManager:
 
         # command
         for cmd_names in sorted(self._modified_commands):
-            cmd = self.tree.find_command(*cmd_names)
+            cmd = self.find_command(*cmd_names)
             file_path = self.get_command_readme_path(*cmd_names)
             if not cmd:
                 # remove command file
@@ -288,14 +330,14 @@ class AAZSpecsManager:
 
         # command groups
         for cg_names in sorted(command_groups):
-            cg = self.tree.find_command_group(*cg_names)
+            cg = self.find_command_group(*cg_names)
             if not cg:
                 # remove command group folder
                 remove_folders.append(self.get_command_group_folder(*cg_names))
             else:
                 # update command group readme
                 file_path = self.get_command_group_readme_path(*cg_names)
-                if cg == self.tree.root:
+                if cg == self.root:
                     update_files[file_path] = self.render_command_tree_readme(self.tree)
                 else:
                     update_files[file_path] = self.render_command_group_readme(cg)

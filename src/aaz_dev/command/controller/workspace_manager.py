@@ -295,7 +295,7 @@ class WorkspaceManager:
             if not node.command_groups or name not in node.command_groups:
                 if not node.command_groups:
                     node.command_groups = {}
-                aaz_node = self.aaz_specs.tree.find_command_group(
+                aaz_node = self.aaz_specs.find_command_group(
                     *node_names[:idx + 1])
                 if aaz_node is not None:
                     new_node = CMDCommandTreeNode({
@@ -1060,14 +1060,14 @@ class WorkspaceManager:
 
         # update commands
         for ws_leaf in self.iter_command_tree_leaves():
-            self.aaz_specs.tree.update_command_by_ws(ws_leaf)
+            self.aaz_specs.update_command_by_ws(ws_leaf)
 
         # update command groups
         for ws_node in self.iter_command_tree_nodes():
             if ws_node == self.ws.command_tree:
                 # ignore root node
                 continue
-            self.aaz_specs.tree.update_command_group_by_ws(ws_node)
+            self.aaz_specs.update_command_group_by_ws(ws_node)
         self.aaz_specs.save()
 
     def _merge_sub_resources_in_aaz(self):
