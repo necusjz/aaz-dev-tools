@@ -32,8 +32,6 @@ class AAZSpecsManager:
         self.resources_folder = os.path.join(self.folder, "Resources")
         self.commands_folder = os.path.join(self.folder, "Commands")
         self._tree = None
-        self._modified_command_groups = set()
-        self._modified_commands = set()
         self._modified_resource_cfgs = {}
         self._modified_resource_client_cfgs = {}
 
@@ -217,6 +215,9 @@ class AAZSpecsManager:
     def update_command_version(self, *cmd_names, plane, cfg_cmd):
         return self.tree.update_command_version(*cmd_names, plane=plane, cfg_cmd=cfg_cmd)
     
+    def update_command_by_ws(self, ws_leaf):
+        return self.tree.update_command_by_ws(ws_leaf)
+    
     def verify_command_tree(self):
         return self.tree.verify_command_tree()
 
@@ -313,7 +314,7 @@ class AAZSpecsManager:
         update_files[tree_path] = json.dumps(self.tree.to_model().to_primitive(), indent=2, sort_keys=True)
 
         # command
-        for cmd_names in sorted(self._modified_commands):
+        for cmd_names in sorted(self.tree._modified_commands):
             cmd = self.find_command(*cmd_names)
             file_path = self.get_command_readme_path(*cmd_names)
             if not cmd:
@@ -324,7 +325,7 @@ class AAZSpecsManager:
 
             command_groups.add(tuple(cmd_names[:-1]))
 
-        for cg_names in sorted(self._modified_command_groups):
+        for cg_names in sorted(self.tree._modified_command_groups):
             command_groups.add(tuple(cg_names))
             command_groups.add(tuple(cg_names[:-1]))
 
@@ -337,7 +338,7 @@ class AAZSpecsManager:
             else:
                 # update command group readme
                 file_path = self.get_command_group_readme_path(*cg_names)
-                if cg == self.root:
+                if cg == self.tree.root:
                     update_files[file_path] = self.render_command_tree_readme(self.tree)
                 else:
                     update_files[file_path] = self.render_command_group_readme(cg)
@@ -378,8 +379,6 @@ class AAZSpecsManager:
             with open(file_path, 'w', encoding="utf-8") as f:
                 f.write(data)
 
-        self._modified_command_groups = set()
-        self._modified_commands = set()
         self._modified_resource_cfgs = {}
         self._modified_resource_client_cfgs = {}
 
@@ -397,7 +396,7 @@ class AAZSpecsManager:
 
     @staticmethod
     def render_command_tree_readme(tree):
-        assert isinstance(tree, CMDSpecsCommandTree)
+        assert isinstance(tree, CMDSpecsCommandTree | CMDSpecsPartialCommandTree)
         tmpl = get_templates()['tree']
         return tmpl.render(tree=tree)
 
