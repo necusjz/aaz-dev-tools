@@ -641,6 +641,18 @@ function initializeCommandByModView(view: CLIModViewCommand | undefined, simpleC
 function initializeCommandGroupByModView(view: CLIModViewCommandGroup | undefined, simpleCommandGroup: CLISpecsSimpleCommandGroup): ProfileCTCommandGroup {
     const commands = simpleCommandGroup.commands !== undefined ? Object.fromEntries(Object.entries(simpleCommandGroup.commands).map(([key, value]) => [key, initializeCommandByModView(view?.commands?.[key], value)]) ) : undefined;
     const commandGroups = simpleCommandGroup.commandGroups !== undefined ? Object.fromEntries(Object.entries(simpleCommandGroup.commandGroups).map(([key, value]) => [key, initializeCommandGroupByModView(view?.commandGroups?.[key], value)]) ) : undefined;
+    const leftCommands = Object.entries(view?.commands ?? {}).filter(([key, _]) => commands?.[key] === undefined).map(([_, value]) => value.names).map((names) => '`az ' + names.join(" ") + '`');
+    const leftCommandGroups = Object.entries(view?.commandGroups ?? {}).filter(([key, _]) => commandGroups?.[key] === undefined).map(([_, value]) => value.names).map((names) => '`az ' + names.join(" ") + '`');
+    const errors = [];
+    if (leftCommands.length > 0) {
+        errors.push(`Miss commands in aaz: ${leftCommands.join(', ')}`);
+    }
+    if (leftCommandGroups.length > 0) {
+        errors.push(`Miss command groups in aaz: ${leftCommandGroups.join(', ')}`);
+    }
+    if (errors.length > 0) {
+        throw new Error(errors.join('\n') + '\nSee: https://azure.github.io/aaz-dev-tools/pages/usage/cli-generator/#miss-command-models.');
+    }
     const selected = calculateSelected(commands ?? {}, commandGroups ?? {});
     return {
         id: simpleCommandGroup.names.join('/'),
@@ -655,6 +667,10 @@ function initializeCommandGroupByModView(view: CLIModViewCommandGroup | undefine
 
 function InitializeCommandTreeByModView(profileName: string, view: CLIModViewProfile | null, simpleTree: CLISpecsSimpleCommandTree): ProfileCommandTree {
     const commandGroups = Object.fromEntries(Object.entries(simpleTree.root.commandGroups).map(([key, value]) => [key, initializeCommandGroupByModView(view?.commandGroups?.[key], value)]));
+    const leftCommandGroups = Object.entries(view?.commandGroups ?? {}).filter(([key, _]) => commandGroups?.[key] === undefined).map(([_, value]) => value.names).map((names) => '`az ' + names.join(" ") + '`');
+    if (leftCommandGroups.length > 0) {
+        throw new Error(`Miss command groups in aaz: ${leftCommandGroups.join(', ')}\nSee: https://azure.github.io/aaz-dev-tools/pages/usage/cli-generator/#miss-command-models.`);
+    }
     return {
         name: profileName,
         commandGroups: commandGroups,
