@@ -40,11 +40,10 @@ class AAZSpecsManager:
     @property
     def tree(self):
         return self._tree
-    
-    @tree.setter
-    def tree(self, value):
-        logger.info("Set Command Tree")
-        self._tree = value
+
+    @property
+    def simple_tree(self):
+        return self.tree.simple_tree
 
     # Commands folder
     def get_tree_file_path(self):
@@ -112,11 +111,6 @@ class AAZSpecsManager:
             elif file_name.endswith('.md'):
                 versions.add(file_name[:-3])
         return sorted(versions, reverse=True)
-    
-    # Command Tree
-    @property
-    def simple_tree(self):
-        return self.tree.simple_tree
 
     def find_command_group(self, *cg_names):
         return self.tree.find_command_group(*cg_names)

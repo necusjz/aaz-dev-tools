@@ -30,7 +30,7 @@ def command_tree_node(node_names):
     node = manager.find_command_group(*node_names)
     if not node:
         raise exceptions.ResourceNotFind("Command group not exist")
-    
+
     result = node.to_primitive()
     return jsonify(result)
 
