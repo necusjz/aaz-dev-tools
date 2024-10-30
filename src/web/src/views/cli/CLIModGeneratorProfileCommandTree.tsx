@@ -568,7 +568,7 @@ function PrepareLoadCommands(tree: ProfileCommandTree): [string[][], ProfileComm
 }
 
 function genericUpdateCommand(tree: ProfileCommandTree, names: string[], updater: (command: ProfileCTCommand) => ProfileCTCommand | undefined): ProfileCommandTree | undefined {
-    let nodes: ProfileCTCommandGroup[] = [];
+    const nodes: ProfileCTCommandGroup[] = [];
     for (const name of names.slice(0, -1)) {
         const node = nodes.length === 0 ? tree : nodes[nodes.length - 1];
         if (node.commandGroups === undefined) {

@@ -163,7 +163,7 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
             const simpleTree: CLISpecsSimpleCommandTree = await axios.get(`/AAZ/Specs/CommandTree/Simple`).then(res => res.data);
 
             Object.keys(modView!.profiles).forEach((profile) => {
-                let idx = profiles.findIndex(v => v === profile);
+                const idx = profiles.findIndex(v => v === profile);
                 if (idx === -1) {
                     throw new Error(`Invalid profile ${profile}`);
                 }
