@@ -69,7 +69,7 @@ interface CLISpecsCommandVersion {
 interface CLISpecsCommand {
     names: string[],
     help: CLISpecsHelp,
-    versions?: CLISpecsCommandVersion[],
+    versions: CLISpecsCommandVersion[],
 }
 
 interface CLISpecsCommandGroup {

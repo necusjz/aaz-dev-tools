@@ -53,11 +53,7 @@ class CMDSpecsCommandVersion(Model):
 class CMDSpecsCommand(Model):
     names = ListType(field=CMDCommandNameField(), min_size=1, required=True)  # full name of a command
     help = ModelType(CMDHelp, required=True)
-    versions = ListType(  # None only when the command is a partial command
-        ModelType(CMDSpecsCommandVersion),
-        min_size=1,
-        export_level=NOT_NONE,
-    )
+    versions = ListType(ModelType(CMDSpecsCommandVersion), required=True, min_size=1)
 
     class Options:
         serialize_when_none = False
@@ -70,12 +66,10 @@ class CMDSpecsCommandGroup(Model):
     command_groups = DictType(
         field=ModelType("CMDSpecsCommandGroup"),
         serialized_name="commandGroups",
-        deserialize_from="commandGroups",
-        export_level=NOT_NONE,
+        deserialize_from="commandGroups"
     )
     commands = DictType(
-        field=ModelType(CMDSpecsCommand),
-        export_level=NOT_NONE,
+        field=ModelType(CMDSpecsCommand)
     )
 
     class Options:
