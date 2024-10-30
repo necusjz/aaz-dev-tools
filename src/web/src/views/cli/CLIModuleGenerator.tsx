@@ -87,33 +87,44 @@ interface CLISpecsCommands {
     [name: string]: CLISpecsCommand,
 }
 
-const useSpecsCommandTree: () => [(names: string[]) => Promise<CLISpecsCommandGroup>, (names: string[]) => Promise<CLISpecsCommand>] = () => {
+async function retrieveCommand(names: string[]): Promise<CLISpecsCommand> {
+    return axios.get(`/AAZ/Specs/CommandTree/Nodes/aaz/${names.slice(0, -1).join('/')}/Leaves/${names[names.length - 1]}`).then(res => res.data);
+}
+
+async function retrieveCommands(namesList: string[][]): Promise<CLISpecsCommand[]> {
+    const namesListData = namesList.map(names => ['aaz', ...names]);
+    return axios.post(`/AAZ/Specs/CommandTree/Nodes/Leaves`, namesListData).then(res => res.data);
+}
+
+const useSpecsCommandTree: () => (namesList: string[][]) => Promise<CLISpecsCommand[]> = () => {
     const commandCache = React.useRef(new Map<string, Promise<CLISpecsCommand>>());
-    const cgCache = React.useRef(new Map<string, Promise<CLISpecsCommandGroup>>());
 
-    const fetchCommandGroup = React.useCallback(async (names: string[]) => {
-        const cachedPromise = cgCache.current.get(names.join('/'));
-        const fullNames = ['aaz', ...names];
-        const cgPromise: Promise<CLISpecsCommandGroup> = cachedPromise ?? axios.get(`/AAZ/Specs/CommandTree/Nodes/${fullNames.join('/')}?limited=true`).then(res => res.data);
-        if (!cachedPromise) {
-            cgCache.current.set(names.join('/'), cgPromise);
+    const fetchCommands = React.useCallback(async (namesList: string[][]) => {
+        const promiseResults = [];
+        const uncachedNamesList = [];
+        for (const names of namesList) {
+            const cachedPromise = commandCache.current.get(names.join('/'));
+            if (!cachedPromise) {
+                uncachedNamesList.push(names);
+            } else {
+                promiseResults.push(cachedPromise);
+            }
         }
-        return await cgPromise;
-    }, [commandCache, cgCache]);
-
-    const fetchCommand = React.useCallback(async (names: string[]) => {
-        const cachedPromise = commandCache.current.get(names.join('/'));
-        const fullNames = ['aaz', ...names];
-        const cgNames = fullNames.slice(0, -1);
-        const commandName = fullNames[fullNames.length - 1];
-        const commandPromise: Promise<CLISpecsCommand> = cachedPromise ?? axios.get(`/AAZ/Specs/CommandTree/Nodes/${cgNames.join('/')}/Leaves/${commandName}`).then(res => res.data);
-        if (!cachedPromise) {
-            commandCache.current.set(names.join('/'), commandPromise);
+        if (uncachedNamesList.length === 0) {
+            return await Promise.all(promiseResults);
+        } else if (uncachedNamesList.length === 1) {
+            const commandPromise = retrieveCommand(uncachedNamesList[0]);
+            commandCache.current.set(uncachedNamesList[0].join('/'), commandPromise);
+            return (await Promise.all(promiseResults.concat(commandPromise)));
+        } else {
+            const uncachedCommandsPromise = retrieveCommands(uncachedNamesList);
+            uncachedNamesList.forEach((names, idx) => {
+                commandCache.current.set(names.join('/'), uncachedCommandsPromise.then(commands => commands[idx]));
+            });
+            return (await Promise.all(promiseResults)).concat(await uncachedCommandsPromise);
         }
-        return await commandPromise;
-    }, [commandCache]);
-
-    return [fetchCommandGroup, fetchCommand];
+    }, []);
+    return fetchCommands;
 }
 
 
@@ -136,7 +147,7 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
     const [selectedProfile, setSelectedProfile] = React.useState<string | undefined>(undefined);
     const [showGenerateDialog, setShowGenerateDialog] = React.useState(false);
 
-    const [fetchCommandGroup, fetchCommand] = useSpecsCommandTree();
+    const fetchCommands = useSpecsCommandTree();
 
     React.useEffect(() => {
         loadModule();
@@ -243,8 +254,7 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
                             profile={selectedProfile}
                             profileCommandTree={selectedCommandTree}
                             onChange={onSelectedProfileTreeUpdate}
-                            onLoadCommand={fetchCommand}
-                            onLoadCommandGroup={fetchCommandGroup}
+                            onLoadCommands={fetchCommands}
                         />
                     )}
                 </Box>

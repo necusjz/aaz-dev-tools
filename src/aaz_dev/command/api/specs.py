@@ -56,6 +56,23 @@ def command_tree_leaf(node_names, leaf_name):
     return jsonify(result)
 
 
+@bp.route("/CommandTree/Nodes/Leaves", methods=("POST",))
+def command_tree_leaves():
+    data = request.get_json()
+    result = []
+    manager = AAZSpecsManager()
+
+    for command_names in data:
+        if command_names[0] != AAZSpecsManager.COMMAND_TREE_ROOT_NAME:
+            raise exceptions.ResourceNotFind(f"Command not exist: {' '.join(command_names)}")
+        command_names = command_names[1:]
+        leaf = manager.tree.find_command(*command_names)
+        if not leaf:
+            raise exceptions.ResourceNotFind(f"Command not exist: {' '.join(command_names)}")
+        result.append(leaf.to_primitive())
+    return jsonify(result)
+
+
 @bp.route("/CommandTree/Nodes/<names_path:node_names>/Leaves/<name:leaf_name>/Versions/<base64:version_name>", methods=("GET",))
 def aaz_command_in_version(node_names, leaf_name, version_name):
     if node_names[0] != AAZSpecsManager.COMMAND_TREE_ROOT_NAME:

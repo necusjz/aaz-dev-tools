@@ -84,18 +84,6 @@ const CommandItem: React.FC<CommandItemProps> = React.memo(({
 }) => {
     const leafName = command.names[command.names.length - 1];
 
-    React.useEffect(() =>{
-        if (command.selected === true && command.versions === undefined && command.loading === false) {
-            onUpdateCommand(leafName, (oldCommand) => {
-                return {
-                    ...oldCommand,
-                    loading: true,
-                }
-            });
-            onLoadCommand(command.names);
-        }
-    }, [command])
-
     const selectCommand = React.useCallback((selected: boolean) => {
         onUpdateCommand(leafName, (oldCommand) => {
             if (oldCommand.versions === undefined && selected === true) {
@@ -247,13 +235,13 @@ const CommandItem: React.FC<CommandItemProps> = React.memo(({
 interface CommandGroupItemProps {
     commandGroup: ProfileCTCommandGroup,
     onUpdateCommandGroup: (name: string, updater: (oldCommandGroup: ProfileCTCommandGroup) => ProfileCTCommandGroup) => void,
-    onLoadCommand: (names: string[]) => Promise<void>,
+    onLoadCommands: (names: string[][]) => Promise<void>,
 }
 
 const CommandGroupItem: React.FC<CommandGroupItemProps> = React.memo(({
     commandGroup,
     onUpdateCommandGroup,
-    onLoadCommand,
+    onLoadCommands,
 }) => {
     const nodeName = commandGroup.names[commandGroup.names.length - 1];
     const selected = commandGroup.selected ?? false;
@@ -289,14 +277,16 @@ const CommandGroupItem: React.FC<CommandGroupItemProps> = React.memo(({
         });
     }, []);
 
+    const onLoadCommand = React.useCallback(async (names: string[]) => {
+        await onLoadCommands([names]);
+    }, [onLoadCommands]);
+
     const updateCommandSelected = (command: ProfileCTCommand, selected: boolean): ProfileCTCommand => {
         if (selected === command.selected) {
             return command;
         }
-        onLoadCommand(command.names);
         return {
             ...command,
-            loading: (selected && command.versions === undefined),
             selected: selected,
             selectedVersion: selected ? (command.selectedVersion ? command.selectedVersion : (command.versions ? command.versions[0].name : undefined)) : command.selectedVersion,
             modified: true,
@@ -319,7 +309,12 @@ const CommandGroupItem: React.FC<CommandGroupItemProps> = React.memo(({
 
     const selectCommandGroup = React.useCallback((selected: boolean) => {
         onUpdateCommandGroup(nodeName, (oldCommandGroup) => {
-            return updateGroupSelected(oldCommandGroup, selected);
+            const selectedGroup = updateGroupSelected(oldCommandGroup, selected);
+            const [loadingNamesList, newGroup] = prepareLoadCommandsOfCommandGroup(selectedGroup);
+            if (loadingNamesList.length > 0) {
+                onLoadCommands(loadingNamesList);
+            }
+            return newGroup;
         });
     }, []);
 
@@ -358,7 +353,7 @@ const CommandGroupItem: React.FC<CommandGroupItemProps> = React.memo(({
                     key={group.id}
                     commandGroup={group}
                     onUpdateCommandGroup={onUpdateSubCommandGroup}
-                    onLoadCommand={onLoadCommand}
+                    onLoadCommands={onLoadCommands}
                 />
             ))}
         </TreeItem>
@@ -369,15 +364,16 @@ interface CLIModGeneratorProfileCommandTreeProps {
     profile?: string,
     profileCommandTree: ProfileCommandTree,
     onChange: (updater: ((oldProfileCommandTree: ProfileCommandTree) => ProfileCommandTree) | ProfileCommandTree) => void,
-    onLoadCommandGroup: (names: string[]) => Promise<CLISpecsCommandGroup>,
-    onLoadCommand: (names: string[]) => Promise<CLISpecsCommand>,
+    onLoadCommands: (namesList: string[][]) => Promise<CLISpecsCommand[]>,
 }
 
 const CLIModGeneratorProfileCommandTree: React.FC<CLIModGeneratorProfileCommandTreeProps> = ({
     profileCommandTree,
     onChange,
-    onLoadCommand,
+    onLoadCommands,
 }) => {
+    const [defaultExpanded, _] = React.useState(GetDefaultExpanded(profileCommandTree));
+
     const onUpdateCommandGroup = React.useCallback((name: string, updater: (oldCommandGroup: ProfileCTCommandGroup) => ProfileCTCommandGroup) => {
         onChange((profileCommandTree) => {
             return {
@@ -390,7 +386,7 @@ const CLIModGeneratorProfileCommandTree: React.FC<CLIModGeneratorProfileCommandT
         });
     }, [onChange]);
 
-    const handleBatchedLoadedCommand = React.useCallback((commands: CLISpecsCommand[]) => {
+    const handleBatchedLoadedCommands = React.useCallback((commands: CLISpecsCommand[]) => {
         onChange((profileCommandTree) => {
             const newTree = commands.reduce((tree, command) => {
                 return genericUpdateCommand(tree, command.names, (unloadedCommand) => {
@@ -401,18 +397,27 @@ const CLIModGeneratorProfileCommandTree: React.FC<CLIModGeneratorProfileCommandT
         })
     }, [onChange]);
 
-    const onLoadedCommand = useBatchedUpdate(handleBatchedLoadedCommand, 1000);
+    const onLoadAndDecodeCommands = React.useCallback(async (names: string[][]) => {
+        const commands = await onLoadCommands(names);
+        handleBatchedLoadedCommands(commands);
+    }, [onLoadCommands]);
 
-    const onLoadAndDecodeCommand = React.useCallback(async (names: string[]) => {
-        const command = await onLoadCommand(names);
-        onLoadedCommand(command);
-    }, [onLoadCommand]);
+
+    React.useEffect(() => {
+        const [loadingNamesList, newTree] = PrepareLoadCommands(profileCommandTree);
+        if (loadingNamesList.length > 0) {
+            onChange(newTree);
+            onLoadCommands(loadingNamesList).then((commands) => {
+                handleBatchedLoadedCommands(commands);
+            });
+        }
+    }, [profileCommandTree]);
 
     return (
         <React.Fragment>
             <TreeView
                 disableSelection={true}
-                defaultExpanded={GetDefaultExpanded(profileCommandTree)}
+                defaultExpanded={defaultExpanded}
                 defaultCollapseIcon={<ArrowDropDownIcon />}
                 defaultExpandIcon={<ArrowRightIcon />}
             >
@@ -421,7 +426,7 @@ const CLIModGeneratorProfileCommandTree: React.FC<CLIModGeneratorProfileCommandT
                         key={commandGroup.id}
                         commandGroup={commandGroup}
                         onUpdateCommandGroup={onUpdateCommandGroup}
-                        onLoadCommand={onLoadAndDecodeCommand}
+                        onLoadCommands={onLoadAndDecodeCommands}
                     />
                 ))}
             </TreeView>
@@ -548,6 +553,51 @@ function GetDefaultExpanded(tree: ProfileCommandTree): string[] {
         }
         return ids;
     });
+}
+
+function prepareLoadCommandsOfCommandGroup(commandGroup: ProfileCTCommandGroup): [string[][], ProfileCTCommandGroup] {
+    const namesList: string[][] = [];
+    const commands = commandGroup.commands ? Object.fromEntries(Object.entries(commandGroup.commands).map(([key, value]) => {
+        if (value.selected === true && value.versions === undefined && value.loading === false) {
+            namesList.push(value.names);
+            return [key, {
+                ...value,
+                loading: true,
+            }];
+        }
+        return [key, value];
+    })) : undefined;
+    const commandGroups = commandGroup.commandGroups ? Object.fromEntries(Object.entries(commandGroup.commandGroups).map(([key, value]) => {
+        const [namesListSub, updatedGroup] = prepareLoadCommandsOfCommandGroup(value);
+        namesList.push(...namesListSub);
+        return [key, updatedGroup];
+    })) : undefined;
+    if (namesList.length > 0) {
+        return [namesList, {
+            ...commandGroup,
+            commands: commands,
+            commandGroups: commandGroups,
+        }];
+    } else {
+        return [[], commandGroup];
+    }
+}
+
+function PrepareLoadCommands(tree: ProfileCommandTree): [string[][], ProfileCommandTree] {
+    const namesList: string[][] = [];
+    const commandGroups = Object.fromEntries(Object.entries(tree.commandGroups).map(([key, value]) => {
+        const [namesListSub, updatedGroup] = prepareLoadCommandsOfCommandGroup(value);
+        namesList.push(...namesListSub);
+        return [key, updatedGroup];
+    }));
+    if (namesList.length > 0) {
+        return [namesList, {
+            ...tree,
+            commandGroups: commandGroups,
+        }];
+    } else {
+        return [[], tree];
+    }
 }
 
 function genericUpdateCommand(tree: ProfileCommandTree, names: string[], updater: (command: ProfileCTCommand) => ProfileCTCommand | undefined): ProfileCommandTree | undefined {
