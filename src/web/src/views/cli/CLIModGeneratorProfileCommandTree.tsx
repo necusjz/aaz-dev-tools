@@ -651,7 +651,7 @@ function initializeCommandGroupByModView(view: CLIModViewCommandGroup | undefine
         errors.push(`Miss command groups in aaz: ${leftCommandGroups.join(', ')}`);
     }
     if (errors.length > 0) {
-        throw new Error(errors.join('\n') + '\nSee: https://azure.github.io/aaz-dev-tools/pages/usage/cli-generator/#miss-command-models.');
+        throw new Error('\n' + errors.join('\n') + '\nSee: https://azure.github.io/aaz-dev-tools/pages/usage/cli-generator/#miss-command-models.');
     }
     const selected = calculateSelected(commands ?? {}, commandGroups ?? {});
     return {
@@ -669,7 +669,7 @@ function InitializeCommandTreeByModView(profileName: string, view: CLIModViewPro
     const commandGroups = Object.fromEntries(Object.entries(simpleTree.root.commandGroups).map(([key, value]) => [key, initializeCommandGroupByModView(view?.commandGroups?.[key], value)]));
     const leftCommandGroups = Object.entries(view?.commandGroups ?? {}).filter(([key, _]) => commandGroups?.[key] === undefined).map(([_, value]) => value.names).map((names) => '`az ' + names.join(" ") + '`');
     if (leftCommandGroups.length > 0) {
-        throw new Error(`Miss command groups in aaz: ${leftCommandGroups.join(', ')}\nSee: https://azure.github.io/aaz-dev-tools/pages/usage/cli-generator/#miss-command-models.`);
+        throw new Error(`\nMiss command groups in aaz: ${leftCommandGroups.join(', ')}\nSee: https://azure.github.io/aaz-dev-tools/pages/usage/cli-generator/#miss-command-models.`);
     }
     return {
         name: profileName,

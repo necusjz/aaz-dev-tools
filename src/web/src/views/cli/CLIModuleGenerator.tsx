@@ -186,7 +186,6 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
             } else {
                 setInvalidText(`Error: ${err}`);
             }
-            setLoading(false);
         }
     };
 
@@ -280,6 +279,7 @@ const CLIModuleGenerator: React.FC<CLIModuleGeneratorProps> = ({ params }) => {
                             flexDirection: "column",
                             alignItems: "stretch",
                             justifyContent: "flex-start",
+                            whiteSpace: "pre-line",
                         }}
                         variant="filled"
                         severity='error'
