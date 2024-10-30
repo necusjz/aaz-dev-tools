@@ -38,39 +38,6 @@ const UnregisteredTypography = styled(SelectionTypography)<TypographyProps>(() =
     color: '#d9c136',
 }))
 
-
-function useBatchedUpdate<T>(batchedUpdater: (states: T[]) => void, delay: number) {
-    const statesRef = React.useRef<T[]>([]);
-    const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-
-    const handleTimeout = React.useCallback(() => {
-        if (timeoutRef.current !== null) {
-            clearTimeout(timeoutRef.current);
-        }
-        batchedUpdater(statesRef.current);
-        timeoutRef.current = null;
-        statesRef.current = [];
-    }, [batchedUpdater]);
-
-    const batchedCallback = React.useCallback((state: T) => {
-        statesRef.current = [...statesRef.current, state];
-        if (timeoutRef.current === null) {
-            timeoutRef.current = setTimeout(handleTimeout, delay);
-        }
-    }, [batchedUpdater, delay]);
-
-    React.useEffect(() => {
-        return () => {
-            if (timeoutRef.current !== null) {
-                clearTimeout(timeoutRef.current);
-            }
-        };
-    }, []);
-
-    return batchedCallback;
-}
-
-
 interface CommandItemProps {
     command: ProfileCTCommand,
     onUpdateCommand: (name: string, updater: (oldCommand: ProfileCTCommand) => ProfileCTCommand) => void,
@@ -97,7 +64,7 @@ const CommandItem: React.FC<CommandItemProps> = React.memo(({
                 modified: true,
             }
         });
-    }, []);
+    }, [onUpdateCommand, onLoadCommand]);
 
     const selectVersion = React.useCallback((version: string) => {
         onUpdateCommand(leafName, (oldCommand) => {
@@ -107,7 +74,7 @@ const CommandItem: React.FC<CommandItemProps> = React.memo(({
                 modified: true,
             }
         });
-    }, []);
+    }, [onUpdateCommand]);
 
     const selectRegistered = React.useCallback((registered: boolean) => {
         onUpdateCommand(leafName, (oldCommand) => {
@@ -117,7 +84,7 @@ const CommandItem: React.FC<CommandItemProps> = React.memo(({
                 modified: true,
             }
         });
-    }, []);
+    }, [onUpdateCommand]);
 
     return (
         <TreeItem sx={{ marginLeft: 2 }} key={command.id} nodeId={command.id} color='inherit' label={
@@ -259,7 +226,7 @@ const CommandGroupItem: React.FC<CommandGroupItemProps> = React.memo(({
                 selected: selected,
             }
         });
-    }, []);
+    }, [onUpdateCommandGroup]);
 
     const onUpdateSubCommandGroup = React.useCallback((name: string, updater: (oldCommandGroup: ProfileCTCommandGroup) => ProfileCTCommandGroup) => {
         onUpdateCommandGroup(nodeName, (oldCommandGroup) => {
@@ -275,7 +242,7 @@ const CommandGroupItem: React.FC<CommandGroupItemProps> = React.memo(({
                 selected: selected,
             };
         });
-    }, []);
+    }, [onUpdateCommandGroup]);
 
     const onLoadCommand = React.useCallback(async (names: string[]) => {
         await onLoadCommands([names]);
@@ -316,7 +283,7 @@ const CommandGroupItem: React.FC<CommandGroupItemProps> = React.memo(({
             }
             return newGroup;
         });
-    }, []);
+    }, [onUpdateCommandGroup, onLoadCommands]);
 
     return (
         <TreeItem sx={{ marginLeft: 2, marginTop: 0.5 }} key={commandGroup.id} nodeId={commandGroup.id} color='inherit' label={

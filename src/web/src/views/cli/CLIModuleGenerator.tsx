@@ -123,7 +123,7 @@ const useSpecsCommandTree: () => (namesList: string[][]) => Promise<CLISpecsComm
             });
             return (await Promise.all(promiseResults)).concat(await uncachedCommandsPromise);
         }
-    }, []);
+    }, [commandCache]);
     return fetchCommands;
 }
 
