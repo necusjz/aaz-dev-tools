@@ -29,6 +29,8 @@ def _build_simple_command_group(names, aaz_path):
         rel_names = []
     # uri = '/Commands/' + '/'.join(rel_names) + f'/readme.md'
     full_path = os.path.join(aaz_path, 'Commands', *rel_names)
+    if rel_names and not os.path.exists(os.path.join(full_path, 'readme.md')):
+        return None
     commands = {}
     command_groups = {}
     for dir in os.listdir(full_path):
@@ -39,7 +41,9 @@ def _build_simple_command_group(names, aaz_path):
             commands[command_name] = _build_simple_command(rel_names + [command_name])
         else:
             cg_name = dir
-            command_groups[cg_name] = _build_simple_command_group(rel_names + [cg_name], aaz_path)
+            group = _build_simple_command_group(rel_names + [cg_name], aaz_path)
+            if group:
+                command_groups[cg_name] = group
     cg = CMDSpecsSimpleCommandGroup()
     cg.names = names
     cg.commands = commands
