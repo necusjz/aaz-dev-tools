@@ -215,6 +215,9 @@ class AAZSpecsManager:
     def verify_command_tree(self):
         return self.tree.verify_command_tree()
 
+    def verify_updated_command_tree(self):
+        return self.tree.verify_updated_command_tree()
+
     def _remove_cfg(self, cfg):
         cfg_reader = CfgReader(cfg)
 
@@ -297,15 +300,12 @@ class AAZSpecsManager:
         self._modified_resource_client_cfgs[key] = cfg
 
     def save(self):
-        self.verify_command_tree()
+        self.verify_updated_command_tree()
 
         remove_files = []
         remove_folders = []
         update_files = {}
         command_groups = set()
-
-        # tree_path = self.get_tree_file_path()
-        # update_files[tree_path] = json.dumps(self.tree.to_model().to_primitive(), indent=2, sort_keys=True)
 
         # command
         for cmd_names in sorted(self.tree._modified_commands):

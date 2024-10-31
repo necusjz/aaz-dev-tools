@@ -605,6 +605,38 @@ class CMDSpecsPartialCommandTree:
         if details:
             raise exceptions.VerificationError(message="Invalid Command Tree", details=details)
 
+    def verify_updated_command_tree(self):
+        details = {}
+        for group_names in self._modified_command_groups:
+            group = self.find_command_group(*group_names)
+            if group == self.root:
+                continue
+            if not group:
+                details[' '.join(group_names)] = {
+                    'type': 'group',
+                    'help': "Miss short summary."
+                }
+            elif not group.help or not group.help.short:
+                details[' '.join(group.names)] = {
+                    'type': 'group',
+                    'help': "Miss short summary."
+                }
+
+        for cmd_names in self._modified_commands:
+            cmd = self.find_command(*cmd_names)
+            if not cmd:
+                details[' '.join(cmd_names)] = {
+                    'type': 'command',
+                    'help': "Miss short summary."
+                }
+            elif not cmd.help or not cmd.help.short:
+                details[' '.join(cmd.names)] = {
+                    'type': 'command',
+                    'help': "Miss short summary."
+                }
+        if details:
+            raise exceptions.VerificationError(message="Invalid Command Tree", details=details)
+
     def to_model(self):
         tree = CMDSpecsCommandTree()
         tree.root = self.root
