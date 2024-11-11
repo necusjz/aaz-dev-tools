@@ -46,6 +46,10 @@ const packages = [
   "@azure-tools/typespec-azure-resource-manager",
 ];
 
+const extern_packages = [
+  "../../node_modules/@azure-tools/typespec-liftr-base",
+]
+
 function removeDirRecursive(dirPath) {
   if (existsSync(dirPath)) {
     readdirSync(dirPath).forEach((file) => {
@@ -131,6 +135,10 @@ async function syncTypespecPackages() {
   console.log(`Repo root: ${repoRoot}`);
   const allProjects = await findWorkspacePackagesNoCheck(repoRoot);
   const projects = allProjects.filter((x) => packages.includes(x.manifest.name));
+  for (const extern_source of extern_packages) {
+    const extern_projects = await findWorkspacePackagesNoCheck(resolve(repoRoot, extern_source));
+    projects.push(...extern_projects);
+  }
   const typespec_aaz = await findWorkspacePackagesNoCheck(resolve(repoRoot, "../typespec-aaz"));
   projects.push(...typespec_aaz);
 

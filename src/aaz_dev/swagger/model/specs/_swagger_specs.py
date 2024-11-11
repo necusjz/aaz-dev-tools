@@ -31,6 +31,8 @@ class SwaggerSpecs:
             return None
 
         path = os.path.join(self._spec_folder_path, name)
+        if not os.path.isdir(path):
+            return None
         if os.path.isdir(os.path.join(path, 'resource-manager')) or TypeSpecHelper.find_mgmt_plane_entry_files(path):
             module = MgmtPlaneModule(plane=plane, name=name, folder_path=path)
             for name in names[1:]:
