@@ -35,7 +35,7 @@ def _build_simple_command_group(names, aaz_path):
     command_groups = {}
     for dir in os.listdir(full_path):
         if os.path.isfile(os.path.join(full_path, dir)):
-            if dir == 'readme.md' or dir == 'tree.json':
+            if not dir.endswith('.md') or dir == 'readme.md':
                 continue
             command_name = dir[1:-3]
             commands[command_name] = _build_simple_command(rel_names + [command_name])
