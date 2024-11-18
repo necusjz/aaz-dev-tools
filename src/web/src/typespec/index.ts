@@ -11,11 +11,13 @@ const libs = [
   "@typespec/openapi3",
   "@typespec/json-schema",
   "@typespec/protobuf",
+  "@typespec/streams",
   "@azure-tools/typespec-autorest",
   "@azure-tools/typespec-azure-core",
   "@azure-tools/typespec-client-generator-core",
   "@azure-tools/typespec-azure-resource-manager",
   "@azure-tools/typespec-aaz",
+  "@azure-tools/typespec-liftr-base"
 ]
 
 const outputDir = "tsp-output";

@@ -26,7 +26,7 @@ export async function $onEmit(context: EmitContext<AAZEmitterOptions>) {
       content: JSON.stringify(resources, null, 2),
     });
   } else if (context.options.operation === "get-resources-operations") {
-    const emitter = createGetResourceOperationEmitter(context);
+    const emitter = await createGetResourceOperationEmitter(context);
     const res = await emitter.getResourcesOperations();
     await emitFile(context.program, {
       path: resolvePath(context.emitterOutputDir, "resources_operations.json"),
@@ -83,8 +83,8 @@ function createListResourceEmitter(context: EmitContext<AAZEmitterOptions>) {
   }
 }
 
-function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOptions>) {
-  const sdkContext = createSdkContext(context, "@azure-tools/typespec-aaz");
+async function createGetResourceOperationEmitter(context: EmitContext<AAZEmitterOptions>) {
+  const sdkContext = await createSdkContext(context, "@azure-tools/typespec-aaz");
   const tracer = getTracer(context.program);
   tracer.trace("options", JSON.stringify(context.options, null, 2));
   const apiVersion = sdkContext.apiVersion!;

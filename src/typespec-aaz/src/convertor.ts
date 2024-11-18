@@ -467,7 +467,7 @@ function convert2CMDHttpResponse(context: AAZOperationEmitterContext, response: 
 
 // Schema functions
 
-function buildSchemaEmitterContext(context: AAZOperationEmitterContext, param: Type, type: "header" | "query" | "path" | "body"): AAZSchemaEmitterContext {
+function buildSchemaEmitterContext(context: AAZOperationEmitterContext, param: Type, type: "header" | "query" | "path" | "body" | "cookie"): AAZSchemaEmitterContext {
   let collectionFormat;
   if (type === "query") {
     collectionFormat = getQueryParamOptions(context.program, param).format;
