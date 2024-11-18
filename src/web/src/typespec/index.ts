@@ -11,6 +11,7 @@ const libs = [
   "@typespec/openapi3",
   "@typespec/json-schema",
   "@typespec/protobuf",
+  "@typespec/streams",
   "@azure-tools/typespec-autorest",
   "@azure-tools/typespec-azure-core",
   "@azure-tools/typespec-client-generator-core",
