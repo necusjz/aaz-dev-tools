@@ -68,73 +68,89 @@ class CMDSpecsPartialCommandGroup:
 
     @classmethod
     def parse_command_group_info(cls, info, cg_names, aaz_path):
-        prev_line = None
-        title = None
-        short_help = None
-        long_help = []
-        cur_sub_block = None
-        block_items = None
-        command_groups = []
-        commands = []
-        in_code_block = False
+        lines = info.splitlines(keepends=False)
 
-        for line in info.splitlines(keepends=False):
-            line = line.strip()
-
-            if line.startswith('"""'):
-                in_code_block = not in_code_block
-                continue
-            elif in_code_block:
-                continue
-
-            if line.startswith("# ") and not title:
-                title = line[2:]
-            elif line.startswith("## "):
-                cur_sub_block = line[3:]
-                if cur_sub_block in ["Groups", "Subgroups"]:
-                    block_items = command_groups
-                elif cur_sub_block in ["Commands"]:
-                    block_items = commands
-                else:
-                    block_items = None
-            elif line and not cur_sub_block and not short_help:
-                short_help = line
-            elif line and not cur_sub_block and not long_help and prev_line:
-                short_help = short_help + '\n' + line
-            elif line and not cur_sub_block:
-                long_help.append(line)
-            elif line.startswith('- ['):
-                name = line[3:].split(']')[0]
-                uri = line.split('(')[-1].split(')')[0]
-                if cur_sub_block in ["Groups", "Subgroups"]:
-                    item = CMDSpecsPartialCommandGroup([*cg_names, name], None, uri, aaz_path)
-                elif cur_sub_block in ["Commands"]:
-                    item = CMDSpecsPartialCommand([*cg_names, name], None, uri, aaz_path)
-                else:
-                    continue
-                if block_items is not None:
-                    block_items.append((name, item))
-            elif line.startswith(': '):
-                if block_items:
-                    block_items[-1][1].short_help = line[2:]
-            elif line and prev_line:
-                if block_items:
-                    block_items[-1][1].short_help += '\n' + line
-            prev_line = line
         cg = CMDSpecsCommandGroup()
-        if not cg_names:
-            cg.names = ["aaz"]
-        else:
-            cg.names = list(cg_names)
-        if not short_help:
-            cg.help = None
-        else:
-            cg.help = CMDHelp()
-            cg.help.short = short_help
-            cg.help.lines = long_help if long_help else None
-        cg.command_groups = CMDSpecsCommandGroupDict(command_groups)
-        cg.commands = CMDSpecsCommandDict(commands)
+        _, _, remaining_lines = cls._parse_title(lines)
+        cg.names = list(cg_names) or ["aaz"]
+        cg.help, remaining_lines = cls._parse_help(remaining_lines)
+        cg.command_groups, remaining_lines = cls._parse_groups(remaining_lines, cg_names, aaz_path)
+        cg.commands, _ = cls._parse_commands(remaining_lines, cg_names, aaz_path)
+
         return cg
+
+    @classmethod
+    def _parse_title(cls, lines):
+        assert len(lines) > 0 and lines[0].startswith('# ')
+        title_line = lines[0].strip()
+        if not title_line.endswith('_'):    # root
+            return None, None, lines[2:]
+        _, category, names = title_line.split(maxsplit=2)
+        return category[1: -1], names[1: -1], lines[2:]
+
+    @classmethod
+    def _parse_help(cls, lines):
+        assert len(lines) > 0
+        if lines[0].startswith('## '):  # root
+            return None, lines
+        short_help, remaining_lines = cls._read_until(lines, lambda line: not line)
+        short_help = '\n'.join(short_help)
+        remaining_lines = cls._del_empty(remaining_lines)
+        long_help, remaining_lines = cls._read_until(remaining_lines, lambda line: line.startswith('## '))
+        long_help = long_help[:-1] if long_help and not long_help[-1] else long_help    # Delete last line if empty
+        return CMDHelp(raw_data={'short': short_help, 'lines': long_help or None}), remaining_lines
+
+    @classmethod
+    def _parse_groups(cls, lines: list[str], cg_names, aaz_path):
+        if lines and lines[0] in ['## Groups', '## Subgroups']:
+            groups = []
+            remaining_lines = lines[2:]
+            while remaining_lines and not remaining_lines[0].startswith('## '):
+                group, remaining_lines = cls._parse_item(
+                    remaining_lines, CMDSpecsPartialCommandGroup, cg_names, aaz_path)
+                groups.append((group.names[-1], group))
+            return CMDSpecsCommandGroupDict(groups), remaining_lines
+        return CMDSpecsCommandGroupDict([]), lines
+
+    @classmethod
+    def _parse_commands(cls, lines: list[str], cg_names, aaz_path):
+        if lines and lines[0] in ['## Commands']:
+            commands = []
+            remaining_lines = lines[2:]
+            while remaining_lines and not remaining_lines[0].startswith('## '):
+                command, remaining_lines = cls._parse_item(
+                    remaining_lines, CMDSpecsPartialCommand, cg_names, aaz_path)
+                commands.append((command.names[-1], command))
+            return CMDSpecsCommandDict(commands), remaining_lines
+        return CMDSpecsCommandDict([]), lines
+
+    @classmethod
+    def _parse_item(cls, lines, item_cls, cg_names, aaz_path):
+        assert len(lines) > 1
+        name_line = lines[0]
+        assert name_line.startswith('- [')
+        name = name_line[3:].split(']')[0]
+        uri = name_line.split('(')[-1].split(')')[0]
+        short_help, remaining_lines = cls._read_until(lines[1:], lambda line: not line)
+        remaining_lines = cls._del_empty(remaining_lines)
+        short_help = '\n'.join(short_help)
+        return item_cls(names=[*cg_names, name], short_help=short_help, uri=uri, aaz_path=aaz_path), remaining_lines
+
+    @classmethod
+    def _read_until(cls, lines, predicate):
+        result = []
+        for idx in range(0, len(lines)):
+            if predicate(lines[idx]):
+                return result, lines[idx:]
+            result.append(lines[idx])
+        return result, []
+
+    @classmethod
+    def _del_empty(cls, lines):
+        for idx in range(0, len(lines)):
+            if lines[idx]:
+                return lines[idx:]
+        return lines
 
     def load(self):
         with open(self.aaz_path + self.uri, "r", encoding="utf-8") as f:
