@@ -23,6 +23,7 @@ from command.model.configuration import CMDSchemaDefault, \
     CMDArraySchema, CMDArraySchemaBase, \
     CMDClsSchema, CMDClsSchemaBase, \
     CMDHttpResponseJsonBody
+from command.controller.workspace_cfg_editor import WorkspaceCfgEditor
 
 from swagger.model.specs._utils import operation_id_separate
 from swagger.utils import exceptions
@@ -625,30 +626,37 @@ class CMDBuilder:
         for name, definition in self.cls_definitions.items():
             if definition['count'] > 1:
                 definition['model'].cls = name
-        schema_cls_register_map = {}
-        for cmd_op in cmd_ops:
-            cmd_op.register_cls(cls_register_map=schema_cls_register_map)
-
-        for name, cls_register in schema_cls_register_map.items():
-            if cls_register.get('implement', None):
-                continue
-            from command.controller.workspace_cfg_editor import WorkspaceCfgEditor
-            new_schema = None
-
-            for parent, schema, _ in WorkspaceCfgEditor.iter_schema_cls_reference_in_operations(cmd_ops, name):
-                if schema.frozen:
+        check = True
+        while check:
+            check = False
+            schema_cls_register_map = {}
+            for cmd_op in cmd_ops:
+                cmd_op.register_cls(cls_register_map=schema_cls_register_map)
+            
+            for name, cls_register in schema_cls_register_map.items():
+                if cls_register.get('implement', None):
                     continue
 
-                if new_schema is not None:
-                    schema.implement = new_schema
-                    new_schema.cls = name
-                    continue
+                new_schema = None
 
-                new_schema = schema.get_unwrapped()
-                new_schema.cls = None
-                assert new_schema is not None
-                WorkspaceCfgEditor.replace_schema(parent, schema, new_schema)
-                self.cls_definitions[name]['model'] = new_schema
+                for parent, schema, _ in WorkspaceCfgEditor.iter_schema_cls_reference_in_operations(cmd_ops, name):
+                    if schema.frozen:
+                        continue
+
+                    if new_schema is not None:
+                        schema.implement = new_schema
+                        new_schema.cls = name
+                        continue
+
+                    # the linked implement will be lost when it's rebuild in the get_unwrapped()
+                    schema.implement = self.cls_definitions[name]['model']
+                    new_schema = schema.get_unwrapped()
+                    assert new_schema is not None
+                    new_schema.cls = None
+                    WorkspaceCfgEditor.replace_schema(parent, schema, new_schema)
+                    self.cls_definitions[name]['model'] = new_schema
+                    # because the schema is updated, need to re-check the loop
+                    check = True
 
     def get_pageable(self, path_item, op):
         pageable = getattr(path_item, self.method).x_ms_pageable
