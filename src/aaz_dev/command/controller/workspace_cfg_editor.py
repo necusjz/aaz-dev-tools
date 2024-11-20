@@ -897,7 +897,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             update_cmd_info = self.get_update_cmd(resource_id)
             if not update_cmd_info:
                 continue
-            update_cmd_names, update_cmd, update_by = update_cmd_info
+            _, update_cmd, update_by = update_cmd_info
             if update_by != "GenericOnly":
                 continue
 
@@ -1079,6 +1079,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             self._add_command(*cg_names, sub_command.name, command=sub_command)
 
         self.reformat()
+        return cg_names
 
     def build_subresource_commands_by_arg_var(self, resource_id, arg_var, cg_names, ref_args_options=None):
         """

@@ -93,7 +93,7 @@ const MiddlePadding2 = styled(Box)(() => ({
     height: '8vh'
 }));
 
-const UpdateOptions = ["Generic(Get&Put) First", "Patch First", "No update command"];
+const UpdateOptions = ["Default", "Generic(Get&Put) First", "Patch First", "No update command"];
 
 class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, WSEditorSwaggerPickerState> {
 
@@ -366,6 +366,24 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                 },
             }
             if (updateOption === UpdateOptions[1]) {
+                // generic first
+                const resource = resourceMap[resourceId];
+                const operations = resource.versions.find(v => v.version === selectedVersion)?.operations;
+                if (operations) {
+                    let hasGet = false;
+                    let hasPut = false;
+                    for (const opName in operations) {
+                        if (operations[opName].toLowerCase() === "put") {
+                            hasPut = true;
+                        } else if (operations[opName].toLowerCase() === "get") {
+                            hasGet = true;
+                        }
+                    }
+                    if (hasGet && hasPut) {
+                        res.options.update_by = "GenericOnly"
+                    }
+                }
+            } else if (updateOption === UpdateOptions[2]) {
                 // patch first
                 const resource = resourceMap[resourceId];
                 const operations = resource.versions.find(v => v.version === selectedVersion)?.operations;
@@ -377,7 +395,7 @@ class WSEditorSwaggerPicker extends React.Component<WSEditorSwaggerPickerProps, 
                         }
                     }
                 }
-            } else if (updateOption === UpdateOptions[2]) {
+            } else if (updateOption === UpdateOptions[3]) {
                 // No update command generation
                 res.options.update_by = "None"
             }

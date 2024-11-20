@@ -113,6 +113,7 @@ There are two mechanisms to implement `Update` in azure-cli.
 
 There's three modes to control the generation of `Update` commands while add the resources.
 
+- Default: If inherent from existing command models in aaz, it will follow the method used in the existing update command model, else it will follow the _Generic(Get&Put) First_ mode.
 - Generic(Get&Put) First: If the resource supports `Get` and `Put` methods, generate the _Generic Update_, else if it supports `Patch` method, it generate the _Patch Update_.
 - Patch First: If the resource supports `Patch` method, it generate the _Patch Update_, else if it supports `Get` and `Put` methods.
 - No update command: Never generate `Update` commands for the resource.
