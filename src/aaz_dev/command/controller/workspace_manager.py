@@ -660,23 +660,7 @@ class WorkspaceManager:
         cfg_editors = []
         aaz_ref = {}
         for resource, options in zip(resources, resource_options):
-            try:
-                command_group = command_generator.create_draft_command_group(
-                    resource, instance_var=CMDBuildInVariants.Instance, **options)
-            except InvalidSwaggerValueError as err:
-                raise exceptions.InvalidAPIUsage(
-                    message=str(err)
-                ) from err
-            assert not command_group.command_groups, "The logic to support sub command groups is not supported"
-            if not isinstance(resource, CMDResource):
-                # Typespec use CMDResource directly, but swagger use swagger Resource
-                resource = resource.to_cmd()
-            cfg_editor = WorkspaceCfgEditor.new_cfg(
-                plane=self.ws.plane,
-                resources=[resource],
-                command_groups=[command_group]
-            )
-
+            cfg_editor = self._build_draft_cfg_editor(command_generator, resource, options)
             # inherit modification from cfg in aaz
             aaz_version = options.get('aaz_version', None)
             if aaz_version:
@@ -689,7 +673,14 @@ class WorkspaceManager:
                 for cmd_names, _ in cfg_editor.iter_commands():
                     aaz_ref[' '.join(cmd_names)] = aaz_version
 
-            cfg_editor.build_identity_subresource(command_group)
+            update_cmd_info = cfg_editor.get_update_cmd(resource.id)
+            temp_generic_update_cmd = None
+            if update_cmd_info and options.get('update_by', None) == "PatchOnly":
+                temp_cfg_editor = self._build_draft_cfg_editor(command_generator, resource, {"update_by": "GenericOnly"})
+                temp_update_cmd_info = temp_cfg_editor.get_update_cmd(resource.id)
+                if temp_update_cmd_info:
+                    _, temp_generic_update_cmd, _ = temp_update_cmd_info
+            cfg_editor.build_identity_subresource(resource.id, temp_generic_update_cmd)
             cfg_editors.append(cfg_editor)
 
         # add cfg_editors
@@ -824,23 +815,15 @@ class WorkspaceManager:
             if update_cmd_info:
                 _, _, update_by = update_cmd_info
                 options['update_by'] = update_by
-            try:
-                command_group = command_generator.create_draft_command_group(
-                    resource, instance_var=CMDBuildInVariants.Instance, **options)
-            except InvalidSwaggerValueError as err:
-                raise exceptions.InvalidAPIUsage(
-                    message=str(err)
-                ) from err
-            assert not command_group.command_groups, "The logic to support sub command groups is not supported"
-            if not isinstance(resource, CMDResource):
-                # Typespec use CMDResource directly, but swagger use swagger Resource
-                resource = resource.to_cmd()
-            new_cfg_editor = WorkspaceCfgEditor.new_cfg(
-                plane=self.ws.plane,
-                resources=[resource],
-                command_groups=[command_group]
-            )
+            new_cfg_editor = self._build_draft_cfg_editor(command_generator, resource, options)
             new_cfg_editor.inherit_modification(cfg_editor)
+            temp_generic_update_cmd = None
+            if update_cmd_info and update_by == "PatchOnly":
+                temp_cfg_editor = self._build_draft_cfg_editor(command_generator, resource, {"update_by": "GenericOnly"})
+                temp_update_cmd_info = temp_cfg_editor.get_update_cmd(resource_id)
+                if temp_update_cmd_info:
+                    _, temp_generic_update_cmd, _ = temp_update_cmd_info
+            new_cfg_editor.build_identity_subresource(resource_id, temp_generic_update_cmd)
             new_cfg_editors.append(new_cfg_editor)
 
         # remove old cfg editor
@@ -850,6 +833,24 @@ class WorkspaceManager:
 
         # add cfg_editors
         self._add_cfg_editors(new_cfg_editors)
+    
+    def _build_draft_cfg_editor(self, command_generator, resource, options):
+        try:
+            command_group = command_generator.create_draft_command_group(
+                resource, instance_var=CMDBuildInVariants.Instance, **options)
+        except InvalidSwaggerValueError as err:
+            raise exceptions.InvalidAPIUsage(
+                message=str(err)
+            ) from err
+        assert not command_group.command_groups, "The logic to support sub command groups is not supported"
+        if not isinstance(resource, CMDResource):
+            # Typespec use CMDResource directly, but swagger use swagger Resource
+            resource = resource.to_cmd()
+        return WorkspaceCfgEditor.new_cfg(
+            plane=self.ws.plane,
+            resources=[resource],
+            command_groups=[command_group]
+        )
 
     def add_new_command_by_aaz(self, *cmd_names, version):
         # TODO: add support to load from aaz

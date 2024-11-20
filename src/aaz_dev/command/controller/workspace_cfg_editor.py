@@ -869,10 +869,6 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         for cmd_names, ref_cmd_names in command_rename_list:
             self.rename_command(*cmd_names, new_cmd_names=ref_cmd_names)
 
-        # generate identity subcommand
-        for resource_id in sorted(existing_resources):
-            self.build_identity_subresource(resource_id)
-
         # inherit sub command
         sub_resources = set()
         array_sub_resources = set()
@@ -917,6 +913,11 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             if not schema:
                 # schema not exist
                 continue
+
+            # skip inherit identity subcommands, it will be generated in build_identity_subresource
+            if isinstance(schema, CMDIdentityObjectSchemaBase):
+                continue
+
             assert isinstance(schema, CMDSchema)
 
             # build ref_args_options
@@ -940,10 +941,6 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
                         for ref_arg in ref_arg_group.args:
                             ref_args_options[ref_arg.var] = [*ref_arg.options]
             assert cg_names is not None
-
-            # skip inherit identity subcommands
-            if isinstance(schema, CMDIdentityObjectSchemaBase):
-                continue
 
             # generate sub commands
             sub_commands = self._generate_sub_commands(schema, subresource_idx, update_cmd, ref_args_options)
@@ -1059,12 +1056,16 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         self.reformat()
         return commands
 
-    def build_identity_subresource(self, resource_id):
+    def build_identity_subresource(self, resource_id, temp_generic_update_cmd=None):
         update_cmd_info = self.get_update_cmd(resource_id)
         if not update_cmd_info:
             return
         update_cmd_names, update_cmd, update_by = update_cmd_info
-        if update_by != "GenericOnly":
+        if update_by == "PatchOnly" and temp_generic_update_cmd is not None:
+            # generate temp update command using generic update
+            update_cmd = temp_generic_update_cmd
+            update_cmd.name = ' '.join(update_cmd_names)
+        elif update_by != "GenericOnly":
             return
         update_op, _, identity_schema, identity_schema_idx = self.find_identity_schema_in_command(update_cmd)
 
