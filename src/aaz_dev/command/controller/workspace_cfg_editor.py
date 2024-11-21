@@ -1067,7 +1067,12 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             update_cmd.name = ' '.join(update_cmd_names)
         elif update_by != "GenericOnly":
             return
-        update_op, _, identity_schema, identity_schema_idx = self.find_identity_schema_in_command(update_cmd)
+
+        identity_schema_info = self.find_identity_schema_in_command(update_cmd)
+        if not identity_schema_info:
+            return
+
+        update_op, _, identity_schema, identity_schema_idx = identity_schema_info
 
         subresource_idx = self.schema_idx_to_subresource_idx(identity_schema_idx)
         assert subresource_idx

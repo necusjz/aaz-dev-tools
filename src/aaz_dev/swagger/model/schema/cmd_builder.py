@@ -232,7 +232,7 @@ class CMDBuilder:
 
     def _get_cls_definition_name(self, schema):
         assert isinstance(schema, ReferenceSchema)
-        schema_cls_name = f"{to_camel_case(schema.ref.split('/')[-1])}_{self.mutability}"
+        schema_cls_name = f"{to_camel_case(schema.ref.split('/')[-1].replace('.', ' '))}_{self.mutability}"
         if self.mutability != MutabilityEnum.Read:
             if self.read_only:
                 schema_cls_name += "_read"
