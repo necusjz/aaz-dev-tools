@@ -40,11 +40,16 @@ const packages = [
   "@typespec/openapi3",
   "@typespec/json-schema",
   "@typespec/protobuf",
+  "@typespec/streams",
   "@azure-tools/typespec-autorest",
   "@azure-tools/typespec-azure-core",
   "@azure-tools/typespec-client-generator-core",
   "@azure-tools/typespec-azure-resource-manager",
 ];
+
+const extern_packages = [
+  "../../node_modules/@azure-tools/typespec-liftr-base",
+]
 
 function removeDirRecursive(dirPath) {
   if (existsSync(dirPath)) {
@@ -131,6 +136,10 @@ async function syncTypespecPackages() {
   console.log(`Repo root: ${repoRoot}`);
   const allProjects = await findWorkspacePackagesNoCheck(repoRoot);
   const projects = allProjects.filter((x) => packages.includes(x.manifest.name));
+  for (const extern_source of extern_packages) {
+    const extern_projects = await findWorkspacePackagesNoCheck(resolve(repoRoot, extern_source));
+    projects.push(...extern_projects);
+  }
   const typespec_aaz = await findWorkspacePackagesNoCheck(resolve(repoRoot, "../typespec-aaz"));
   projects.push(...typespec_aaz);
 

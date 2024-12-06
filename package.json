@@ -17,6 +17,7 @@
   "devDependencies": {
     "@pnpm/find-workspace-packages": "^6.0.9",
     "@pnpm/logger": "^5.0.0",
+    "@azure-tools/typespec-liftr-base": "^0.4.0",
     "rimraf": "~5.0.5"
   },
   "syncpack": {

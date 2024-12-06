@@ -2,8 +2,17 @@
 
 Release History
 ===============
+3.2.0
+++++++
+* Handle swagger 204 response (#426)
+* Bump up typespec version and add extern tsp lib for liftr (#427)
+* Apply cls definitions recursively to avoid definition loss (#428)
+* Support generate identity subcommands when using patch only update (#429)
+* Support update command inherent from existing methods used in aaz models (#430)
+* Fix bugs for class name with dot (#431)
+
 3.1.0
-+++++
+++++++
 * Support managed identity sub commands (#403)
 * Support to merge crud operations for the same resource (#415)
 * Support to generate object with props and additional properties as FreeFormDictType in CLI (#415)

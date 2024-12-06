@@ -869,10 +869,6 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         for cmd_names, ref_cmd_names in command_rename_list:
             self.rename_command(*cmd_names, new_cmd_names=ref_cmd_names)
 
-        # generate identity subcommand
-        for command_group in self.cfg.command_groups:
-            self.build_identity_subresource(command_group)
-
         # inherit sub command
         sub_resources = set()
         array_sub_resources = set()
@@ -901,7 +897,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             update_cmd_info = self.get_update_cmd(resource_id)
             if not update_cmd_info:
                 continue
-            update_cmd_names, update_cmd, update_by = update_cmd_info
+            _, update_cmd, update_by = update_cmd_info
             if update_by != "GenericOnly":
                 continue
 
@@ -917,6 +913,11 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
             if not schema:
                 # schema not exist
                 continue
+
+            # skip inherit identity subcommands, it will be generated in build_identity_subresource
+            if isinstance(schema, CMDIdentityObjectSchemaBase):
+                continue
+
             assert isinstance(schema, CMDSchema)
 
             # build ref_args_options
@@ -940,10 +941,6 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
                         for ref_arg in ref_arg_group.args:
                             ref_args_options[ref_arg.var] = [*ref_arg.options]
             assert cg_names is not None
-
-            # skip inherit identity subcommands
-            if isinstance(schema, CMDIdentityObjectSchemaBase):
-                continue
 
             # generate sub commands
             sub_commands = self._generate_sub_commands(schema, subresource_idx, update_cmd, ref_args_options)
@@ -1059,29 +1056,35 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         self.reformat()
         return commands
 
-    def build_identity_subresource(self, command_group):
-        update_cmd = None
-        identity_schema, identity_schema_idx = None, None
-        if command_group.commands:
-            for command in command_group.commands:
-                match = self.find_identity_schema_in_command(command)
-                if match:
-                    update_cmd = command
-                    update_op, _, identity_schema, identity_schema_idx = match
-
-        if update_cmd is None:
+    def build_identity_subresource(self, resource_id, temp_generic_update_cmd=None):
+        update_cmd_info = self.get_update_cmd(resource_id)
+        if not update_cmd_info:
             return
+        update_cmd_names, update_cmd, update_by = update_cmd_info
+        if update_by == "PatchOnly" and temp_generic_update_cmd is not None:
+            # generate temp update command using generic update
+            update_cmd = temp_generic_update_cmd
+            update_cmd.name = ' '.join(update_cmd_names)
+        elif update_by != "GenericOnly":
+            return
+
+        identity_schema_info = self.find_identity_schema_in_command(update_cmd)
+        if not identity_schema_info:
+            return
+
+        update_op, _, identity_schema, identity_schema_idx = identity_schema_info
 
         subresource_idx = self.schema_idx_to_subresource_idx(identity_schema_idx)
         assert subresource_idx
 
         sub_commands = self._generate_identity_sub_commands(identity_schema, subresource_idx, update_cmd, update_op)
 
-        cg_names = command_group.name.split(' ') + [identity_schema.name]
+        cg_names = update_cmd_names[:-1] + [identity_schema.name]
         for sub_command in sub_commands:
             self._add_command(*cg_names, sub_command.name, command=sub_command)
 
         self.reformat()
+        return cg_names
 
     def build_subresource_commands_by_arg_var(self, resource_id, arg_var, cg_names, ref_args_options=None):
         """

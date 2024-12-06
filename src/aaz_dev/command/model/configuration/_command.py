@@ -111,7 +111,6 @@ class CMDCommand(Model):
                     op_output = self.build_output_by_operation(op, pageable, client_flatten)
                     if op_output:
                         output = op_output
-
             if output and ref_outputs:
                 assert len(ref_outputs) == 1, "Only support one reference output"
                 ref_output = ref_outputs[0]
@@ -132,6 +131,9 @@ class CMDCommand(Model):
             if resp.is_error:
                 continue
             if resp.body is None:
+                if 204 in resp.status_codes and op.http.request.method == "delete":
+                    # no content response for delete operation
+                    return None
                 continue
             if isinstance(resp.body, CMDHttpResponseJsonBody):
                 body_json = resp.body.json
