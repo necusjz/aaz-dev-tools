@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import re
@@ -273,7 +272,7 @@ class CMDSpecsPartialCommand:
             logger.warning(f"Invalid command info markdown: \n{info}")
             return None
         if command_match.group("lines_help"):
-            lines_help = command_match.group("lines_help").strip().split("\n")
+            lines_help = command_match.group("lines_help").strip().split("\\\n")
         else:
             lines_help = None
         help = CMDHelp()

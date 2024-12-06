@@ -3,13 +3,14 @@ import unittest
 
 from command.controller.command_tree import CMDSpecsPartialCommand, CMDSpecsPartialCommandGroup, \
     CMDSpecsPartialCommandTree, build_simple_command_tree
-from command.model.configuration import CMDHelp
+from command.templates import get_templates
 
 COMMAND_INFO = """# [Command] _vm deallocate_
 
 Deallocate a VM so that computing resources are no longer allocated (charges no longer apply). The status will change from 'Stopped' to 'Stopped (Deallocated)'.
 
-For an end-to-end tutorial, see https://docs.microsoft.com/azure/virtual-machines/linux/capture-image
+For an end-to-end tutorial, see https://docs.microsoft.com/azure/virtual-machines/linux/capture-image \\
+Test Second Line
 
 ## Versions
 
@@ -228,7 +229,8 @@ class CommandTreeTest(unittest.TestCase):
         self.assertEqual(command.names, ["vm", "deallocate"])
         self.assertEqual(command.help.short, "Deallocate a VM so that computing resources are no longer allocated (charges no longer apply). The status will change from 'Stopped' to 'Stopped (Deallocated)'.")
         self.assertListEqual(command.help.lines, [
-            "For an end-to-end tutorial, see https://docs.microsoft.com/azure/virtual-machines/linux/capture-image"
+            "For an end-to-end tutorial, see https://docs.microsoft.com/azure/virtual-machines/linux/capture-image ",
+            "Test Second Line"
         ])
         self.assertEqual(len(command.versions), 4)
         self.assertEqual(command.versions[0].name, "2017-03-30")
@@ -246,6 +248,12 @@ class CommandTreeTest(unittest.TestCase):
             "vm capture -g MyResourceGroup -n MyVm --vhd-name-prefix MyPrefix"
         ])
         command.validate()
+
+    def test_render_command(self):
+        command = CMDSpecsPartialCommand.parse_command_info(COMMAND_INFO, ["vm", "deallocate"])
+        tmpl = get_templates()["command"]
+        display = tmpl.render(command=command)
+        self.assertEqual(display, COMMAND_INFO)
 
     @unittest.skipIf(os.getenv("AAZ_FOLDER") is None, "No AAZ_FOLDER environment variable set")
     def test_load_command_group(self):
