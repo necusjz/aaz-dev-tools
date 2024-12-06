@@ -266,46 +266,6 @@ class CommandTreeTest(unittest.TestCase):
         group.validate()
 
     @unittest.skipIf(os.getenv("AAZ_FOLDER") is None, "No AAZ_FOLDER environment variable set")
-    def test_load_command_tree_from_disk(self):
-        aaz_folder = os.getenv("AAZ_FOLDER")
-        command_tree = CMDSpecsPartialCommandTree(aaz_folder)
-        self.assertIsNotNone(command_tree.root)
-        self.assertEqual(len(command_tree.root.commands), 0)
-        self.assertNotEqual(len(command_tree.root.command_groups), 0)
-        command_tree.iter_commands()
-        command_tree.to_model().validate()
-        command_tree_json = command_tree.to_model().to_primitive()
-        aaz_tree_path = os.path.join(aaz_folder, 'Commands', 'tree.json')
-        with open(aaz_tree_path, 'r', encoding='utf-8') as f:
-            import json
-            aaz_tree = json.load(f)
-        # command_tree_json_str = json.dumps(command_tree_json, sort_keys=True)
-        # aaz_tree_str = json.dumps(aaz_tree, sort_keys=True)
-        # with open(os.path.join(aaz_folder, 'Commands', 'tmp_tree.json'), 'w') as f:
-        #     json.dump(command_tree_json, f, indent=2, sort_keys=True)
-        print("Dumped Command Tree String Len: " + str(len(json.dumps(command_tree_json, sort_keys=True))))
-        print("Dumped AAZ Tree String Len: " + str(len(json.dumps(aaz_tree, sort_keys=True))))
-        # self.assertEqual(command_tree_json_str, aaz_tree_str)
-
-    @unittest.skipIf(os.getenv("AAZ_FOLDER") is None, "No AAZ_FOLDER environment variable set")
-    def test_patch(self):
-        aaz_folder = os.getenv("AAZ_FOLDER")
-        command_tree = CMDSpecsPartialCommandTree(aaz_folder)
-        cg = command_tree.create_command_group('fake_cg')
-        cg.help = CMDHelp()
-        cg.help.short = 'HELP'
-        command = command_tree.create_command('fake_cg', 'fake_new_command')
-        command.help = CMDHelp()
-        command.help.short = 'HELP'
-        for version in command_tree.find_command('acat', 'report', 'snapshot', 'download').versions:
-            command_tree.delete_command_version('acat', 'report', 'snapshot', 'download', version=version.name)
-        command_tree.delete_command('acat', 'report', 'snapshot', 'download')
-
-        command_tree.patch()
-        self.assertNotIn('download', command_tree.find_command_group('acat', 'report', 'snapshot').commands)
-        self.assertIn('fake_new_command', command_tree.find_command_group('fake_cg').commands)
-
-    @unittest.skipIf(os.getenv("AAZ_FOLDER") is None, "No AAZ_FOLDER environment variable set")
     def test_partial_command_group_to_primitive(self):
         aaz_folder = os.getenv("AAZ_FOLDER")
         command_tree = CMDSpecsPartialCommandTree(aaz_folder)
@@ -316,4 +276,4 @@ class CommandTreeTest(unittest.TestCase):
     def test_simple_command_tree(self):
         aaz_folder = os.getenv("AAZ_FOLDER")
         simple_tree = build_simple_command_tree(aaz_folder)
-        print()
+        self.assertGreater(len(simple_tree.root.command_groups), 0)

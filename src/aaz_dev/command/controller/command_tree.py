@@ -569,42 +569,6 @@ class CMDSpecsPartialCommandTree:
         self._modified_commands.add(tuple(command.names))
         return command
 
-    def patch_partial_items(self, aaz_command_tree: CMDSpecsCommandTree):
-        aaz_command_tree = CMDSpecsPartialCommandTree(self.aaz_path, aaz_command_tree.root)
-        nodes = [self.root]
-        i = 0
-        while i < len(nodes):
-            command_group = nodes[i]
-            if isinstance(command_group, CMDSpecsCommandGroup):
-                if isinstance(command_group.command_groups, CMDSpecsCommandGroupDict):
-                    for key in command_group.command_groups.keys():
-                        raw_cg = command_group.command_groups.get_raw_item(key)
-                        if isinstance(raw_cg, CMDSpecsCommandGroup):
-                            nodes.append(raw_cg)
-                        elif isinstance(raw_cg, CMDSpecsPartialCommandGroup):
-                            command_group.command_groups[key] = aaz_command_tree.find_command_group(*raw_cg.names)
-                elif isinstance(command_group.command_groups, dict):
-                    for cg in command_group.command_groups.values():
-                        nodes.append(cg)
-                if isinstance(command_group.commands, CMDSpecsCommandDict):
-                    for key in command_group.commands.keys():
-                        raw_command = command_group.commands.get_raw_item(key)
-                        if isinstance(raw_command, CMDSpecsPartialCommand):
-                            command_group.commands[key] = aaz_command_tree.find_command(*raw_command.names)
-            i += 1
-
-    def patch(self):
-        tree_path = os.path.join(self.aaz_path, "Commands", "tree.json")
-        if not (os.path.exists(tree_path) and os.path.isfile(tree_path)):
-            return
-        try:
-            with open(tree_path, 'r', encoding="utf-8") as f:
-                data = json.load(f)
-                aaz_command_tree = CMDSpecsCommandTree(data)
-            self.patch_partial_items(aaz_command_tree)
-        except json.decoder.JSONDecodeError as e:
-            raise ValueError(f"Invalid Command Tree file: {tree_path}") from e
-
     def verify_command_tree(self):
         details = {}
         for group in self.iter_command_groups():
