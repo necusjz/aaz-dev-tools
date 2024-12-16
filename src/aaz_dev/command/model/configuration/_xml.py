@@ -1,4 +1,3 @@
-import inflect
 import re
 
 from lxml.builder import ElementMaker
@@ -10,6 +9,7 @@ from schematics.types import ListType, ModelType
 from schematics.types.compound import PolyModelType
 from schematics.types.serializable import Serializable
 from ._fields import CMDPrimitiveField
+from utils.case import to_singular
 
 XML_ROOT = "CodeGen"
 
@@ -49,7 +49,7 @@ def build_xml(primitive, parent=None):
     if parent is None:
         parent = getattr(ElementMaker(), XML_ROOT)()
     # normalize element name
-    if elem_name := _inflect_engine.singular_noun(parent.tag):
+    if elem_name := to_singular(parent.tag):
         parent.tag = elem_name
     for field_name, data in primitive.items():
         primitive_to_xml(field_name, data, parent)
@@ -87,7 +87,7 @@ def build_model(model, primitive):
             # obtain suitable element name
             if serialized_name in primitive:
                 curr_name = serialized_name
-            elif (elem_name := _inflect_engine.singular_noun(serialized_name)) in primitive:
+            elif (elem_name := to_singular(serialized_name)) in primitive:
                 curr_name = elem_name
             else:
                 continue
@@ -135,6 +135,3 @@ def _unwrap(field):
         return field.model_class
     else:
         return field
-
-
-_inflect_engine = inflect.engine()
