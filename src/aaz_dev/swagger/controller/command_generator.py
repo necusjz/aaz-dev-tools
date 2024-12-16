@@ -1,7 +1,6 @@
 import logging
 import re
 
-import inflect
 from abc import abstractmethod, ABC
 
 from command.model.configuration import CMDCommandGroup, CMDCommand, CMDHttpOperation, CMDHttpRequest, \
@@ -19,13 +18,13 @@ from utils import exceptions
 from utils.config import Config
 from utils.plane import PlaneEnum
 from utils.error_format import AAZErrorFormatEnum
+from utils.case import to_singular
+
 
 logger = logging.getLogger('backend')
 
 
 class _CommandGenerator(ABC):
-
-    _inflect_engine = inflect.engine()
 
     @staticmethod
     def generate_command_version(resource):
@@ -161,7 +160,7 @@ class _CommandGenerator(ABC):
             part = re.sub(r"\{[^{}]*}", '', part)
             part = re.sub(r"[^a-zA-Z0-9\-._]", '', part)
             name = camel_case_to_snake_case(part, '-')
-            singular_name = cls._inflect_engine.singular_noun(name) or name
+            singular_name = to_singular(name) or name
             names.append(singular_name)
         return " ".join([name for name in names if name])
 

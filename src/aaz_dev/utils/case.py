@@ -1,5 +1,7 @@
 import re
+from pluralizer import Pluralizer
 
+_pluralizer = Pluralizer()
 
 def to_camel_case(name):
     assert isinstance(name, str)
@@ -13,3 +15,6 @@ def to_snake_case(name, separator='_'):
     name = re.sub('(.)([A-Z][a-z]+)', r'\1' + separator + r'\2', name)
     name = re.sub('([a-z0-9])([A-Z])', r'\1' + separator + r'\2', name).lower()
     return name.replace('-', separator).replace('_', separator)
+
+def to_singular(name):
+    return _pluralizer.singular(name)
