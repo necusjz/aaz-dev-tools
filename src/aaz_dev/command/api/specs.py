@@ -1,10 +1,22 @@
 from flask import Blueprint, jsonify, request
+
 from utils import exceptions
 from utils.plane import PlaneEnum
 from command.controller.specs_manager import AAZSpecsManager
 
 
 bp = Blueprint('specs', __name__, url_prefix='/AAZ/Specs')
+
+
+# modules
+@bp.route("/CommandTree/Simple", methods=("GET",))
+def simple_command_tree():
+    manager = AAZSpecsManager()
+    tree = manager.simple_tree
+    if not tree:
+        raise exceptions.ResourceNotFind("Command group not exist")
+    tree = tree.to_primitive()
+    return jsonify(tree)
 
 
 # modules
@@ -35,6 +47,23 @@ def command_tree_leaf(node_names, leaf_name):
         raise exceptions.ResourceNotFind("Command not exist")
 
     result = leaf.to_primitive()
+    return jsonify(result)
+
+
+@bp.route("/CommandTree/Nodes/Leaves", methods=("POST",))
+def command_tree_leaves():
+    data = request.get_json()
+    result = []
+    manager = AAZSpecsManager()
+
+    for command_names in data:
+        if command_names[0] != AAZSpecsManager.COMMAND_TREE_ROOT_NAME:
+            raise exceptions.ResourceNotFind(f"Command not exist: {' '.join(command_names)}")
+        command_names = command_names[1:]
+        leaf = manager.find_command(*command_names)
+        if not leaf:
+            raise exceptions.ResourceNotFind(f"Command not exist: {' '.join(command_names)}")
+        result.append(leaf.to_primitive())
     return jsonify(result)
 
 
