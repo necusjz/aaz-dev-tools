@@ -307,7 +307,8 @@ class AzCommandGenerator:
                 result = f"({result})"
         elif isinstance(operator, CMDConditionHasValueOperator):
             arg_keys, hide = self.cmd_ctx.get_argument(operator.arg)
-            assert not hide
+            if hide:
+                raise KeyError(f"the condition argument {arg_keys} hidden")
             result = f'has_value({arg_keys})'
         else:
             raise NotImplementedError()
