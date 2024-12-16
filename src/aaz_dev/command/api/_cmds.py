@@ -171,13 +171,36 @@ def verify():
         with open(file_path, "r", encoding="utf-8") as fp:
             content = fp.read()
 
+        folder = os.path.dirname(file_path)
+        curr_cmd = os.path.splitext(os.path.basename(file_path))[0][1:]
+        curr_grp = " ".join(os.path.relpath(folder, aaz.commands_folder).split(os.sep))
+
+        # _command_name.md -> command_name
+        cmd_set = set(map(lambda x: x[1:-3], [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]))
+
         paths = re.findall(r"]\(([^)]+)\)", content)
         for path in paths:
             json_path = os.path.join(Config.AAZ_PATH, os.path.splitext(path)[0][1:] + ".json")
             json_path = os.path.normpath(json_path)
 
+            if json_path in model_set:
+                continue
+
             if not os.path.exists(json_path):
                 raise Exception(f"{json_path} defined in {file_path} is missing.")
+
+            with open(json_path, "r", encoding="utf-8", errors="ignore") as fp:
+                model = json.load(fp)
+
+            for grp in model["commandGroups"]:
+                if grp["name"] == curr_grp:
+                    if not any(cmd["name"] == curr_cmd for cmd in grp["commands"]):
+                        raise Exception(f"There is no {curr_cmd} command info in {json_path}.")
+
+                    if any(cmd["name"] not in cmd_set for cmd in grp["commands"]):
+                        raise Exception(f"{curr_grp} defined in {json_path} has command that doesn't exist.")
+
+                    break
 
             model_set.add(json_path)
 
