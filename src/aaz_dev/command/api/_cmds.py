@@ -192,15 +192,24 @@ def verify():
             with open(json_path, "r", encoding="utf-8", errors="ignore") as fp:
                 model = json.load(fp)
 
-            for grp in model["commandGroups"]:
-                if grp["name"] == curr_grp:
-                    if not any(cmd["name"] == curr_cmd for cmd in grp["commands"]):
-                        raise Exception(f"There is no {curr_cmd} command info in {json_path}.")
+            group = []
+            while True:
+                try:
+                    group.append(model["commandGroups"][0]["name"])
+                    if " ".join(group) == curr_grp:
+                        break
 
-                    if any(cmd["name"] not in cmd_set for cmd in grp["commands"]):
-                        raise Exception(f"{curr_grp} defined in {json_path} has command that doesn't exist.")
+                    model = model["commandGroups"][0]
 
-                    break
+                except KeyError:
+                    raise Exception(f"{curr_grp} {curr_cmd} is redundant.")
+
+            commands = model["commandGroups"][0]["commands"]
+            if not any(cmd["name"] == curr_cmd for cmd in commands):
+                raise Exception(f"There is no {curr_cmd} command info in {json_path}.")
+
+            if any(cmd["name"] not in cmd_set for cmd in commands):
+                raise Exception(f"{curr_grp} defined in {json_path} has command that doesn't exist.")
 
             model_set.add(json_path)
 
