@@ -176,7 +176,7 @@ def verify():
         curr_grp = " ".join(os.path.relpath(folder, aaz.commands_folder).split(os.sep))
 
         # _command_name.md -> command_name
-        cmd_set = set(map(lambda x: x[1:-3], [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]))
+        cmd_set = set(map(lambda x: x[1:-3], [i for i in os.listdir(folder) if os.path.isfile(os.path.join(folder, i))]))
 
         paths = re.findall(r"]\(([^)]+)\)", content)
         for path in paths:
@@ -192,19 +192,20 @@ def verify():
             with open(json_path, "r", encoding="utf-8", errors="ignore") as fp:
                 model = json.load(fp)
 
-            group = []
-            while True:
+            target = curr_grp
+            while target:
                 try:
-                    group.append(model["commandGroups"][0]["name"])
-                    if " ".join(group) == curr_grp:
-                        break
+                    for grp in model["commandGroups"]:
+                        if target.startswith(grp["name"]):
+                            target = target[len(grp["name"]):].strip()
+                            model = grp
 
-                    model = model["commandGroups"][0]
+                            break
 
                 except KeyError:
                     raise Exception(f"{curr_grp} {curr_cmd} is redundant.")
 
-            commands = model["commandGroups"][0]["commands"]
+            commands = model["commands"]
             if not any(cmd["name"] == curr_cmd for cmd in commands):
                 raise Exception(f"There is no {curr_cmd} command info in {json_path}.")
 
