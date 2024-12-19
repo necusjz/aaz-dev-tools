@@ -167,16 +167,29 @@ def generate_command_models_from_swagger(swagger_tag, workspace_path=None):
     help="Path of `aaz` repository."
 )
 def verify():
+    def verify_resource(model, path):
+        if "commandGroups" not in model:
+            return
+
+        for grp in model["commandGroups"]:
+            base_path = os.path.join(path, *grp["name"].split())
+            if not os.path.exists(base_path):
+                raise FileNotFoundError(base_path)
+
+            for cmd in grp.get("commands", []):
+                file_path = os.path.join(base_path, f"_{cmd['name']}.md")
+                if not os.path.isfile(file_path):
+                    raise FileNotFoundError(file_path)
+
+            verify_resource(grp, base_path)
+
     def verify_command(file_path):
         with open(file_path, "r", encoding="utf-8") as fp:
             content = fp.read()
 
-        folder = os.path.dirname(file_path)
+        base_path = os.path.dirname(file_path)
+        curr_grp = " ".join(os.path.relpath(base_path, aaz.commands_folder).split(os.sep))
         curr_cmd = os.path.splitext(os.path.basename(file_path))[0][1:]
-        curr_grp = " ".join(os.path.relpath(folder, aaz.commands_folder).split(os.sep))
-
-        # _command_name.md -> command_name
-        cmd_set = set(map(lambda x: x[1:-3], [i for i in os.listdir(folder) if os.path.isfile(os.path.join(folder, i))]))
 
         paths = re.findall(r"]\(([^)]+)\)", content)
         for path in paths:
@@ -192,6 +205,12 @@ def verify():
             with open(json_path, "r", encoding="utf-8", errors="ignore") as fp:
                 model = json.load(fp)
 
+            try:
+                verify_resource(model, aaz.commands_folder)
+
+            except FileNotFoundError as e:
+                raise Exception(f"Cannot find {e} defined in {json_path}.")
+
             target = curr_grp
             while target:
                 try:
@@ -203,14 +222,11 @@ def verify():
                             break
 
                 except KeyError:
-                    raise Exception(f"{curr_grp} {curr_cmd} is redundant.")
+                    raise Exception(f"{curr_grp} has no corresponding definition in {json_path}.")
 
             commands = model["commands"]
             if not any(cmd["name"] == curr_cmd for cmd in commands):
                 raise Exception(f"There is no {curr_cmd} command info in {json_path}.")
-
-            if any(cmd["name"] not in cmd_set for cmd in commands):
-                raise Exception(f"{curr_grp} defined in {json_path} has command that doesn't exist.")
 
             model_set.add(json_path)
 
@@ -263,7 +279,7 @@ def verify():
                     for folder in folders:
                         stack.append(os.path.join(curr_path, folder))
 
-    for root, dirs, files in os.walk(aaz.resources_folder):
+    for root, _, files in os.walk(aaz.resources_folder):
         for file in files:
             if not file.endswith(".json") or file.startswith("client"):  # support data-plane
                 continue
