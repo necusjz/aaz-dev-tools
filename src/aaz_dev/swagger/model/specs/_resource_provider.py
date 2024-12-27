@@ -96,7 +96,7 @@ class OpenAPIResourceProvider:
                 readme = f.read()
 
             re_yaml = re.compile(
-                r'```\s*yaml\s*(.*\$\(\s*tag\s*\)\s*==\s*[\'"]\s*(.*)\s*[\'"].*)?\n((((?!```).)*\n)*)```\s*\n',
+                r'```\s*yaml\s*(.*\$\(\s*tag\s*\)\s*==\s*[\'"]\s*(.*)\s*[\'"].*)?\n((((?!```).)*\n)*)\s*```\s*\n',
                 flags=re.MULTILINE)
             for piece in re_yaml.finditer(readme):
                 flags = piece[1]
