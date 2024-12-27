@@ -12,12 +12,12 @@ class SwaggerSpecs:
         self._folder_path = folder_path
 
     @property
-    def _spec_folder_path(self):
+    def spec_folder_path(self):
         return os.path.join(self._folder_path, 'specification')
 
     def get_mgmt_plane_modules(self, plane):
         modules = []
-        for name in os.listdir(self._spec_folder_path):
+        for name in os.listdir(self.spec_folder_path):
             module = self.get_mgmt_plane_module(name, plane=plane)
             if module:
                 modules.append(module)
@@ -30,7 +30,7 @@ class SwaggerSpecs:
         if not PlaneEnum.is_valid_swagger_module(plane=plane, module_name=name):
             return None
 
-        path = os.path.join(self._spec_folder_path, name)
+        path = os.path.join(self.spec_folder_path, name)
         if not os.path.isdir(path):
             return None
         if os.path.isdir(os.path.join(path, 'resource-manager')) or TypeSpecHelper.find_mgmt_plane_entry_files(path):
@@ -45,7 +45,7 @@ class SwaggerSpecs:
 
     def get_data_plane_modules(self, plane):
         modules = []
-        for name in os.listdir(self._spec_folder_path):
+        for name in os.listdir(self.spec_folder_path):
             module = self.get_data_plane_module(name, plane=plane)
             if module:
                 modules.append(module)
@@ -58,7 +58,7 @@ class SwaggerSpecs:
         if not PlaneEnum.is_valid_swagger_module(plane=plane, module_name=name):
             return None
 
-        path = os.path.join(self._spec_folder_path, name)
+        path = os.path.join(self.spec_folder_path, name)
         if os.path.isdir(os.path.join(path, 'data-plane')) or TypeSpecHelper.find_data_plane_entry_files(path):
             module = DataPlaneModule(plane=plane, name=name, folder_path=path)
             for name in names[1:]:
