@@ -32,7 +32,7 @@ def parse_readme_file(readme_path: str):
         elif in_yaml_section:
             if line.strip().startswith("```"):
                 try:
-                    yaml_config = yaml.load("\n".join(yaml_content), Loader=yaml.FullLoader)
+                    yaml_config = yaml.safe_load("\n".join(yaml_content))
                 except Exception as e:
                     raise ValueError(f"Failed to parse autorest config: {e} for readme_file: {readme_path}")
                 _update_config(readme_config, yaml_config)
