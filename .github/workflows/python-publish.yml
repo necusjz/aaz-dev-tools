@@ -92,6 +92,8 @@ jobs:
           pip install --upgrade pip setuptools wheel virtualenv
           npm install -g pnpm
           pnpm install
+          cd src/typespec
+          pnpm install
 
       - name: Set build variables
         shell: bash
