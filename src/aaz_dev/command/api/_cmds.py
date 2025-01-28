@@ -166,7 +166,11 @@ def generate_command_models_from_swagger(swagger_tag, workspace_path=None):
     expose_value=False,
     help="Path of `aaz` repository."
 )
-def verify():
+@click.option(
+    "--target", "-t",
+    help="Target module to focus on."
+)
+def verify(target):
     def verify_resource(model, path):
         if "commandGroups" not in model:
             return
@@ -232,7 +236,13 @@ def verify():
 
     model_set = set()
     aaz = AAZSpecsManager()
-    stack = [aaz.commands_folder]
+
+    parent = aaz.commands_folder
+    stack = [os.path.join(parent, target)] if target else [
+        os.path.join(parent, i)
+        for i in os.listdir(parent)
+        if os.path.isdir(os.path.join(parent, i))
+    ]
 
     while stack:
         curr_path = stack.pop()
@@ -279,11 +289,12 @@ def verify():
                     for folder in folders:
                         stack.append(os.path.join(curr_path, folder))
 
-    for root, _, files in os.walk(aaz.resources_folder):
-        for file in files:
-            if not file.endswith(".json") or file.startswith("client"):  # support data-plane
-                continue
+    if not target:
+        for root, _, files in os.walk(aaz.resources_folder):
+            for file in files:
+                if not file.endswith(".json") or file.startswith("client"):  # support data-plane
+                    continue
 
-            file_path = os.path.join(root, file)
-            if file_path not in model_set:
-                raise Exception(f"{file_path} is redundant.")
+                file_path = os.path.join(root, file)
+                if file_path not in model_set:
+                    raise Exception(f"{file_path} is redundant.")
