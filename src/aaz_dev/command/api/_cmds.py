@@ -200,9 +200,6 @@ def verify(target):
             json_path = os.path.join(Config.AAZ_PATH, os.path.splitext(path)[0][1:] + ".json")
             json_path = os.path.normpath(json_path)
 
-            if json_path in model_set:
-                continue
-
             if not os.path.exists(json_path):
                 raise Exception(f"{json_path} defined in {file_path} is missing.")
 
