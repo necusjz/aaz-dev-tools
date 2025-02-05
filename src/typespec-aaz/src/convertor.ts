@@ -1,4 +1,7 @@
 import { HttpOperation, HttpOperationBody, HttpOperationMultipartBody, HttpOperationResponse, HttpStatusCodeRange, HttpStatusCodesEntry, Visibility, createMetadataInfo, getHeaderFieldOptions, getQueryParamOptions, getServers, getStatusCodeDescription, getVisibilitySuffix, isContentTypeHeader, resolveRequestVisibility } from "@typespec/http";
+import {
+  isAzureResource,
+} from "@azure-tools/typespec-azure-resource-manager";
 import { AAZEmitterContext, AAZOperationEmitterContext, AAZSchemaEmitterContext } from "./context.js";
 import { resolveOperationId } from "./utils.js";
 import { TypeSpecPathItem } from "./model/path_item.js";
@@ -734,7 +737,7 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
     }
   }
 
-  if (isAzureResource(context, payloadModel) && properties.location) {
+  if (isAzureResourceOverall(context, payloadModel) && properties.location) {
     properties.location = {
       ...(properties.location as CMDStringSchema),
       type: "ResourceLocation"
@@ -1186,12 +1189,12 @@ function getDiscriminatorInfo(context: AAZSchemaEmitterContext, model: Model): D
   return undefined;
 }
 
-function isAzureResource(context: AAZSchemaEmitterContext, model: Model): boolean {
+function isAzureResourceOverall(context: AAZSchemaEmitterContext, model: Model): boolean {
   let current = model;
-  let isResource = getExtensions(context.program, current).get("x-ms-azure-resource");
+  let isResource = isAzureResource(context.program, current);
   while (!isResource && current.baseModel) {
     current = current.baseModel;
-    isResource = getExtensions(context.program, current).get("x-ms-azure-resource");
+    isResource = isAzureResource(context.program, current);
   }
   return !!isResource;
 }
