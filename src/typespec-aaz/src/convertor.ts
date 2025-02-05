@@ -1114,10 +1114,7 @@ function convertUnionEnum2CMDSchemaBase(context: AAZSchemaEmitterContext, union:
 
 function convertEnum2CMDSchemaBase(context: AAZSchemaEmitterContext, e: Enum): CMDStringSchemaBase | CMDIntegerSchemaBase | undefined {
   let schema;
-  if (e.members.values().next().value === undefined) {
-    return schema;
-  }
-  const type = getEnumMemberType(e.members.values().next().value!);
+  const type = getEnumMemberType(e.members.values().next().value);
   for (const option of e.members.values()) {
     if (type !== getEnumMemberType(option)) {
       return undefined;
