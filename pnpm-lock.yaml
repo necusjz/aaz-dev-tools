@@ -26,7 +26,7 @@ importers:
         version: 5.0.5
 
   src/typespec-aaz:
-    dependencies:
+    devDependencies:
       '@azure-tools/typespec-azure-core':
         specifier: workspace:~
         version: link:../typespec/packages/typespec-azure-core
@@ -36,25 +36,6 @@ importers:
       '@azure-tools/typespec-client-generator-core':
         specifier: workspace:~
         version: link:../typespec/packages/typespec-client-generator-core
-      '@typespec/compiler':
-        specifier: workspace:~
-        version: link:../typespec/core/packages/compiler
-      '@typespec/http':
-        specifier: workspace:~
-        version: link:../typespec/core/packages/http
-      '@typespec/json-schema':
-        specifier: workspace:~
-        version: link:../typespec/core/packages/json-schema
-      '@typespec/openapi':
-        specifier: workspace:~
-        version: link:../typespec/core/packages/openapi
-      '@typespec/rest':
-        specifier: workspace:~
-        version: link:../typespec/core/packages/rest
-      '@typespec/versioning':
-        specifier: workspace:~
-        version: link:../typespec/core/packages/versioning
-    devDependencies:
       '@types/node':
         specifier: latest
         version: 20.12.7
@@ -64,9 +45,27 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^6.0.0
         version: 6.21.0(eslint@8.57.0)(typescript@5.4.5)
+      '@typespec/compiler':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/compiler
+      '@typespec/http':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/http
+      '@typespec/json-schema':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/json-schema
       '@typespec/library-linter':
         specifier: workspace:~
         version: link:../typespec/core/packages/library-linter
+      '@typespec/openapi':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/openapi
+      '@typespec/rest':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/rest
+      '@typespec/versioning':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/versioning
       change-case:
         specifier: ~5.4.4
         version: 5.4.4
