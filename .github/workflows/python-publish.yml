@@ -90,7 +90,7 @@ jobs:
       - name: Install prerequisites
         run: |
           pip install --upgrade pip setuptools wheel virtualenv
-          npm install -g pnpm
+          npm install -g pnpm@9.5.0
           pnpm install
           cd src/typespec
           pnpm install

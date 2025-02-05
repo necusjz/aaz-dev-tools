@@ -26,7 +26,7 @@ importers:
         version: 5.0.5
 
   src/typespec-aaz:
-    devDependencies:
+    dependencies:
       '@azure-tools/typespec-azure-core':
         specifier: workspace:~
         version: link:../typespec/packages/typespec-azure-core
@@ -36,15 +36,6 @@ importers:
       '@azure-tools/typespec-client-generator-core':
         specifier: workspace:~
         version: link:../typespec/packages/typespec-client-generator-core
-      '@types/node':
-        specifier: latest
-        version: 20.12.7
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^6.0.0
-        version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5)
-      '@typescript-eslint/parser':
-        specifier: ^6.0.0
-        version: 6.21.0(eslint@8.57.0)(typescript@5.4.5)
       '@typespec/compiler':
         specifier: workspace:~
         version: link:../typespec/core/packages/compiler
@@ -54,9 +45,6 @@ importers:
       '@typespec/json-schema':
         specifier: workspace:~
         version: link:../typespec/core/packages/json-schema
-      '@typespec/library-linter':
-        specifier: workspace:~
-        version: link:../typespec/core/packages/library-linter
       '@typespec/openapi':
         specifier: workspace:~
         version: link:../typespec/core/packages/openapi
@@ -66,6 +54,19 @@ importers:
       '@typespec/versioning':
         specifier: workspace:~
         version: link:../typespec/core/packages/versioning
+    devDependencies:
+      '@types/node':
+        specifier: latest
+        version: 20.12.7
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^6.0.0
+        version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5)
+      '@typescript-eslint/parser':
+        specifier: ^6.0.0
+        version: 6.21.0(eslint@8.57.0)(typescript@5.4.5)
+      '@typespec/library-linter':
+        specifier: workspace:~
+        version: link:../typespec/core/packages/library-linter
       change-case:
         specifier: ~5.4.4
         version: 5.4.4
