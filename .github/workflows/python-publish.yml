@@ -94,6 +94,8 @@ jobs:
           pnpm install
           cd src/typespec
           pnpm install
+          cd ../../
+          ls ./src/typespec-aaz/node_modules/@azure-tools/
 
       - name: Set build variables
         shell: bash
