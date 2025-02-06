@@ -30,6 +30,9 @@ importers:
       '@azure-tools/typespec-azure-core':
         specifier: workspace:~
         version: link:../typespec/packages/typespec-azure-core
+      '@azure-tools/typespec-azure-resource-manager':
+        specifier: workspace:~
+        version: link:../typespec/packages/typespec-azure-resource-manager
       '@azure-tools/typespec-client-generator-core':
         specifier: workspace:~
         version: link:../typespec/packages/typespec-client-generator-core
@@ -111,7 +114,7 @@ importers:
         version: 22.7.9
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       c8:
         specifier: ^10.1.2
         version: 10.1.2
@@ -135,7 +138,7 @@ importers:
         version: 56.0.1(eslint@9.15.0)
       eslint-plugin-vitest:
         specifier: ^0.5.4
-        version: 0.5.4(eslint@9.15.0)(typescript@5.6.3)(vitest@2.1.5)
+        version: 0.5.4(eslint@9.15.0)(typescript@5.6.3)(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       micromatch:
         specifier: ^4.0.8
         version: 4.0.8
@@ -217,7 +220,7 @@ importers:
         version: link:../compiler
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -266,7 +269,7 @@ importers:
         version: 7.5.8
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -324,7 +327,7 @@ importers:
         version: 17.0.33
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -412,7 +415,7 @@ importers:
         version: link:../internal-build-utils
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -464,7 +467,7 @@ importers:
         version: 8.14.0
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -500,7 +503,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -570,7 +573,7 @@ importers:
         version: 4.3.3(vite@5.4.11(@types/node@22.7.9))
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -615,7 +618,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -664,7 +667,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -698,7 +701,7 @@ importers:
         version: link:../http
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -787,7 +790,7 @@ importers:
         version: 17.0.33
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -830,7 +833,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -863,7 +866,7 @@ importers:
         version: link:../compiler
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -891,7 +894,7 @@ importers:
         version: 22.7.9
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -933,7 +936,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -997,7 +1000,7 @@ importers:
         version: link:../xml
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -1239,7 +1242,7 @@ importers:
         version: 4.3.3(vite@5.4.11(@types/node@22.7.9))
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -1315,7 +1318,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -1376,7 +1379,7 @@ importers:
         version: 4.3.3(vite@5.4.11(@types/node@22.7.9))
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -1421,7 +1424,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -1491,7 +1494,7 @@ importers:
         version: link:../internal-build-utils
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -1585,7 +1588,7 @@ importers:
         version: 17.0.33
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -1807,7 +1810,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -1840,7 +1843,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -1908,7 +1911,7 @@ importers:
         version: link:../prettier-plugin-typespec
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -1974,7 +1977,7 @@ importers:
         version: link:../internal-build-utils
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2028,7 +2031,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2061,7 +2064,7 @@ importers:
         version: link:../tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2241,7 +2244,7 @@ importers:
         version: link:../../core/packages/samples
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2301,7 +2304,7 @@ importers:
         version: link:../../core/packages/versioning
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2361,7 +2364,7 @@ importers:
         version: link:../../core/packages/versioning
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2409,7 +2412,7 @@ importers:
         version: link:../../core/packages/versioning
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2515,7 +2518,7 @@ importers:
         version: link:../../core/packages/playground
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2572,7 +2575,7 @@ importers:
         version: link:../../core/packages/versioning
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2630,7 +2633,7 @@ importers:
         version: link:../../core/packages/versioning
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2669,7 +2672,7 @@ importers:
         version: link:../../core/packages/tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2742,7 +2745,7 @@ importers:
         version: link:../../core/packages/xml
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       '@vitest/ui':
         specifier: ^2.1.2
         version: 2.1.5(vitest@2.1.5)
@@ -2797,7 +2800,7 @@ importers:
         version: link:../../core/packages/tspd
       '@vitest/coverage-v8':
         specifier: ^2.1.5
-        version: 2.1.5(vitest@2.1.5)
+        version: 2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))
       c8:
         specifier: ^10.1.2
         version: 10.1.2
@@ -17706,7 +17709,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/coverage-v8@2.1.5(vitest@2.1.5)':
+  '@vitest/coverage-v8@2.1.5(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -19658,7 +19661,7 @@ snapshots:
       semver: 7.6.3
       strip-indent: 3.0.0
 
-  eslint-plugin-vitest@0.5.4(eslint@9.15.0)(typescript@5.6.3)(vitest@2.1.5):
+  eslint-plugin-vitest@0.5.4(eslint@9.15.0)(typescript@5.6.3)(vitest@2.1.5(@types/node@22.7.9)(@vitest/ui@2.1.5)(happy-dom@15.11.6)(jsdom@19.0.0)):
     dependencies:
       '@typescript-eslint/utils': 7.17.0(eslint@9.15.0)(typescript@5.6.3)
       eslint: 9.15.0
