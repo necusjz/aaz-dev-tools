@@ -583,7 +583,7 @@ function convert2CMDSchemaBase(context: AAZSchemaEmitterContext, type: Type): CM
     case "Number":
     case "String":
     case "Boolean":
-      schema = convertLiteral2CMDSchemaBase(type);
+      schema = convertLiteral2CMDSchemaBase(context, type);
       break;
     // case "Tuple":
     default:
@@ -1208,15 +1208,24 @@ function isAzureResourceOverall(context: AAZSchemaEmitterContext, model: Model):
   return !!isResource;
 }
 
-function convertLiteral2CMDSchemaBase(type: Type): CMDStringSchemaBase | CMDIntegerSchemaBase | CMDBooleanSchemaBase | undefined {
+function convertLiteral2CMDSchemaBase(context: AAZSchemaEmitterContext, type: Type): CMDStringSchemaBase | CMDIntegerSchemaBase | CMDFloatSchemaBase | CMDBooleanSchemaBase | undefined {
   switch (type.kind) {
     case "Number":
-      return { 
-        type: "integer", 
-        enum: {
-          items: [{value: type.value}]
-        }
-      };
+      if (type.numericValue.isInteger) {
+        return {
+          type: "integer", 
+          enum: {
+            items: [{value: type.value}]
+          }
+        };
+      } else {
+        return { 
+          type: "float", 
+          enum: {
+            items: [{value: type.value}]
+          }
+        };
+      }
     case "String":
       return { 
         type: "string", 
