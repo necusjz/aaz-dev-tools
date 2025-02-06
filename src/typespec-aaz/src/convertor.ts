@@ -10,7 +10,7 @@ import { DiagnosticTarget, Enum, EnumMember, Model, ModelProperty, Namespace, Pr
 import { LroMetadata, PagedResultMetadata, UnionEnum, getArmResourceIdentifierConfig, getLroMetadata, getPagedResult, getUnionAsEnum } from "@azure-tools/typespec-azure-core";
 import { XmsPageable } from "./model/x_ms_pageable.js";
 import { CMDHttpRequest, CMDHttpResponse } from "./model/http.js";
-import { CMDArraySchemaBase, CMDClsSchema, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, Ref, ClsType, ArrayType, CMDObjectSchemaDiscriminator, CMDByteSchemaBase, CMDInteger32SchemaBase, CMDInteger64SchemaBase, CMDFloatSchemaBase, CMDFloat64SchemaBase, CMDFloat32SchemaBase, CMDUuidSchemaBase, CMDPasswordSchemaBase, CMDResourceIdSchemaBase, CMDDateSchemaBase, CMDDateTimeSchemaBase, CMDDurationSchemaBase, CMDResourceLocationSchema, CMDIdentityObjectSchemaBase} from "./model/schema.js";
+import { CMDArraySchemaBase, CMDClsSchema, CMDClsSchemaBase, CMDObjectSchema, CMDObjectSchemaBase, CMDSchema, CMDSchemaBase, CMDStringSchema, CMDStringSchemaBase, CMDIntegerSchemaBase, Ref, ClsType, ArrayType, CMDObjectSchemaDiscriminator, CMDByteSchemaBase, CMDInteger32SchemaBase, CMDInteger64SchemaBase, CMDFloatSchemaBase, CMDFloat64SchemaBase, CMDFloat32SchemaBase, CMDUuidSchemaBase, CMDPasswordSchemaBase, CMDResourceIdSchemaBase, CMDDateSchemaBase, CMDDateTimeSchemaBase, CMDDurationSchemaBase, CMDResourceLocationSchema, CMDIdentityObjectSchemaBase, CMDBooleanSchemaBase} from "./model/schema.js";
 import { reportDiagnostic } from "./lib.js";
 import {
   getExtensions,
@@ -516,9 +516,11 @@ function convert2CMDSchema(context: AAZSchemaEmitterContext, param: ModelPropert
       schema = convert2CMDSchemaBase(context, param.type as Enum);
       break;
     // TODO: handle Literals
-    // case "Number":
-    // case "String":
-    // case "Boolean":
+    case "Number":
+    case "String":
+    case "Boolean":
+      schema = convert2CMDSchemaBase(context, param.type);
+      break;
     // case "Tuple":
     default:
       reportDiagnostic(context.program, { code: "Unsupported-Type", target: param.type });
@@ -578,9 +580,11 @@ function convert2CMDSchemaBase(context: AAZSchemaEmitterContext, type: Type): CM
       schema = convertEnum2CMDSchemaBase(context, type as Enum);
       break;
     // TODO: handle Literals
-    // case "Number":
-    // case "String":
-    // case "Boolean":
+    case "Number":
+    case "String":
+    case "Boolean":
+      schema = convertLiteral2CMDSchemaBase(context, type);
+      break;
     // case "Tuple":
     default:
       reportDiagnostic(context.program, { code: "Unsupported-Type", target: type });
@@ -1202,6 +1206,40 @@ function isAzureResourceOverall(context: AAZSchemaEmitterContext, model: Model):
     isResource = isAzureResource(context.program, current);
   }
   return !!isResource;
+}
+
+function convertLiteral2CMDSchemaBase(context: AAZSchemaEmitterContext, type: Type): CMDStringSchemaBase | CMDIntegerSchemaBase | CMDFloatSchemaBase | CMDBooleanSchemaBase | undefined {
+  switch (type.kind) {
+    case "Number":
+      if (type.numericValue.isInteger) {
+        return {
+          type: "integer", 
+          enum: {
+            items: [{value: type.value}]
+          }
+        };
+      } else {
+        return { 
+          type: "float", 
+          enum: {
+            items: [{value: type.value}]
+          }
+        };
+      }
+    case "String":
+      return { 
+        type: "string", 
+        enum: {
+          items: [{value: type.value}]
+        }
+      };
+    case "Boolean":
+      return { 
+        type: "boolean"
+      };
+    default:
+      return undefined;
+  }
 }
 
 // Return any string literal values for type
