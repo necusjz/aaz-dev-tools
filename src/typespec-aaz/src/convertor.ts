@@ -670,11 +670,16 @@ function convertModel2CMDObjectSchemaBase(context: AAZSchemaEmitterContext, mode
       supportClsSchema: true,
     }, prop, jsonName);
     if (schema) {
-      if (isReadonlyProperty(context.program, prop)) {
-        schema.readOnly = true;
-      }
       if (!context.metadateInfo.isOptional(prop, context.visibility) || prop.name === discriminator?.propertyName) {
         schema.required = true;
+      }
+      if (isReadonlyProperty(context.program, prop)) {
+        schema.readOnly = true;
+        if (schema.required) {
+          // read_only property is not required
+          // console.log("Ignore requirement of the read only property: ", schema.name)
+          schema.required = false;
+        }
       }
       if (shouldClientFlatten(context, prop)) {
         if (schema.type === "object") {
