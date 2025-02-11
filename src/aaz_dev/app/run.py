@@ -3,6 +3,7 @@ import subprocess
 import webbrowser
 
 import click
+from azdev.utilities import display
 from flask.cli import pass_script_info, show_server_banner, SeparatedPathType
 from flask.helpers import get_debug_flag
 from utils.config import Config
@@ -130,7 +131,7 @@ def is_port_in_use(host, port):
 )
 @pass_script_info
 def run_command(
-        info, host, port, aaz_path, reload, debugger, with_threads, extra_files, quiet
+        info, host, port, reload, debugger, with_threads, extra_files, quiet
 ):
     """Run a local development server.
 
@@ -140,7 +141,7 @@ def run_command(
     The reloader and debugger are enabled by default if
     FLASK_ENV=development or FLASK_DEBUG=1.
     """
-    _change_git_hooks_path(aaz_path)
+    _change_git_hooks_path(Config.AAZ_PATH)
 
     debug = get_debug_flag()
 
@@ -178,5 +179,5 @@ def _change_git_hooks_path(repo_path):
     # if .githooks folder exists in the repo folder, change the git config to use the .githooks folder in the repo
     githooks_path = os.path.join(repo_path, '.githooks')
     if os.path.exists(githooks_path):
-        subprocess.check_call(['git', 'config', 'core.hooksPath', githooks_path])
+        subprocess.check_call(['git', '-C', repo_path, 'config', 'core.hooksPath', githooks_path])
         display(f"Changed git hooks path to {githooks_path}")
