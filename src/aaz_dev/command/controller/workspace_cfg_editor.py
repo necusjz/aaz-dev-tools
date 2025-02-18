@@ -1056,14 +1056,14 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         self.reformat()
         return commands
 
-    def build_identity_subresource(self, resource_id, temp_generic_update_cmd=None):
+    def build_identity_subresource(self, resource_id, temp_update_cmd=None):
         update_cmd_info = self.get_update_cmd(resource_id)
         if not update_cmd_info:
             return
         update_cmd_names, update_cmd, update_by = update_cmd_info
-        if update_by == "PatchOnly" and temp_generic_update_cmd is not None:
-            # generate temp update command using generic update
-            update_cmd = temp_generic_update_cmd
+        if update_by == "PatchOnly" and temp_update_cmd is not None:
+            # generate temp update command using get + patch
+            update_cmd = temp_update_cmd
             update_cmd.name = ' '.join(update_cmd_names)
         elif update_by != "GenericOnly":
             return
@@ -1397,7 +1397,9 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
     def _build_sub_command_base(cls, update_cmd, subresource_idx, **kwargs):
         get_op = None
         put_op = None
+        patch_op = None
         update_op = None
+
         for operation in update_cmd.operations:
             if isinstance(operation, CMDInstanceUpdateOperation):
                 update_op = operation
@@ -1406,8 +1408,11 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
                     get_op = operation
                 if operation.http.request.method == "put":
                     put_op = operation
+                if operation.http.request.method == "patch":
+                    patch_op = operation
+
         assert get_op is not None
-        assert put_op is not None
+        assert put_op is not None or patch_op is not None
         assert update_op is not None
 
         # find response body
@@ -1432,7 +1437,11 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         _sub_command.resources = [_resource]
         _sub_command.subresource_selector = cls._build_subresource_selector(
             response_json, update_json, subresource_idx, **kwargs)
-        return _sub_command, get_op, put_op, update_json
+
+        if patch_op is not None:
+            return _sub_command, get_op, patch_op, update_json
+        if put_op is not None:
+            return _sub_command, get_op, put_op, update_json
 
     @classmethod
     def _build_subresource_list_or_show_command(cls, update_cmd, subresource_idx, ref_args, ref_options):
@@ -1483,7 +1492,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
 
     @classmethod
     def _build_subresource_update_command(cls, update_cmd, subresource_idx, ref_args, ref_options, action=None):
-        _sub_command, get_op, put_op, update_json = cls._build_sub_command_base(update_cmd, subresource_idx)
+        _sub_command, get_op, update_op, update_json = cls._build_sub_command_base(update_cmd, subresource_idx)
 
         _instance_op = CMDInstanceUpdateOperation()
         _instance_op.instance_update = CMDJsonInstanceUpdateAction()
@@ -1514,7 +1523,7 @@ class WorkspaceCfgEditor(CfgReader, ArgumentUpdateMixin):
         _sub_command.operations = [
             get_op.__class__(raw_data=get_op.to_native()),
             _instance_op,
-            put_op.__class__(raw_data=put_op.to_native()),
+            update_op.__class__(raw_data=update_op.to_native()),
         ]
         _sub_command.generate_args(ref_args=ref_args, ref_options=ref_options)
         _sub_command.generate_outputs(ref_outputs=update_cmd.outputs)

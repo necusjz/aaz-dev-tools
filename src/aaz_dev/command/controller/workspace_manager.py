@@ -681,13 +681,13 @@ class WorkspaceManager:
                     aaz_ref[' '.join(cmd_names)] = aaz_version
 
             update_cmd_info = cfg_editor.get_update_cmd(resource.id)
-            temp_generic_update_cmd = None
+            temp_update_cmd = None
             if update_cmd_info and options.get('update_by', None) == "PatchOnly":
-                temp_cfg_editor = self._build_draft_cfg_editor(command_generator, resource, {"update_by": "GenericOnly", "methods": ('get', 'put')})
+                temp_cfg_editor = self._build_draft_cfg_editor(command_generator, resource, {"update_by": "PatchOnly", "methods": ('get', 'patch')})
                 temp_update_cmd_info = temp_cfg_editor.get_update_cmd(resource.id)
                 if temp_update_cmd_info:
-                    _, temp_generic_update_cmd, _ = temp_update_cmd_info
-            cfg_editor.build_identity_subresource(resource.id, temp_generic_update_cmd)
+                    _, temp_update_cmd, _ = temp_update_cmd_info
+            cfg_editor.build_identity_subresource(resource.id, temp_update_cmd)
             cfg_editors.append(cfg_editor)
 
         # add cfg_editors
